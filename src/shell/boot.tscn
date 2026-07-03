@@ -1,39 +1,15 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://src/shell/boot.gd" id="1_boot"]
-
-[sub_resource type="BoxMesh" id="BoxMesh_1"]
-
-[sub_resource type="StandardMaterial3D" id="Mat_1"]
-albedo_color = Color(0.85, 0.55, 0.1, 1)
 
 [node name="Boot" type="Node3D"]
 script = ExtResource("1_boot")
 
-[node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.94, 0.342, 0, -0.342, 0.94, 0, 2, 5)
-
-[node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.866, 0.354, -0.354, 0, 0.707, 0.707, 0.5, -0.612, 0.612, 0, 6, 0)
-shadow_enabled = true
-
-[node name="Cube" type="MeshInstance3D" parent="."]
-mesh = SubResource("BoxMesh_1")
-surface_material_override/0 = SubResource("Mat_1")
-
 [node name="UI" type="CanvasLayer" parent="."]
 
 [node name="Label" type="Label" parent="UI"]
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -200.0
-offset_top = 60.0
-offset_right = 200.0
-offset_bottom = 90.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "carlito2 - M0 scaffold"
-horizontal_alignment = 1
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 600.0
+offset_bottom = 30.0
+text = "carlito2 M1 core - drive: W/S, steer: A/D, handbrake: Space, respawn: Backspace"

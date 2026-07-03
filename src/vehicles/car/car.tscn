@@ -1,0 +1,58 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://src/vehicles/base/base_vehicle.gd" id="1_base"]
+[ext_resource type="Resource" path="res://src/vehicles/car/car_spec.tres" id="2_spec"]
+
+[sub_resource type="BoxShape3D" id="BodyShape"]
+size = Vector3(1.7, 0.8, 3.4)
+
+[sub_resource type="BoxMesh" id="BodyMesh"]
+size = Vector3(1.7, 0.7, 3.4)
+
+[sub_resource type="StandardMaterial3D" id="BodyMat"]
+albedo_color = Color(0.75, 0.2, 0.15, 1)
+
+[sub_resource type="BoxMesh" id="CabinMesh"]
+size = Vector3(1.5, 0.5, 1.6)
+
+[sub_resource type="StandardMaterial3D" id="CabinMat"]
+albedo_color = Color(0.2, 0.25, 0.35, 1)
+
+[sub_resource type="CylinderMesh" id="WheelMesh"]
+top_radius = 0.32
+bottom_radius = 0.32
+height = 0.24
+
+[node name="Car" type="RigidBody3D"]
+script = ExtResource("1_base")
+spec = ExtResource("2_spec")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+shape = SubResource("BodyShape")
+
+[node name="BodyMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+mesh = SubResource("BodyMesh")
+surface_material_override/0 = SubResource("BodyMat")
+
+[node name="CabinMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0.3)
+mesh = SubResource("CabinMesh")
+surface_material_override/0 = SubResource("CabinMat")
+
+[node name="WheelFL" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.78, -0.35, -1.25)
+mesh = SubResource("WheelMesh")
+
+[node name="WheelFR" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.78, -0.35, -1.25)
+mesh = SubResource("WheelMesh")
+
+[node name="WheelRL" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.78, -0.35, 1.25)
+mesh = SubResource("WheelMesh")
+
+[node name="WheelRR" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.78, -0.35, 1.25)
+mesh = SubResource("WheelMesh")

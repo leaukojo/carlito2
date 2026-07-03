@@ -35,6 +35,25 @@ tools/        editor scripts (bake, import), CI helpers
 
 Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameState`.
 
+## Vehicle framework (M1 core, landed)
+
+- `src/vehicles/base/`: `VehicleSpec` (ALL tuning — new vehicle = new `.tres` + scene),
+  `Drivetrain` (pure math: torque curve, RAMN gear byte 0/1-6/0xFF, real RPM, auto-shift —
+  unit-tested in `tests/test_drivetrain.gd`), `RayWheel` (one ray/wheel suspension + slip
+  tires), `BaseVehicle` (RigidBody3D; consumes `InputRouter.get_vehicle_input()` only),
+  `ChaseCamera` (follows `get_global_transform_interpolated()` — never `global_transform`
+  in `_process`, it stutters at the locked 60 Hz tick).
+- 60 Hz stability lives in `RayWheel`'s clamps (damper ≤ one-tick reversal, suspension force
+  cap, low-speed slip floors + one-tick lateral force cap). Don't remove them; don't raise
+  the tick (plan §1).
+- Input arbitration (key gating, brake-never-throttle, local S = brake-then-reverse,
+  bridge gear-owns-direction seam) is static/pure in `input_router.gd` — tested in
+  `tests/test_input_arbitration.gd`. Touch source lands M4, bridge source M3.
+- Drive scene: `src/levels/dev/flat.tscn` (dev-only, loaded by boot until the gym exists).
+  Controls: W/S accel + brake-then-reverse, A/D steer, Space handbrake, Backspace respawn.
+- Feel tuning: edit `car_spec.tres` numbers only; keep the §6 hierarchy test green
+  (brake > peak drive > handbrake, handbrake holds only below ~25% throttle).
+
 ## Running / testing / exporting
 
 Godot binaries (4.6.3-stable): `C:\Users\Ccamy\Desktop\Godot\`. **Use
