@@ -34,10 +34,13 @@ jobs:
       - name: Import project
         run: godot --headless --import
 
+      # Invokes the gdUnit4 command tool directly instead of runtest.sh: the script
+      # launches Godot without --headless, which dies on a display-less runner.
+      # --ignoreHeadlessMode is safe here — it only guards InputEvent-driven UI tests,
+      # and this suite is pure logic. The --remote-debug port-0 errors it prints are
+      # intentional (disables the interactive CLI debugger; see runtest.sh).
       - name: Unit tests (gdUnit4)
-        run: |
-          chmod +x addons/gdUnit4/runtest.sh
-          GODOT_BIN=/usr/local/bin/godot ./addons/gdUnit4/runtest.sh -a tests
+        run: godot --headless --path . -s -d --remote-debug tcp://127.0.0.1:0 res://addons/gdUnit4/bin/GdUnitCmdTool.gd --ignoreHeadlessMode -a tests
 
       # Boot the real main scene headless; a nonzero exit (shell: bash => pipefail)
       # or any SCRIPT ERROR / ERROR fails the build. "still in use" / "leaked at

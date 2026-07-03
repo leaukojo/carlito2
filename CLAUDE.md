@@ -47,7 +47,9 @@ $GODOT = 'C:\Users\Ccamy\Desktop\Godot\Godot_v4.6.3-stable_win64_console.exe'
 # one-time / after adding assets: build the .godot import cache
 & $GODOT --headless --path . --import
 
-# run the gdUnit4 suite
+# run the gdUnit4 suite (CI can't use runtest.sh — it launches Godot without
+# --headless and dies on the display-less runner; ci.yml calls GdUnitCmdTool
+# directly with --headless --ignoreHeadlessMode, safe for pure-logic suites)
 $env:GODOT_BIN = $GODOT; .\addons\gdUnit4\runtest.cmd -a tests
 
 # headless smoke (boots boot.tscn; --quit-after counts frames)
