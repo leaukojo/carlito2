@@ -1,0 +1,10 @@
+# Godot 4 cache
+.godot/
+
+# Local export output (CI builds its own)
+build/
+
+*.tmp
+
+# gdUnit4 output
+reports/

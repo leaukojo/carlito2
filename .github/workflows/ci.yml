@@ -1,0 +1,92 @@
+# CI per version2_plan.md §5.1: headless web export on every push to main,
+# cache-busted Pages deploy, headless smoke that fails on script errors.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  GODOT_VERSION: 4.6.3
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Godot + export templates
+        run: |
+          curl -sSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+          curl -sSL -o templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          mkdir -p "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          unzip -q templates.tpz -d /tmp/templates
+          mv /tmp/templates/templates/* "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
+
+      - name: Import project
+        run: godot --headless --import
+
+      - name: Unit tests (gdUnit4)
+        run: |
+          chmod +x addons/gdUnit4/runtest.sh
+          GODOT_BIN=/usr/local/bin/godot ./addons/gdUnit4/runtest.sh -a tests
+
+      # Boot the real main scene headless; a nonzero exit (shell: bash => pipefail)
+      # or any SCRIPT ERROR / ERROR fails the build. "still in use" / "leaked at
+      # exit" are known-harmless leak-at-exit noise.
+      - name: Headless smoke
+        shell: bash
+        run: |
+          godot --headless --quit-after 120 2>&1 | tee smoke.log
+          if grep -E "SCRIPT ERROR|ERROR:" smoke.log | grep -vE "still in use at exit|leaked at exit"; then
+            echo "smoke failed: errors above"
+            exit 1
+          fi
+
+      # TODO(P6): stale-bake check — once the level bake tool exists, compare each
+      # bake's stamped input hash against the current authoring scenes and fail on
+      # divergence (plan §2 rule 1 / §5.1).
+
+      # Cache-busting: Godot derives every artifact name (.js/.pck/.wasm/.side.wasm,
+      # PWA worker + manifest) from the export basename, so exporting as c2-<sha>.html
+      # gives all heavy files hash-unique names. index.html is a small copy (copy, not
+      # rename: the PWA service worker's cached-file list references c2-<sha>.html).
+      - name: Web export (cache-busted)
+        shell: bash
+        run: |
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          mkdir -p build/web
+          godot --headless --export-release "Web" "build/web/c2-${SHORT_SHA}.html" 2>&1 | tee export.log
+          if grep -E "ERROR:" export.log | grep -vE "still in use at exit|leaked at exit"; then
+            echo "export failed: errors above"
+            exit 1
+          fi
+          cp "build/web/c2-${SHORT_SHA}.html" build/web/index.html
+          touch build/web/.nojekyll
+          ls -la build/web
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
