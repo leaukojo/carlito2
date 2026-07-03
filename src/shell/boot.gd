@@ -2,7 +2,7 @@ extends Node3D
 ## Boot: prints autoload status, then loads the current playable scene.
 ## Proto-shell — becomes boot -> level select -> play as M1+ progresses (plan §4.6).
 
-const PLAY_SCENE := preload("res://src/levels/dev/flat.tscn")
+const PLAY_SCENE := preload("res://src/levels/gym/gym.tscn")
 
 
 func _ready() -> void:

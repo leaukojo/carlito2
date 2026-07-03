@@ -49,10 +49,28 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
 - Input arbitration (key gating, brake-never-throttle, local S = brake-then-reverse,
   bridge gear-owns-direction seam) is static/pure in `input_router.gd` — tested in
   `tests/test_input_arbitration.gd`. Touch source lands M4, bridge source M3.
-- Drive scene: `src/levels/dev/flat.tscn` (dev-only, loaded by boot until the gym exists).
+- Drive scene: boot loads `src/levels/gym/gym.tscn` (the dev gym, plan §4.5).
+  `src/levels/dev/flat.tscn` is the older bare test plane, kept for isolated wheel checks.
   Controls: W/S accel + brake-then-reverse, A/D steer, Space handbrake, Backspace respawn.
 - Feel tuning: edit `car_spec.tres` numbers only; keep the §6 hierarchy test green
   (brake > peak drive > handbrake, handbrake holds only below ~25% throttle).
+
+## Level framework (M1, landed — plan §4.5)
+
+- `src/levels/base/`: `Level` (base script — reads a `LevelInfo`, spawns the default vehicle
+  at the first matching `VehicleSpawn`, wires the `ChaseCamera`, handles respawn; vehicle type
+  → scene registry is `Level.VEHICLE_SCENES`), `LevelInfo` (Resource: display name,
+  allowed/default vehicles), `VehicleSpawn` (`Marker3D` with a vehicle-type filter + `is_water`
+  for boat/drown-respawn spots), `HeightmapTerrain` (`@tool StaticBody3D`: a greyscale image →
+  welded grid mesh + matching `HeightMapShape3D`, one cell = one world unit so mesh/collision
+  coincide — call `rebuild()` after editing; the §2-rule-2 ground path, never trimesh).
+- `level.tscn` is the authoring template (env + sun + camera + one spawn); duplicate it to start
+  a level. `src/levels/gym/gym.tscn` is the fully dressed dev gym: flat zone, two ramps, a
+  heightmap hill (`hill_heightmap.png`, keep import lossless/no-mipmap so runtime `get_image()`
+  works), ice/mud friction strips (PhysicsMaterial-tagged; wheels don't sample surface friction
+  yet), a slalom cone line, and an empty walled pool basin (water lands M6).
+- Levels are self-contained scenes composed by the shell (plan §2 rule 6); boot instances one
+  directly today, level-select UI lands M7.
 
 ## Running / testing / exporting
 

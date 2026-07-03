@@ -12,4 +12,4 @@ offset_left = 8.0
 offset_top = 8.0
 offset_right = 600.0
 offset_bottom = 30.0
-text = "carlito2 M1 core - drive: W/S, steer: A/D, handbrake: Space, respawn: Backspace"
+text = "carlito2 dev gym - drive: W/S, steer: A/D, handbrake: Space, respawn: Backspace"
