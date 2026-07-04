@@ -55,7 +55,7 @@ extends Resource
 
 @export_group("Brakes")
 ## §6 hierarchy is encoded in these magnitudes (and asserted in tests):
-## foot brake > max drive force > handbrake (holds only below ~25% throttle).
+## foot brake > max drive force > handbrake (holds only below ~30% throttle).
 @export var brake_torque := 1300.0     ## Nm per wheel, all four
 @export var handbrake_torque := 160.0  ## Nm per rear wheel
 

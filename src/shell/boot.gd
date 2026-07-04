@@ -10,4 +10,6 @@ func _ready() -> void:
 	if Contract.data != null and Contract.data.is_valid():
 		contract_state = "v%d, %d signals" % [Contract.data.version, Contract.data.signals.size()]
 	print("carlito2 boot OK (contract: %s, bridge active: %s)" % [contract_state, Bridge.is_active()])
-	add_child(PLAY_SCENE.instantiate())
+	var level := PLAY_SCENE.instantiate()
+	add_child(level)  # level._ready() spawns the vehicle synchronously here
+	($UI/Dashboard as Dashboard).bind(level)

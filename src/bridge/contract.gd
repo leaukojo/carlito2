@@ -22,6 +22,7 @@ class SignalDef:
 	var type := ""                     ## one of Contract.TYPES
 	var unit := ""
 	var range := []                    ## [] or [min: float, max: float]
+	var warn := NAN                    ## optional danger threshold the dashboard highlights; NAN = none
 	var enum_entries := []             ## Array of [lo: int, hi: int, label: String, interp_prefix]
 	                                   ## interp_prefix: String when a "D1-D6"-style range label
 	                                   ## interpolates ("D" + value), null otherwise (resolved at parse)
@@ -32,6 +33,17 @@ class SignalDef:
 
 	func has_enum() -> bool:
 		return not enum_entries.is_empty()
+
+	func has_warn() -> bool:
+		return not is_nan(warn)
+
+	## True when 'warn' marks a low-side danger (near range min, e.g. low fuel) vs a
+	## high-side one (near range max, e.g. redline / overheat). Meaningless without
+	## both a range and a warn; guard with has_warn().
+	func warn_is_low() -> bool:
+		if range.size() != 2:
+			return false
+		return warn < (float(range[0]) + float(range[1])) * 0.5
 
 	## Decode a raw value against the enum table ("" when unmapped).
 	## Range entries with a "D1-D6"-style label interpolate the index
@@ -164,6 +176,13 @@ class ContractData:
 				errors.append("%s: 'range' must be [min, max] with min <= max" % where)
 				return null
 			sig.range = [float(range_v[0]), float(range_v[1])]
+
+		var warn_v: Variant = entry.get("warn")
+		if warn_v != null:
+			if typeof(warn_v) != TYPE_FLOAT:
+				errors.append("%s: 'warn' must be a number" % where)
+				return null
+			sig.warn = float(warn_v)
 
 		var vehicles_v: Variant = entry.get("vehicles")
 		if vehicles_v != null:

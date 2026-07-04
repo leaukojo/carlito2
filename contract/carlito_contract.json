@@ -1,9 +1,10 @@
 {
-	"version": 2,
+	"version": 3,
 	"notes": [
-		"Carlito v2 signal contract (draft, P0/M0). Defines every signal crossing the sloppyCAN<->game bridge.",
+		"Carlito v2 signal contract (draft). Defines every signal crossing the sloppyCAN<->game bridge.",
 		"Signals are unique by (name, dir). 'battery' exists in both directions on purpose, kept from v1 naming: in = warning LED, out = battery voltage.",
 		"'type'/'unit'/'range' are packing hints; CAN frame IDs and byte layout live on the sloppyCAN side and are finalized at P3 together with carlito.js.",
+		"'warn' (optional number, added v3) is the danger threshold the dashboard highlights (plan §4.6 'warn thresholds'): the tachometer redline, low-fuel, coolant overheat. The dash infers low- vs high-side from which end of 'range' it sits near.",
 		"Entries with \"status\": \"todo\" are planned tractor/boat signals (plan M5/M6) not implemented on either side yet.",
 		"Contract edits bump 'version'; both sides warn on mismatch instead of failing silently."
 	],
@@ -24,7 +25,7 @@
 
 		{ "name": "speed", "dir": "out", "type": "f32", "unit": "m/s", "range": [-30, 100], "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Signed longitudinal speed." },
 		{ "name": "kmh", "dir": "out", "type": "f32", "unit": "km/h", "range": [0, 300], "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Absolute speed for the speedometer." },
-		{ "name": "rpm", "dir": "out", "type": "u16", "unit": "rev/min", "range": [0, 8000], "vehicles": ["car", "truck", "tractor"], "desc": "Engine RPM. Real signal in v2: read out of the drivetrain sim, not derived from speed." },
+		{ "name": "rpm", "dir": "out", "type": "u16", "unit": "rev/min", "range": [0, 8000], "warn": 6800, "vehicles": ["car", "truck", "tractor"], "desc": "Engine RPM. Real signal in v2: read out of the drivetrain sim, not derived from speed. 'warn' is the tachometer redline." },
 		{ "name": "gear", "dir": "out", "type": "u8", "unit": "enum", "enum": { "0": "N", "1-6": "D1-D6", "255": "R" }, "vehicles": ["car", "truck", "tractor"], "desc": "Currently engaged gear (same byte semantics as the 'in' gear)." },
 		{ "name": "throttle", "dir": "out", "type": "i8", "unit": "%", "range": [-100, 100], "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Throttle as applied by the sim (signed by direction)." },
 		{ "name": "yaw", "dir": "out", "type": "f32", "unit": "rad/s", "range": [-10, 10], "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Yaw rate." },
@@ -41,8 +42,8 @@
 		{ "name": "odo", "dir": "out", "type": "f32", "unit": "km", "range": [0, 1000000], "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Odometer." },
 		{ "name": "status", "dir": "out", "type": "u16", "unit": "bitfield", "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Status bitfield; bit layout finalized at P3 with sloppyCAN." },
 		{ "name": "impact", "dir": "out", "type": "f32", "unit": "m/s^2", "range": [0, 200], "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Impact event magnitude." },
-		{ "name": "fuel", "dir": "out", "type": "u8", "unit": "%", "range": [0, 100], "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Fuel level." },
-		{ "name": "coolant", "dir": "out", "type": "u8", "unit": "degC", "range": [0, 150], "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Coolant temperature." },
+		{ "name": "fuel", "dir": "out", "type": "u8", "unit": "%", "range": [0, 100], "warn": 15, "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Fuel level. 'warn' is the low-fuel threshold." },
+		{ "name": "coolant", "dir": "out", "type": "u8", "unit": "degC", "range": [0, 150], "warn": 110, "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Coolant temperature. 'warn' is the overheat threshold." },
 		{ "name": "battery", "dir": "out", "type": "f32", "unit": "V", "range": [0, 16], "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Battery voltage. Distinct from the 'in' battery warning LED." },
 
 		{ "name": "hitch_pos", "dir": "in", "type": "u8", "unit": "%", "range": [0, 100], "vehicles": ["tractor"], "flavor": "isobus", "status": "todo", "desc": "Requested rear hitch position (ISO 11783 flavor). M5." },

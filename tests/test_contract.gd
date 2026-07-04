@@ -27,10 +27,10 @@ func _real_contract() -> ContractScript.ContractData:
 	return _parse_file(ContractScript.CONTRACT_PATH)
 
 
-func test_real_contract_is_valid_v2() -> void:
+func test_real_contract_is_valid_v3() -> void:
 	var data := _real_contract()
 	assert_array(data.errors).is_empty()
-	assert_int(data.version).is_equal(2)
+	assert_int(data.version).is_equal(3)
 
 
 func _assert_v1_signals_present(names: PackedStringArray, dir: String) -> void:
@@ -55,6 +55,29 @@ func test_rpm_is_a_real_out_signal() -> void:
 	assert_object(rpm).is_not_null()
 	assert_str(rpm.type).is_equal("u16")
 	assert_array(rpm.range).is_equal([0.0, 8000.0])
+
+
+func test_warn_thresholds_parse_and_classify() -> void:
+	var data := _real_contract()
+	# rpm redline: high-side warn near the top of [0, 8000].
+	var rpm := data.get_signal_def("rpm", "out")
+	assert_bool(rpm.has_warn()).is_true()
+	assert_float(rpm.warn).is_equal_approx(6800.0, 0.001)
+	assert_bool(rpm.warn_is_low()).is_false()
+	# fuel: low-side warn near the bottom of [0, 100].
+	var fuel := data.get_signal_def("fuel", "out")
+	assert_bool(fuel.has_warn()).is_true()
+	assert_bool(fuel.warn_is_low()).is_true()
+	# coolant: high-side overheat warn.
+	assert_bool(data.get_signal_def("coolant", "out").warn_is_low()).is_false()
+	# a signal without 'warn' reports none.
+	assert_bool(data.get_signal_def("kmh", "out").has_warn()).is_false()
+
+
+func test_fixture_bad_warn_fails() -> void:
+	var data := _parse_file("res://tests/fixtures/bad_warn.json")
+	assert_bool(data.is_valid()).is_false()
+	assert_str("\n".join(data.errors)).contains("'warn'")
 
 
 func test_gear_enum_decodes_ramn_byte_semantics() -> void:

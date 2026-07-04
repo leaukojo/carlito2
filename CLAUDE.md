@@ -53,7 +53,7 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   `src/levels/dev/flat.tscn` is the older bare test plane, kept for isolated wheel checks.
   Controls: W/S accel + brake-then-reverse, A/D steer, Space handbrake, Backspace respawn.
 - Feel tuning: edit `car_spec.tres` numbers only; keep the §6 hierarchy test green
-  (brake > peak drive > handbrake, handbrake holds only below ~25% throttle).
+  (brake > peak drive > handbrake, handbrake holds only below ~30% throttle).
 
 ## Level framework (M1, landed — plan §4.5)
 
@@ -71,6 +71,33 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   yet), a slalom cone line, and an empty walled pool basin (water lands M6).
 - Levels are self-contained scenes composed by the shell (plan §2 rule 6); boot instances one
   directly today, level-select UI lands M7.
+
+## Telemetry & dashboard (M2, landed — plan §3, §4.6, §6)
+
+- `VehicleTelemetry` (`src/vehicles/base/vehicle_telemetry.gd`) carries every contract **"out"**
+  signal for ground vehicles. Motion (speed, rpm, gear, slip, yaw, accel, heading, position) is
+  read straight out of the sim (plan §2 rule 3); the aux systems (fuel/coolant/battery) are simple
+  *honest models*, not fakes. Each non-trivial derivation is a static pure fn (GPS `gps_lat/gps_lon`
+  around the Paris origin, `heading_from_forward`, `odo_step`, `body_accel`, `impact_gate`,
+  `fuel/coolant/battery` models, `pack_status`) — unit-tested in `tests/test_telemetry.gd`, same
+  discipline as Drivetrain. `BaseVehicle._update_telemetry(input, delta)` holds the only per-tick
+  state (prev velocity for accel/impact, accumulators) and calls them; respawn zeroes the accel
+  history so a teleport isn't read as an impact. `status` bit layout is **provisional** (finalized
+  P3 with sloppyCAN) but kept as named `ST_*` bits.
+- Dashboard (`src/ui/`) follows §4.6's split exactly — do **not** turn it into a from-JSON gauge
+  framework. `dashboard.gd` **generates** the tell-tale row (a lamp per bool "in" signal + `key`/
+  `lights` enum chips) and the bars (each "out" signal that has a `range` **and** a `warn`, minus
+  the two gauges) by walking the contract for the active vehicle type. The two radial gauges
+  (`gauge.gd`, one bespoke widget instanced twice: speedo + tacho) are **hand-built** and only read
+  scale/redline from the contract; gauge text sits in the arc's bottom 90° gap (plan §6). Gear is
+  shown in the tacho gap via the contract `gear` enum; ignition/lights via the chips. `bar` widget
+  is `dash_bar.gd`. Plain text + color only (plan §2 rule 10).
+- HUD is composed by the shell: `boot.tscn`'s `UI` CanvasLayer holds `Dashboard` + `DebugOverlay`;
+  `boot.gd` binds the dashboard to the level after it spawns the vehicle (`Dashboard.bind(level)`),
+  and the dash polls `level.vehicle.telemetry` each frame so it survives respawn/vehicle swap.
+- Debug overlay (`debug_overlay.gd`, plan §2 rule 9): FPS / frame ms / draw calls / primitives /
+  VRAM / node count from the `Performance` monitors, toggled with **F3** (`debug_overlay` action).
+  The §5.4 guardrail is < ~500 draw calls in the worst view.
 
 ## Running / testing / exporting
 
@@ -115,9 +142,11 @@ visit after a deploy may still need one reload for the new service worker to tak
 ## The contract
 
 `contract/carlito_contract.json` defines every bridge signal (name, dir, type, unit, range,
-enum, vehicles, isobus flavor). The `Contract` autoload loads + validates it at startup;
-tests fail if a v1-era signal goes missing. Signals are unique by **(name, dir)** — `battery`
-exists in both directions (in = warning LED, out = voltage). Tractor/boat entries are marked
+optional `warn`, enum, vehicles, isobus flavor). The `Contract` autoload loads + validates it at
+startup; tests fail if a v1-era signal goes missing. Signals are unique by **(name, dir)** —
+`battery` exists in both directions (in = warning LED, out = voltage). `warn` (added **v3**) is the
+danger threshold the dashboard highlights (tacho redline, low fuel, coolant overheat); the dash
+infers low- vs high-side from which end of `range` it sits near (`SignalDef.warn_is_low()`). Tractor/boat entries are marked
 `"status": "todo"` until M5/M6. Contract edits bump `version`; both sides warn on mismatch.
 
 **Open question (plan §9.1, deferred to P3):** how the contract file is shared with the
