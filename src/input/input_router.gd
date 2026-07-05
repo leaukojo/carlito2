@@ -38,6 +38,14 @@ class VehicleInput:
 	var key := 1           ## 1=Lock, 2=On, 3=Ignition
 	var horn := false
 	var lights := 1        ## 1=OFF, 2=CLEARANCE, 3=LOW, 4=HIGH
+	# Lamp/warning bits (plan §6). sloppyCAN is the sole authority when the bridge is
+	# live; these mirror it verbatim. Locally only brake_lamp is driven (from the foot
+	# brake); turn signals + warning LEDs stay off (no local source, no blink timer).
+	var turn_left := false
+	var turn_right := false
+	var brake_lamp := false   ## rear STOP state (0x1BB brake bit / local foot brake)
+	var check_engine := false ## warning LED; defaults off when the bridge doesn't send it
+	var battery_warn := false ## battery warning LED (distinct from the 'out' voltage)
 
 	func copy() -> VehicleInput:
 		var c := VehicleInput.new()
@@ -50,19 +58,37 @@ class VehicleInput:
 		c.key = key
 		c.horn = horn
 		c.lights = lights
+		c.turn_left = turn_left
+		c.turn_right = turn_right
+		c.brake_lamp = brake_lamp
+		c.check_engine = check_engine
+		c.battery_warn = battery_warn
 		return c
 
 
 var _local_source := LocalSource.new()
 var _bridge_source := BridgeSource.new()
+var _touch_source: Object = null  ## optional on-screen source (touch_controls.gd), if present
 var _vehicle: Node3D = null
 var _current := VehicleInput.new()
+var _lights := 1  ## headlight level owned here so keyboard + touch share one state
 
 
 ## Vehicles register on _ready so arbitration can read speed/gear (local reverse
 ## needs them); they never expose anything else to the router.
 func register_vehicle(vehicle: Node3D) -> void:
 	_vehicle = vehicle
+
+
+## The touch UI registers itself as a second local source (plan §4.3/§4.6). It is
+## polled and merged with the keyboard whenever the bridge is not driving.
+func set_touch_source(source: Object) -> void:
+	_touch_source = source
+
+
+func clear_touch_source(source: Object) -> void:
+	if _touch_source == source:
+		_touch_source = null
 
 
 func unregister_vehicle(vehicle: Node3D) -> void:
@@ -78,6 +104,12 @@ func _physics_process(delta: float) -> void:
 		_current = arbitrate_bridge(bridge_raw)
 		return
 	var raw := _local_source.poll(delta)
+	if _touch_source != null:
+		raw = merge_local(raw, _touch_source.poll())
+	# Single headlight owner: either source's cycle edge advances the shared level.
+	if bool(raw.get("lights_cycle", false)):
+		_lights = _lights % 4 + 1
+	raw["lights"] = _lights
 	var speed := 0.0
 	var gear := GEAR_N
 	if _vehicle != null:
@@ -89,6 +121,21 @@ func _physics_process(delta: float) -> void:
 ## Current merged input. Returns a fresh copy — callers own (and may mutate) it.
 func get_vehicle_input() -> VehicleInput:
 	return _current.copy()
+
+
+## Merge the keyboard and touch raw intents into one before arbitration (plan §4.3):
+## analog axes take the stronger request, steer sums (clamped), momentary bits OR
+## together. Pure/static so it is unit-tested without the autoload. `lights` is not
+## merged here — InputRouter owns the level and reads the merged `lights_cycle` edge.
+static func merge_local(a: Dictionary, b: Dictionary) -> Dictionary:
+	return {
+		"accel": maxf(float(a.get("accel", 0.0)), float(b.get("accel", 0.0))),
+		"brake_reverse": maxf(float(a.get("brake_reverse", 0.0)), float(b.get("brake_reverse", 0.0))),
+		"steer": clampf(float(a.get("steer", 0.0)) + float(b.get("steer", 0.0)), -1.0, 1.0),
+		"handbrake": maxf(float(a.get("handbrake", 0.0)), float(b.get("handbrake", 0.0))),
+		"horn": bool(a.get("horn", false)) or bool(b.get("horn", false)),
+		"lights_cycle": bool(a.get("lights_cycle", false)) or bool(b.get("lights_cycle", false)),
+	}
 
 
 ## Local (keyboard/gamepad) arbitration, pure for tests. Rules from plan §6:
@@ -103,6 +150,8 @@ static func arbitrate_local(raw: Dictionary, speed: float, gear_byte: int,
 	out.handbrake = clampf(float(raw.get("handbrake", 0.0)), 0.0, 1.0)
 	out.key = key  # local key is always Ignition until the bridge owns it (M3)
 	out.gear_auto = true
+	out.horn = bool(raw.get("horn", false))
+	out.lights = int(raw.get("lights", 1))  # local headlight cycle (turn/warning bits stay off)
 
 	var accel := clampf(float(raw.get("accel", 0.0)), 0.0, 1.0)
 	var brake_rev := clampf(float(raw.get("brake_reverse", 0.0)), 0.0, 1.0)
@@ -130,6 +179,8 @@ static func arbitrate_local(raw: Dictionary, speed: float, gear_byte: int,
 
 	if out.key != KEY_IGNITION:
 		out.throttle = 0.0
+	# Local rear STOP follows the foot brake; sloppyCAN owns it once the bridge is live.
+	out.brake_lamp = out.brake > 0.0
 	return out
 
 
@@ -146,6 +197,13 @@ static func arbitrate_bridge(vals: Dictionary) -> VehicleInput:
 	out.key = int(vals.get("key", KEY_IGNITION))
 	out.lights = int(vals.get("lights", 1))
 	out.horn = bool(vals.get("horn", false))
+	# Lamp/warning bits mirrored verbatim (plan §6 — sloppyCAN is the sole authority;
+	# any absent bit defaults off, e.g. the warning LEDs).
+	out.turn_left = bool(vals.get("turnL", false))
+	out.turn_right = bool(vals.get("turnR", false))
+	out.brake_lamp = bool(vals.get("brakeLamp", false))
+	out.check_engine = bool(vals.get("checkEngine", false))
+	out.battery_warn = bool(vals.get("battery", false))
 	out.gear_auto = false  # bridge byte is exact and owns direction (plan §6)
 
 	var gear := int(vals.get("gear", GEAR_N))

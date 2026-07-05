@@ -5,7 +5,8 @@ extends Resource
 ## Data-only; consumed by BaseVehicle / RayWheel / Drivetrain. Curves are point
 ## arrays with linear interpolation (sample_curve) instead of Curve resources so
 ## tuning is deterministic and directly assertable in unit tests.
-## Lamp placement stays scene-authored (plan §4.4), not spec data.
+## Lamp PLACEMENT stays scene-authored (plan §4.4): the spec only declares which scene
+## nodes are which lamp (the *_paths below), never their transforms.
 
 @export_group("Body")
 @export var mass := 1200.0                         ## kg, applied to the RigidBody3D
@@ -62,6 +63,15 @@ extends Resource
 @export_group("Steering")
 @export var max_steer_deg := 32.0
 @export var steer_speed := 2.5  ## normalized steer units/s slewed toward input
+
+@export_group("Lamps")
+## NodePaths (relative to the vehicle root) naming the scene-authored lamp nodes
+## LampSet drives (plan §4.4/§6). Headlights are SpotLight3D nodes (energy/range per
+## level); the rest are MeshInstance3D lenses given a private emissive material.
+@export var headlight_paths: Array[NodePath] = []
+@export var brake_lamp_paths: Array[NodePath] = []
+@export var turn_left_paths: Array[NodePath] = []
+@export var turn_right_paths: Array[NodePath] = []
 
 
 ## Piecewise-linear sample of a (x, y) point array sorted by x; clamps at both ends.

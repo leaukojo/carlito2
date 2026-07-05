@@ -45,8 +45,10 @@ var _readout: Label
 ## Called by the shell once the level has spawned its vehicle.
 func bind(level: Node) -> void:
 	_level = level
-	var vtype := "car"
-	if level != null and level.get("info") != null:
+	# Prefer the vehicle actually spawned (a garage swap changes it); fall back to the
+	# level's default before the first spawn.
+	var vtype := GameState.current_vehicle
+	if vtype == "" and level != null and level.get("info") != null:
 		vtype = level.info.default_vehicle
 	_build(vtype)
 
@@ -215,12 +217,17 @@ func _process(_dt: float) -> void:
 
 func _update_telltales() -> void:
 	var vi := InputRouter.get_vehicle_input()
-	# What the dash can currently mirror. sloppyCAN is the sole authority on the lamp
-	# bits (plan §6); until the bridge lands (M3) those stay off, which is also their
-	# correct default. Local input only owns the parking brake, key, lights, horn.
+	# Mirror every lamp/warning bit the input carries (plan §6). sloppyCAN is the sole
+	# authority when the bridge is live; locally only handbrake/horn/brake_lamp are
+	# driven and the turn/warning LEDs stay off — their correct default.
 	var active := {
 		"handbrake": vi.handbrake > 0.0,
 		"horn": vi.horn,
+		"turnL": vi.turn_left,
+		"turnR": vi.turn_right,
+		"brakeLamp": vi.brake_lamp,
+		"checkEngine": vi.check_engine,
+		"battery": vi.battery_warn,
 	}
 	for name in _lamps:
 		var on: bool = active.get(name, false)

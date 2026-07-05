@@ -151,3 +151,47 @@ func test_bridge_steer_and_handbrake_pass_through() -> void:
 	var out: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(0.0, 0.0, -0.5, 1.0, GEAR_D1))
 	assert_float(out.steer).is_equal(-0.5)
 	assert_float(out.handbrake).is_equal(1.0)
+
+
+# --- lamp/warning bits (plan §6) --------------------------------------------
+
+func test_local_lamp_bits_default_off_and_brake_lamp_follows_brake() -> void:
+	# Rolling in D1 with S held: foot brake on -> STOP; turn/warning LEDs off (no local
+	# source, no blink timer).
+	var braking: RouterScript.VehicleInput = RouterScript.arbitrate_local(_raw(0.0, 1.0), 10.0, GEAR_D1)
+	assert_bool(braking.brake_lamp).is_true()
+	assert_bool(braking.turn_left).is_false()
+	assert_bool(braking.turn_right).is_false()
+	assert_bool(braking.check_engine).is_false()
+	assert_bool(braking.battery_warn).is_false()
+	# Coasting: no brake -> no STOP.
+	var coasting: RouterScript.VehicleInput = RouterScript.arbitrate_local(_raw(1.0, 0.0), 10.0, GEAR_D1)
+	assert_bool(coasting.brake_lamp).is_false()
+
+
+func test_merge_local_combines_keyboard_and_touch() -> void:
+	# Analog axes take the stronger request; steer sums (clamped); bits OR.
+	var kbd := {"accel": 0.3, "brake_reverse": 0.0, "steer": 0.5, "handbrake": 0.0,
+			"horn": false, "lights_cycle": false}
+	var touch := {"accel": 1.0, "brake_reverse": 0.4, "steer": 0.8, "handbrake": 1.0,
+			"horn": true, "lights_cycle": false}
+	var m := RouterScript.merge_local(kbd, touch)
+	assert_float(m["accel"]).is_equal(1.0)
+	assert_float(m["brake_reverse"]).is_equal(0.4)
+	assert_float(m["steer"]).is_equal(1.0)  # 0.5 + 0.8 clamped
+	assert_float(m["handbrake"]).is_equal(1.0)
+	assert_bool(m["horn"]).is_true()
+	assert_bool(m["lights_cycle"]).is_false()
+
+
+func test_bridge_mirrors_lamp_bits_verbatim() -> void:
+	var vals := _bridge(0.0, 0.0, 0.0, 0.0, GEAR_D1)
+	vals["turnL"] = true
+	vals["brakeLamp"] = true
+	vals["checkEngine"] = true
+	var out: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(vals)
+	assert_bool(out.turn_left).is_true()
+	assert_bool(out.turn_right).is_false()   # absent bit stays off
+	assert_bool(out.brake_lamp).is_true()
+	assert_bool(out.check_engine).is_true()
+	assert_bool(out.battery_warn).is_false() # warning LED defaults off when not sent

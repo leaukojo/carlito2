@@ -32,3 +32,7 @@ brake_torque = 1300.0
 handbrake_torque = 275.0
 max_steer_deg = 36.0
 steer_speed = 4.5
+headlight_paths = [NodePath("Lamps/HeadlightL"), NodePath("Lamps/HeadlightR")]
+brake_lamp_paths = [NodePath("Lamps/BrakeLampL"), NodePath("Lamps/BrakeLampR")]
+turn_left_paths = [NodePath("Lamps/TurnLF"), NodePath("Lamps/TurnLR")]
+turn_right_paths = [NodePath("Lamps/TurnRF"), NodePath("Lamps/TurnRR")]

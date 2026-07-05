@@ -28,6 +28,9 @@ var spawn_transform: Transform3D
 var _steer := 0.0
 var _prev_velocity := Vector3.ZERO  ## last tick's linear_velocity, for accel/impact
 var _impact_hold := 0.0             ## decaying peak of the impact magnitude
+var _lamps := LampSet.new()         ## drives the scene-authored §6 lamps from input
+var _horn_player: AudioStreamPlayer ## procedural horn, played on the horn rising edge
+var _prev_horn := false
 
 
 func _ready() -> void:
@@ -46,6 +49,10 @@ func _ready() -> void:
 		wheels.append(RayWheel.new(pos, front, driven, visual))
 	spawn_transform = global_transform
 	_prev_velocity = linear_velocity
+	_lamps.setup(self, spec)
+	_horn_player = AudioStreamPlayer.new()
+	_horn_player.stream = Horn.make_stream()
+	add_child(_horn_player)
 	InputRouter.register_vehicle(self)
 
 
@@ -78,6 +85,15 @@ func _physics_process(delta: float) -> void:
 		w.tick(self, spec, space, drive_t, brake_t, delta)
 
 	_update_telemetry(input, delta)
+	_lamps.apply(input.brake_lamp, input.lights, input.turn_left, input.turn_right)
+	# Horn honks on the rising edge and holds while pressed — source-agnostic (the bit
+	# is set by whichever source owns input this tick, plan §6).
+	if input.horn and not _prev_horn:
+		_horn_player.play()
+	elif not input.horn and _prev_horn:
+		_horn_player.stop()
+	_prev_horn = input.horn
+
 	if global_position.y < FALL_RESPAWN_Y:
 		respawn()
 

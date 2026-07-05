@@ -1,8 +1,20 @@
 extends Node3D
-## Boot: prints autoload status, then loads the current playable scene.
-## Proto-shell — becomes boot -> level select -> play as M1+ progresses (plan §4.6).
+## Shell (plan §4.6): boot -> level select -> load level -> play, with an in-play garage
+## menu. Composes independent level/UI scenes (plan §2 rule 6) — there is no giant
+## main.tscn. The persistent HUD (dashboard, debug overlay, touch controls) lives in
+## boot.tscn; the level-select and garage screens are transient overlays created here.
 
-const PLAY_SCENE := preload("res://src/levels/gym/gym.tscn")
+const LevelSelect := preload("res://src/ui/level_select.gd")
+const GarageMenu := preload("res://src/ui/garage_menu.gd")
+
+@onready var _ui: CanvasLayer = $UI
+@onready var _hint: Label = $UI/Label
+@onready var _dashboard: Dashboard = $UI/Dashboard
+@onready var _touch: TouchControls = $UI/TouchControls
+
+var _level: Node3D = null
+var _select: LevelSelect = null
+var _garage: GarageMenu = null
 
 
 func _ready() -> void:
@@ -10,7 +22,90 @@ func _ready() -> void:
 	if Contract.data != null and Contract.data.is_valid():
 		contract_state = "v%d, %d signals" % [Contract.data.version, Contract.data.signals.size()]
 	print("carlito2 boot OK (contract: %s, bridge active: %s)" % [contract_state, Bridge.is_active()])
-	var level := PLAY_SCENE.instantiate()
-	add_child(level)  # level._ready() spawns the vehicle synchronously here
-	($UI/Dashboard as Dashboard).bind(level)
-	Bridge.bind(level)  # telemetry source for the ~20 Hz outbound publish (web only)
+
+	_touch.garage_pressed.connect(_open_garage)
+	_touch.respawn_pressed.connect(_respawn)
+	# The headless CI smoke can't click the menu, so boot straight into the first level
+	# there — this keeps the smoke exercising the full load -> spawn -> play path.
+	if DisplayServer.get_name() == "headless":
+		_load_level(String(LevelRegistry.LEVELS[0]["scene"]))
+	else:
+		_show_level_select()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("garage"):
+		_open_garage()
+
+
+# --- level select ------------------------------------------------------------
+
+func _show_level_select() -> void:
+	_set_hud_visible(false)
+	_select = LevelSelect.new()
+	_select.level_chosen.connect(_on_level_chosen)
+	_ui.add_child(_select)
+
+
+func _on_level_chosen(scene_path: String) -> void:
+	if _select != null:
+		_select.queue_free()
+		_select = null
+	_load_level(scene_path)
+
+
+func _load_level(scene_path: String) -> void:
+	if _level != null:
+		_level.queue_free()
+	_level = (load(scene_path) as PackedScene).instantiate()
+	add_child(_level)  # level._ready() spawns the vehicle synchronously here
+	_level.vehicle_changed.connect(_on_vehicle_changed)
+	_bind_hud()
+	_set_hud_visible(true)
+
+
+## (Re)bind the HUD + bridge to the active level/vehicle. Called at load and whenever the
+## garage swaps the vehicle (its type drives which dashboard cluster is built).
+func _bind_hud() -> void:
+	_dashboard.bind(_level)
+	Bridge.bind(_level)  # telemetry source for the ~20 Hz outbound publish (web only)
+
+
+func _on_vehicle_changed(_type: String) -> void:
+	_bind_hud()
+
+
+# --- garage ------------------------------------------------------------------
+
+func _open_garage() -> void:
+	if _level == null or _garage != null:
+		return
+	_garage = GarageMenu.new()
+	_garage.setup(_level.info.allowed_vehicles)
+	_garage.vehicle_chosen.connect(_on_garage_choice)
+	_garage.closed.connect(_close_garage)
+	_ui.add_child(_garage)
+
+
+func _on_garage_choice(type: String) -> void:
+	_close_garage()
+	_level.set_vehicle(type)
+
+
+func _close_garage() -> void:
+	if _garage != null:
+		_garage.queue_free()
+		_garage = null
+
+
+func _respawn() -> void:
+	if _level != null and _level.vehicle != null:
+		_level.vehicle.respawn()
+
+
+# --- helpers -----------------------------------------------------------------
+
+func _set_hud_visible(v: bool) -> void:
+	_hint.visible = v
+	_dashboard.visible = v
+	_touch.set_active(v)

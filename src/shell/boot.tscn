@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/shell/boot.gd" id="1_boot"]
 [ext_resource type="Script" path="res://src/ui/dashboard.gd" id="2_dash"]
 [ext_resource type="Script" path="res://src/ui/debug_overlay.gd" id="3_dbg"]
+[ext_resource type="Script" path="res://src/ui/touch_controls.gd" id="4_touch"]
 
 [node name="Boot" type="Node3D"]
 script = ExtResource("1_boot")
@@ -14,7 +15,7 @@ offset_left = 8.0
 offset_top = 8.0
 offset_right = 640.0
 offset_bottom = 30.0
-text = "carlito2 dev gym - drive: W/S, steer: A/D, handbrake: Space, respawn: Backspace, debug: F3"
+text = "carlito2 - drive: W/S, steer: A/D, handbrake: Space, horn: H, lights: L, day/night: N, garage: G, respawn: Backspace, debug: F3, touch: F4"
 
 [node name="Dashboard" type="Control" parent="UI"]
 anchors_preset = 15
@@ -22,6 +23,9 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 script = ExtResource("2_dash")
+
+[node name="TouchControls" type="Control" parent="UI"]
+script = ExtResource("4_touch")
 
 [node name="DebugOverlay" type="Label" parent="UI"]
 mouse_filter = 2

@@ -121,6 +121,57 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   names in contract units (throttle/steer as %, slip as ratio); a `test_telemetry` case fails if it
   stops covering a non-todo ground "out" signal.
 
+## Lamps, horn & day/night (M4, landed — plan §6)
+
+- **Lamp state flows through `VehicleInput`, never a side channel.** The `in` lamp/warning bits
+  (`turnL`/`turnR`/`brakeLamp`/`checkEngine`/`battery`) ride the same arbitration as everything else:
+  `bridge_source.gd` passes them through as bools, `arbitrate_bridge` **mirrors them verbatim**
+  (plan §6 — sloppyCAN is the sole authority; any absent bit defaults **off**, incl. the warning
+  LEDs). Locally only `brake_lamp` is driven (from the foot brake in `arbitrate_local`); turn
+  signals + warning LEDs stay off — **there is no local blink timer** (turn lamps blink because the
+  source toggles the bit).
+- `LampSet` (`src/vehicles/base/lamp_set.gd`) applies §6 state to **scene-authored** lamp nodes the
+  `VehicleSpec` names by NodePath (`headlight_paths` = SpotLight3D nodes with distinct energy/range
+  per `lights` level; `brake_lamp_paths`/`turn_*_paths` = MeshInstance3D lenses given a private
+  emissive material at setup). **Placement is scene-authored (plan §4.4); the spec only declares
+  which node is which lamp** — positions live in the model scene. Rear lamps are tri-state via the
+  pure `LampSet.rear_tier(brake_on, headlights)`: STOP > TAIL (headlights ≥ clearance) > OFF (dim
+  housing, never invisible) — unit-tested in `tests/test_lamps.gd`. `BaseVehicle` builds one
+  `LampSet` in `_ready` and calls `apply()` each tick.
+- **Horn is procedural** (`horn.gd`: a looping two-partial `AudioStreamWAV` synthesized at `_ready`,
+  no asset). `BaseVehicle` plays it on the horn **rising edge** and holds while pressed —
+  source-agnostic (whichever source set `VehicleInput.horn`). Local horn = **H** key.
+- Local headlights **cycle** OFF→CLEARANCE→LOW→HIGH on **L**. The level is owned by **InputRouter**
+  (`_lights`), not a source, so keyboard and touch share one owner: sources report a per-frame
+  `lights_cycle` edge and the router advances the shared level. Day/night is a `Level` concern (not a
+  bridge signal): **N** toggles the level's sun + ambient between the scene-authored day values
+  (captured at load) and a dim night preset (`level.gd`).
+
+## Shell, touch controls & garage (M4, landed — plan §4.6)
+
+- **Shell flow** lives in `boot.gd` (still the `boot.tscn` root, no giant main.tscn): boot → level
+  select → load level → play, with an in-play garage overlay. The persistent HUD (dashboard, debug
+  overlay, **touch controls**) is authored in `boot.tscn`; `LevelSelect`/`GarageMenu` are transient
+  Control overlays the shell creates/frees. Under `--headless` the shell **auto-loads the first
+  registry level** (the CI smoke can't click) so load→spawn→play stays covered.
+- **Level select** (`src/ui/level_select.gd`) reads `LevelRegistry.LEVELS` (`src/shell/level_registry.gd`)
+  — the shell's list of `{id, name, scene}`; adding a level = a new entry + its `.tscn`. Emits
+  `level_chosen(scene_path)`.
+- **Garage** (`src/ui/garage_menu.gd`) reads `LevelInfo.allowed_vehicles` (passed in by the shell,
+  never touches the tree) and emits `vehicle_chosen(type)`; the shell calls `Level.set_vehicle(type)`,
+  which respawns at a matching `VehicleSpawn` and emits `Level.vehicle_changed(type)` so the shell
+  rebinds the dashboard/bridge to the new type. `Dashboard.bind` now reads `GameState.current_vehicle`
+  (the spawned type), falling back to `LevelInfo.default_vehicle`. Open with **G** (or the touch
+  GARAGE button). Only `car` exists today, so the roster is one entry — but the mechanism is real.
+- **Touch controls** (`src/ui/touch_controls.gd`) are a second **local `InputSource`** registered via
+  `InputRouter.set_touch_source()`: a steering joystick (bottom-left, horizontal axis), gas/brake
+  pedals (bottom-right), and a right-edge button stack (HORN/LIGHTS/HAND + GARAGE/RESPAWN). It
+  reports the same raw dict as `local_source.gd`; `InputRouter.merge_local()` (pure, tested) combines
+  keyboard + touch (max analog, summed steer, OR'd bits) before `arbitrate_local`. Widgets take touch
+  **and** mouse. Visible only on touch/web (`_should_show()`); **F4** force-toggles for desktop tests.
+  The bridge-conflicting buttons (HORN/LIGHTS/HAND — sloppyCAN owns those, plan §6) hide while
+  `Bridge.is_active()`.
+
 ## Running / testing / exporting
 
 Godot binaries (4.6.3-stable): `C:\Users\Ccamy\Desktop\Godot\`. **Use

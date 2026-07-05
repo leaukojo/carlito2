@@ -4,8 +4,8 @@ extends RefCounted
 ## interpretation (gear-owns-direction, key gating) happens in InputRouter (plan §2 rule 5).
 ##
 ## Fields are the contract "in" names; the driving-relevant subset is normalized to VehicleInput
-## ranges here (percent → unit). Lamp tell-tale bits (turnL/turnR/checkEngine/battery/brakeLamp)
-## also arrive on the Bridge but are consumed at M4, not routed through VehicleInput.
+## ranges here (percent → unit). Lamp/warning bits (turnL/turnR/brakeLamp/checkEngine/battery)
+## pass through as bools for LampSet + the dashboard tell-tales (plan §6 — mirrored verbatim).
 
 
 func poll() -> Dictionary:
@@ -22,4 +22,9 @@ func poll() -> Dictionary:
 		"key": int(v.get("key", 1)),
 		"lights": int(v.get("lights", 1)),
 		"horn": bool(v.get("horn", 0)),
+		"turnL": bool(v.get("turnL", 0)),
+		"turnR": bool(v.get("turnR", 0)),
+		"brakeLamp": bool(v.get("brakeLamp", 0)),
+		"checkEngine": bool(v.get("checkEngine", 0)),
+		"battery": bool(v.get("battery", 0)),
 	}
