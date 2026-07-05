@@ -14,6 +14,7 @@ signal vehicle_changed(type: String)
 ## demand so a missing (not-yet-built) type never breaks level load.
 const VEHICLE_SCENES := {
 	"car": "res://src/vehicles/car/car.tscn",
+	"truck": "res://src/vehicles/truck/truck.tscn",
 }
 
 @export var info: LevelInfo

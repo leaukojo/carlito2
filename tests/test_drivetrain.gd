@@ -143,7 +143,7 @@ func test_auto_shift_never_touches_neutral_or_reverse() -> void:
 func test_process_enters_drive_and_delivers_forward_torque() -> void:
 	var spec := _spec()
 	var dt: DrivetrainScript = DrivetrainScript.new(spec)
-	var torque: float = dt.process(1.0 / 60.0, 1.0, 0.0, 1, true)
+	var torque: float = dt.process(1.0 / 60.0, 1.0, 0.0, 0.0, 1, true)
 	assert_int(dt.gear_byte).is_equal(1)
 	assert_float(torque).is_greater(0.0)
 
@@ -151,7 +151,7 @@ func test_process_enters_drive_and_delivers_forward_torque() -> void:
 func test_process_reverse_delivers_negative_torque() -> void:
 	var spec := _spec()
 	var dt: DrivetrainScript = DrivetrainScript.new(spec)
-	var torque: float = dt.process(1.0 / 60.0, 1.0, 0.0, GEAR_R, true)
+	var torque: float = dt.process(1.0 / 60.0, 1.0, 0.0, 0.0, GEAR_R, true)
 	assert_int(dt.gear_byte).is_equal(GEAR_R)
 	assert_float(torque).is_less(0.0)
 
@@ -161,16 +161,17 @@ func test_process_exact_mode_adopts_bridge_byte_without_auto_shift() -> void:
 	var dt: DrivetrainScript = DrivetrainScript.new(spec)
 	# Bridge mode (gear owns direction, plan §6): byte is verbatim even at a wheel
 	# speed whose rpm is far above the auto upshift threshold.
-	dt.process(1.0 / 60.0, 1.0, 100.0, 2, false)
+	dt.process(1.0 / 60.0, 1.0, 100.0, 100.0 * spec.wheel_radius, 2, false)
 	assert_int(dt.gear_byte).is_equal(2)
 
 
 func test_process_auto_upshifts_at_speed() -> void:
 	var spec := _spec()
 	var dt: DrivetrainScript = DrivetrainScript.new(spec)
-	dt.process(1.0 / 60.0, 1.0, 0.0, 1, true)
-	# 40 rad/s through D1 (ratio 12) is ~4584 rpm, above shift_up 3500.
-	dt.process(1.0 / 60.0, 1.0, 40.0, 1, true)
+	dt.process(1.0 / 60.0, 1.0, 0.0, 0.0, 1, true)
+	# Road speed giving 40 rad/s of wheel spin (no slip) through D1 (ratio 12) is
+	# ~4584 rpm, above shift_up 3500. Auto-shift decides on this road speed, not spin.
+	dt.process(1.0 / 60.0, 1.0, 40.0, 40.0 * spec.wheel_radius, 1, true)
 	assert_int(dt.gear_byte).is_equal(2)
 
 
@@ -178,7 +179,7 @@ func test_process_rpm_rests_at_idle() -> void:
 	var spec := _spec()
 	var dt: DrivetrainScript = DrivetrainScript.new(spec)
 	for i in 120:
-		dt.process(1.0 / 60.0, 0.0, 0.0, GEAR_N, true)
+		dt.process(1.0 / 60.0, 0.0, 0.0, 0.0, GEAR_N, true)
 	assert_float(dt.rpm).is_equal_approx(spec.idle_rpm, 1.0)
 
 

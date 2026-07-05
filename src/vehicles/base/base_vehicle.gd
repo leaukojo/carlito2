@@ -72,8 +72,9 @@ func _physics_process(delta: float) -> void:
 			drive_omega += w.omega
 	drive_omega /= maxf(1.0, driven_count)
 
+	var ground_speed := linear_velocity.dot(-global_transform.basis.z)
 	var axle_torque := drivetrain.process(
-			delta, absf(input.throttle), drive_omega, input.gear_request, input.gear_auto)
+			delta, absf(input.throttle), drive_omega, ground_speed, input.gear_request, input.gear_auto)
 
 	var space := get_world_3d().direct_space_state
 	for w in wheels:

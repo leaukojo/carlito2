@@ -86,8 +86,10 @@ static func auto_shift(p_spec: VehicleSpec, byte: int, at_rpm: float) -> int:
 ## auto=true (local input): the request is a direction (N / enter-D / R) and the box
 ## auto-shifts within D1-D6. auto=false (bridge, M3): the byte is exact — the bridge
 ## gear owns direction (plan §6) and auto-shift is bypassed.
+## `ground_speed` is the body's forward road speed (m/s); auto-shift decides on it, not
+## on `drive_wheel_omega`, so wheelspin can't fake a high rpm and make the box hunt.
 func process(delta: float, throttle: float, drive_wheel_omega: float,
-		requested_byte: int, auto: bool) -> float:
+		ground_speed: float, requested_byte: int, auto: bool) -> float:
 	var req := normalize_byte(requested_byte)
 	if auto:
 		if req == GEAR_R or req == GEAR_N:
@@ -95,7 +97,12 @@ func process(delta: float, throttle: float, drive_wheel_omega: float,
 		elif not is_drive(gear_byte):
 			gear_byte = req
 		if is_drive(gear_byte):
-			gear_byte = auto_shift(spec, gear_byte, rpm_from_wheel(spec, drive_wheel_omega, gear_byte))
+			# Shift on ROAD speed, not the spinning drive wheel: under wheelspin the
+			# wheel over-reads rpm, upshifting early; the taller gear then bogs below the
+			# downshift point and drops back -> hunting. The real (spinning) rpm still
+			# drives the engine target below and the tach (plan §2 rule 3).
+			var road_omega := ground_speed / spec.wheel_radius
+			gear_byte = auto_shift(spec, gear_byte, rpm_from_wheel(spec, road_omega, gear_byte))
 	else:
 		gear_byte = req
 
