@@ -156,3 +156,38 @@ static func pack_status(ignition: bool, ground_contact: bool, moving: bool,
 	if headlights:
 		s |= ST_HEADLIGHTS
 	return s
+
+
+# --- bridge marshaling -------------------------------------------------------
+
+## Every non-todo ground "out" signal keyed by its contract name, in the units the
+## contract declares (plan §3). The Bridge walks Contract.signals_out() and pulls
+## each name from here, so the field-name list lives once, in the contract — the
+## bridge never hand-writes it (plan §2 rule 4). throttle/steer are reported as
+## percent (contract i8 %) and slip as the mean per-axle ratio; the fixed-point CAN
+## byte scaling is the sloppyCAN side's job, not ours.
+func to_bridge_dict() -> Dictionary:
+	return {
+		"speed": speed,
+		"kmh": kmh,
+		"rpm": roundi(rpm),
+		"gear": gear_byte,
+		"throttle": roundi(throttle * 100.0),
+		"steer": roundi(steer * 100.0),
+		"yaw": yaw,
+		"accLong": acc_long,
+		"accLat": acc_lat,
+		"slip": (slip_front + slip_rear) * 0.5,
+		"ground": ground,
+		"posX": pos_x,
+		"posZ": pos_z,
+		"heading": heading,
+		"lat": lat,
+		"lon": lon,
+		"odo": odo,
+		"status": status,
+		"impact": impact,
+		"fuel": roundi(fuel),
+		"coolant": roundi(coolant),
+		"battery": battery,
+	}

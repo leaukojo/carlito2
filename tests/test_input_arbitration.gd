@@ -92,3 +92,62 @@ func test_steer_and_handbrake_pass_through_clamped() -> void:
 			_raw(0.0, 0.0, -1.5, 2.0), 0.0, GEAR_D1)
 	assert_float(out.steer).is_equal(-1.0)
 	assert_float(out.handbrake).is_equal(1.0)
+
+
+# --- bridge arbitration (plan §6: gear owns direction while active) -----------
+## Values reach arbitrate_bridge already normalized (bridge_source did the /100).
+
+func _bridge(accel := 0.0, brake := 0.0, steer := 0.0, handbrake := 0.0,
+		gear := GEAR_N, key := RouterScript.KEY_IGNITION) -> Dictionary:
+	return {
+		"active": true, "accel": accel, "brake": brake, "steer": steer,
+		"handbrake": handbrake, "gear": gear, "key": key, "lights": 1, "horn": false,
+	}
+
+
+func test_bridge_gear_owns_direction() -> void:
+	# D1: forward throttle, exact byte (gear_auto false).
+	var d1: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(1.0, 0.0, 0.0, 0.0, GEAR_D1))
+	assert_int(d1.gear_request).is_equal(GEAR_D1)
+	assert_float(d1.throttle).is_equal(1.0)
+	assert_bool(d1.gear_auto).is_false()
+	# R: same accel, negative throttle.
+	var rev: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(1.0, 0.0, 0.0, 0.0, GEAR_R))
+	assert_int(rev.gear_request).is_equal(GEAR_R)
+	assert_float(rev.throttle).is_equal(-1.0)
+	# N: no drive.
+	var neu: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(1.0, 0.0, 0.0, 0.0, GEAR_N))
+	assert_int(neu.gear_request).is_equal(GEAR_N)
+	assert_float(neu.throttle).is_equal(0.0)
+
+
+func test_bridge_all_forward_gears_drive_forward() -> void:
+	for g in [2, 3, 4, 5, 6]:
+		var out: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(0.5, 0.0, 0.0, 0.0, g))
+		assert_int(out.gear_request).is_equal(g)
+		assert_float(out.throttle).is_equal(0.5)
+
+
+func test_bridge_key_gates_throttle() -> void:
+	for key in [RouterScript.KEY_LOCK, RouterScript.KEY_ON]:
+		var out: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(1.0, 0.0, 0.0, 0.0, GEAR_D1, key))
+		assert_float(out.throttle).is_equal(0.0)
+	var ign: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(1.0, 0.0, 0.0, 0.0, GEAR_D1, RouterScript.KEY_IGNITION))
+	assert_float(ign.throttle).is_equal(1.0)
+
+
+func test_bridge_brake_never_throttle() -> void:
+	# Brake alone: no throttle, brake passes.
+	var braked: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(0.0, 1.0, 0.0, 0.0, GEAR_D1))
+	assert_float(braked.throttle).is_equal(0.0)
+	assert_float(braked.brake).is_equal(1.0)
+	# Full accel + full brake: throttle from accel (signed by gear), brake still passes.
+	var both: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(1.0, 1.0, 0.0, 0.0, GEAR_D1))
+	assert_float(both.throttle).is_equal(1.0)
+	assert_float(both.brake).is_equal(1.0)
+
+
+func test_bridge_steer_and_handbrake_pass_through() -> void:
+	var out: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(0.0, 0.0, -0.5, 1.0, GEAR_D1))
+	assert_float(out.steer).is_equal(-0.5)
+	assert_float(out.handbrake).is_equal(1.0)

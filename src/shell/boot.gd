@@ -13,3 +13,4 @@ func _ready() -> void:
 	var level := PLAY_SCENE.instantiate()
 	add_child(level)  # level._ready() spawns the vehicle synchronously here
 	($UI/Dashboard as Dashboard).bind(level)
+	Bridge.bind(level)  # telemetry source for the ~20 Hz outbound publish (web only)

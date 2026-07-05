@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 ## acceleration, the impact gate, the auxiliary-system models, and the status packer.
 
 const T := preload("res://src/vehicles/base/vehicle_telemetry.gd")
+const ContractScript := preload("res://src/bridge/contract.gd")
 
 
 # --- GPS mapping (plan §6: world XZ -> lat/lon around Paris 48.8566, 2.3522) ---
@@ -125,3 +126,22 @@ func test_fresh_telemetry_has_sane_defaults() -> void:
 	assert_float(t.battery).is_equal(T.BATTERY_RESTING)
 	assert_float(t.lat).is_equal(T.GPS_ORIGIN_LAT)
 	assert_float(t.odo).is_equal(0.0)
+
+
+# --- bridge marshaling conformance (plan §3, §2 rule 4) ----------------------
+## to_bridge_dict must supply a value for every non-todo "out" signal a ground vehicle
+## declares — otherwise the Bridge would silently drop it. Mirrors test_contract's
+## undefined-signal guard, from the telemetry side.
+
+func test_to_bridge_dict_covers_every_ground_out_signal() -> void:
+	var file := FileAccess.open(ContractScript.CONTRACT_PATH, FileAccess.READ)
+	assert_object(file).is_not_null()
+	var contract := ContractScript.ContractData.parse(file.get_as_text())
+	var keys := T.new().to_bridge_dict().keys()
+	for vehicle in ["car", "truck", "tractor"]:
+		for sig in contract.signals_for_vehicle(vehicle, "out"):
+			if sig.todo:
+				continue
+			assert_bool(keys.has(sig.name)) \
+				.override_failure_message("to_bridge_dict missing '%s' out signal: %s" % [vehicle, sig.name]) \
+				.is_true()

@@ -23,6 +23,7 @@ const GEAR_R := 0xFF
 const REVERSE_ENGAGE_SPEED := 0.5
 
 const LocalSource := preload("res://src/input/sources/local_source.gd")
+const BridgeSource := preload("res://src/input/sources/bridge_source.gd")
 
 
 ## The normalized per-tick input every vehicle consumes.
@@ -53,6 +54,7 @@ class VehicleInput:
 
 
 var _local_source := LocalSource.new()
+var _bridge_source := BridgeSource.new()
 var _vehicle: Node3D = null
 var _current := VehicleInput.new()
 
@@ -70,13 +72,17 @@ func unregister_vehicle(vehicle: Node3D) -> void:
 
 func _physics_process(delta: float) -> void:
 	# Autoloads tick before scene nodes, so this runs ahead of every vehicle's frame.
+	# Bridge wins while it has fresh data; otherwise local input works untouched (plan §6).
+	var bridge_raw := _bridge_source.poll()
+	if bridge_raw.get("active", false):
+		_current = arbitrate_bridge(bridge_raw)
+		return
 	var raw := _local_source.poll(delta)
 	var speed := 0.0
 	var gear := GEAR_N
 	if _vehicle != null:
 		speed = _vehicle.get_speed()
 		gear = _vehicle.get_gear_byte()
-	# Bridge source + gear-owns-direction arbitration slot in here at M3.
 	_current = arbitrate_local(raw, speed, gear)
 
 
@@ -121,6 +127,36 @@ static func arbitrate_local(raw: Dictionary, speed: float, gear_byte: int,
 				out.gear_request = GEAR_D1 if accel > 0.0 else GEAR_N
 			out.throttle = accel
 			out.brake = brake_rev
+
+	if out.key != KEY_IGNITION:
+		out.throttle = 0.0
+	return out
+
+
+## Bridge (sloppyCAN) arbitration, pure for tests. Rules from plan §6: while the bridge is
+## active and not Neutral the gear OWNS direction — throttle is `accel` signed by the gear byte
+## (+ in D1–D6, − in R, 0 in N), and local reverse UX is ignored (gear_auto = false, so the byte
+## is used exactly). brake is never throttle; key gates throttle; steer/handbrake/lights/horn
+## pass through. Values arrive already normalized to VehicleInput ranges from bridge_source.
+static func arbitrate_bridge(vals: Dictionary) -> VehicleInput:
+	var out := VehicleInput.new()
+	out.steer = clampf(float(vals.get("steer", 0.0)), -1.0, 1.0)
+	out.handbrake = clampf(float(vals.get("handbrake", 0.0)), 0.0, 1.0)
+	out.brake = clampf(float(vals.get("brake", 0.0)), 0.0, 1.0)
+	out.key = int(vals.get("key", KEY_IGNITION))
+	out.lights = int(vals.get("lights", 1))
+	out.horn = bool(vals.get("horn", false))
+	out.gear_auto = false  # bridge byte is exact and owns direction (plan §6)
+
+	var gear := int(vals.get("gear", GEAR_N))
+	out.gear_request = gear
+	var accel := clampf(float(vals.get("accel", 0.0)), 0.0, 1.0)
+	if gear == GEAR_R:
+		out.throttle = -accel
+	elif gear >= GEAR_D1 and gear <= 6:
+		out.throttle = accel
+	else:  # Neutral or unknown byte — no drive
+		out.throttle = 0.0
 
 	if out.key != KEY_IGNITION:
 		out.throttle = 0.0

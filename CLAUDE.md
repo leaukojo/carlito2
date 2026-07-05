@@ -99,6 +99,28 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   VRAM / node count from the `Performance` monitors, toggled with **F3** (`debug_overlay` action).
   The §5.4 guardrail is < ~500 draw calls in the worst view.
 
+## Bridge & bridge input (M3, landed — plan §4.2, §4.3, §6)
+
+- **Transport is web-only.** The export **Head Include** (`export_presets.cfg` `html/head_include`,
+  reviewable source `src/bridge/web/head_include.html`) installs `window.__carlito`: it stashes
+  inbound `{type:'carlitoInput'}` values with a timestamp and exposes `publish()` for outbound
+  `{type:'carlitoOutput'}`. **Edit the source file and re-paste into the preset's Head Include field
+  — they must match.**
+- `Bridge` autoload (`src/bridge/bridge.gd`): `OS.has_feature("web")` gates everything (inert on
+  desktop — `is_active()` false, no JS touched). Polls the inbound stash each physics tick (~60 Hz),
+  freshness-gated 300 ms in JS; publishes telemetry ~20 Hz, marshaling `values` **by contract name**
+  from `Contract.signals_out()` × `telemetry.to_bridge_dict()` (never a hand-written field list).
+  `boot.gd` calls `Bridge.bind(level)` (mirrors `Dashboard.bind`). Both sides stamp their contract
+  version on outgoing messages and warn once on mismatch (plan §3).
+- Bridge input arbitration is pure/static in `input_router.gd` (`arbitrate_bridge`, tested): while
+  active + not Neutral the **gear owns direction** (`throttle = accel` signed by the byte,
+  `gear_auto=false`), brake never throttle, key gates throttle. `_physics_process` prefers the
+  bridge source when fresh, else falls back to `arbitrate_local` untouched (§6 freshness gate).
+  `src/input/sources/bridge_source.gd` normalizes contract-in fields (%→unit) for it.
+- `VehicleTelemetry.to_bridge_dict()` is the one place mapping telemetry fields → contract "out"
+  names in contract units (throttle/steer as %, slip as ratio); a `test_telemetry` case fails if it
+  stops covering a non-todo ground "out" signal.
+
 ## Running / testing / exporting
 
 Godot binaries (4.6.3-stable): `C:\Users\Ccamy\Desktop\Godot\`. **Use
@@ -149,9 +171,11 @@ danger threshold the dashboard highlights (tacho redline, low fuel, coolant over
 infers low- vs high-side from which end of `range` it sits near (`SignalDef.warn_is_low()`). Tractor/boat entries are marked
 `"status": "todo"` until M5/M6. Contract edits bump `version`; both sides warn on mismatch.
 
-**Open question (plan §9.1, deferred to P3):** how the contract file is shared with the
-sloppycan repo (submodule vs synced copy + CI hash check). Until then this repo's copy is the
-only one.
+**Contract sharing (plan §9.1, decided):** **synced copy**, canonical here. `tools/gen_js_contract.mjs`
+regenerates the sloppyCAN-side copy `../sloppycan/carlito_contract.js` (`window.CARLITO_CONTRACT`,
+a committed JS global so it loads from `file://` with no build step). **Run it after any contract
+edit.** Drift guard is the runtime version-mismatch console warning both sides emit (plan §3), not
+CI — sloppyCAN has none.
 
 ## Standing rules (from plan §2 — every v1 lesson, permanent)
 
