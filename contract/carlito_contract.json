@@ -1,11 +1,11 @@
 {
-	"version": 3,
+	"version": 4,
 	"notes": [
 		"Carlito v2 signal contract (draft). Defines every signal crossing the sloppyCAN<->game bridge.",
 		"Signals are unique by (name, dir). 'battery' exists in both directions on purpose, kept from v1 naming: in = warning LED, out = battery voltage.",
 		"'type'/'unit'/'range' are packing hints; CAN frame IDs and byte layout live on the sloppyCAN side and are finalized at P3 together with carlito.js.",
 		"'warn' (optional number, added v3) is the danger threshold the dashboard highlights (plan §4.6 'warn thresholds'): the tachometer redline, low-fuel, coolant overheat. The dash infers low- vs high-side from which end of 'range' it sits near.",
-		"Entries with \"status\": \"todo\" are planned tractor/boat signals (plan M5/M6) not implemented on either side yet.",
+		"Entries with \"status\": \"todo\" are planned boat signals (plan M6) not implemented on either side yet.",
 		"Contract edits bump 'version'; both sides warn on mismatch instead of failing silently."
 	],
 	"signals": [
@@ -46,12 +46,12 @@
 		{ "name": "coolant", "dir": "out", "type": "u8", "unit": "degC", "range": [0, 150], "warn": 110, "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Coolant temperature. 'warn' is the overheat threshold." },
 		{ "name": "battery", "dir": "out", "type": "f32", "unit": "V", "range": [0, 16], "vehicles": ["car", "truck", "tractor", "boat"], "desc": "Battery voltage. Distinct from the 'in' battery warning LED." },
 
-		{ "name": "hitch_pos", "dir": "in", "type": "u8", "unit": "%", "range": [0, 100], "vehicles": ["tractor"], "flavor": "isobus", "status": "todo", "desc": "Requested rear hitch position (ISO 11783 flavor). M5." },
-		{ "name": "pto", "dir": "in", "type": "bool", "unit": "flag", "vehicles": ["tractor"], "flavor": "isobus", "status": "todo", "desc": "PTO engage request. M5." },
-		{ "name": "hitch_pos_actual", "dir": "out", "type": "u8", "unit": "%", "range": [0, 100], "vehicles": ["tractor"], "flavor": "isobus", "status": "todo", "desc": "Actual hitch position (animated). M5." },
-		{ "name": "pto_state", "dir": "out", "type": "bool", "unit": "flag", "vehicles": ["tractor"], "flavor": "isobus", "status": "todo", "desc": "PTO engaged. M5." },
-		{ "name": "pto_rpm", "dir": "out", "type": "u16", "unit": "rev/min", "range": [0, 1200], "vehicles": ["tractor"], "flavor": "isobus", "status": "todo", "desc": "PTO shaft speed. M5." },
-		{ "name": "engine_load", "dir": "out", "type": "u8", "unit": "%", "range": [0, 100], "vehicles": ["tractor"], "flavor": "isobus", "status": "todo", "desc": "Engine load (J1939 flavor). M5." },
+		{ "name": "hitch_pos", "dir": "in", "type": "u8", "unit": "%", "range": [0, 100], "vehicles": ["tractor"], "flavor": "isobus", "desc": "Requested rear hitch position (ISO 11783 flavor). 0 = fully lowered (working), 100 = fully raised (transport)." },
+		{ "name": "pto", "dir": "in", "type": "bool", "unit": "flag", "vehicles": ["tractor"], "flavor": "isobus", "desc": "PTO engage request." },
+		{ "name": "hitch_pos_actual", "dir": "out", "type": "u8", "unit": "%", "range": [0, 100], "vehicles": ["tractor"], "flavor": "isobus", "desc": "Actual hitch position (animated toward the request)." },
+		{ "name": "pto_state", "dir": "out", "type": "bool", "unit": "flag", "vehicles": ["tractor"], "flavor": "isobus", "desc": "PTO engaged (pto request and engine running)." },
+		{ "name": "pto_rpm", "dir": "out", "type": "u16", "unit": "rev/min", "range": [0, 1200], "vehicles": ["tractor"], "flavor": "isobus", "desc": "PTO shaft speed = engine rpm x pto_ratio, 0 when disengaged." },
+		{ "name": "engine_load", "dir": "out", "type": "u8", "unit": "%", "range": [0, 100], "vehicles": ["tractor"], "flavor": "isobus", "desc": "Engine load (J1939 flavor): throttle demand plus a PTO parasitic term." },
 		{ "name": "rudder", "dir": "in", "type": "i8", "unit": "%", "range": [-100, 100], "vehicles": ["boat"], "status": "todo", "desc": "Rudder request. M6; boat may just map 'steer' — decide at M6." },
 		{ "name": "pitch", "dir": "out", "type": "f32", "unit": "deg", "range": [-90, 90], "vehicles": ["boat"], "status": "todo", "desc": "Hull pitch from buoyancy sim. M6." },
 		{ "name": "roll", "dir": "out", "type": "f32", "unit": "deg", "range": [-180, 180], "vehicles": ["boat"], "status": "todo", "desc": "Hull roll from buoyancy sim. M6." },

@@ -14,4 +14,6 @@ func poll(_delta: float) -> Dictionary:
 		"handbrake": Input.get_action_strength("handbrake"),
 		"horn": Input.is_action_pressed("horn"),
 		"lights_cycle": Input.is_action_just_pressed("headlights"),
+		"hitch_toggle": Input.is_action_just_pressed("hitch"),
+		"pto_toggle": Input.is_action_just_pressed("pto"),
 	}

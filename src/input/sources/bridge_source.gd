@@ -27,4 +27,8 @@ func poll() -> Dictionary:
 		"brakeLamp": bool(v.get("brakeLamp", 0)),
 		"checkEngine": bool(v.get("checkEngine", 0)),
 		"battery": bool(v.get("battery", 0)),
+		# ISOBUS implement inputs (tractor). Kept in contract units here (percent, flag);
+		# arbitrate_bridge normalizes hitch_pos %→unit. Absent → raised/off (§6 default).
+		"hitch_pos": clampf(float(v.get("hitch_pos", 100.0)), 0.0, 100.0),
+		"pto": bool(v.get("pto", false)),
 	}

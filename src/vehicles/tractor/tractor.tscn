@@ -1,0 +1,119 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://src/vehicles/tractor/tractor.gd" id="1_tractor"]
+[ext_resource type="Resource" path="res://src/vehicles/tractor/tractor_spec.tres" id="2_spec"]
+[ext_resource type="PackedScene" path="res://src/vehicles/tractor/implement.tscn" id="3_impl"]
+
+[sub_resource type="BoxShape3D" id="BodyShape"]
+size = Vector3(1.8, 1.0, 3.4)
+
+[sub_resource type="BoxMesh" id="ChassisMesh"]
+size = Vector3(1.6, 0.8, 3.4)
+
+[sub_resource type="StandardMaterial3D" id="ChassisMat"]
+albedo_color = Color(0.35, 0.55, 0.25, 1)
+
+[sub_resource type="BoxMesh" id="CabMesh"]
+size = Vector3(1.4, 1.2, 1.4)
+
+[sub_resource type="StandardMaterial3D" id="CabMat"]
+albedo_color = Color(0.2, 0.25, 0.3, 1)
+
+[sub_resource type="CylinderMesh" id="FrontWheelMesh"]
+top_radius = 0.45
+bottom_radius = 0.45
+height = 0.35
+
+[sub_resource type="CylinderMesh" id="RearWheelMesh"]
+top_radius = 0.6
+bottom_radius = 0.6
+height = 0.5
+
+[sub_resource type="StandardMaterial3D" id="WheelMat"]
+albedo_color = Color(0.12, 0.12, 0.13, 1)
+
+[sub_resource type="BoxMesh" id="LampMesh"]
+size = Vector3(0.24, 0.14, 0.06)
+
+[node name="Tractor" type="RigidBody3D"]
+script = ExtResource("1_tractor")
+spec = ExtResource("2_spec")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("BodyShape")
+
+[node name="ChassisMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+mesh = SubResource("ChassisMesh")
+surface_material_override/0 = SubResource("ChassisMat")
+
+[node name="CabMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0.7)
+mesh = SubResource("CabMesh")
+surface_material_override/0 = SubResource("CabMat")
+
+[node name="WheelFL" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.8, -0.35, -1.4)
+mesh = SubResource("FrontWheelMesh")
+surface_material_override/0 = SubResource("WheelMat")
+
+[node name="WheelFR" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.8, -0.35, -1.4)
+mesh = SubResource("FrontWheelMesh")
+surface_material_override/0 = SubResource("WheelMat")
+
+[node name="WheelRL" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1.1, -0.2, 1.5)
+mesh = SubResource("RearWheelMesh")
+surface_material_override/0 = SubResource("WheelMat")
+
+[node name="WheelRR" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 1.1, -0.2, 1.5)
+mesh = SubResource("RearWheelMesh")
+surface_material_override/0 = SubResource("WheelMat")
+
+[node name="Lamps" type="Node3D" parent="."]
+
+[node name="HeadlightL" type="SpotLight3D" parent="Lamps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.7, -1.7)
+visible = false
+light_energy = 0.0
+spot_range = 30.0
+spot_angle = 38.0
+
+[node name="HeadlightR" type="SpotLight3D" parent="Lamps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.7, -1.7)
+visible = false
+light_energy = 0.0
+spot_range = 30.0
+spot_angle = 38.0
+
+[node name="BrakeLampL" type="MeshInstance3D" parent="Lamps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.65, 0.55, 1.72)
+mesh = SubResource("LampMesh")
+
+[node name="BrakeLampR" type="MeshInstance3D" parent="Lamps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.65, 0.55, 1.72)
+mesh = SubResource("LampMesh")
+
+[node name="TurnLF" type="MeshInstance3D" parent="Lamps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.82, 0.55, -1.7)
+mesh = SubResource("LampMesh")
+
+[node name="TurnLR" type="MeshInstance3D" parent="Lamps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.82, 0.55, 1.7)
+mesh = SubResource("LampMesh")
+
+[node name="TurnRF" type="MeshInstance3D" parent="Lamps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.82, 0.55, -1.7)
+mesh = SubResource("LampMesh")
+
+[node name="TurnRR" type="MeshInstance3D" parent="Lamps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.82, 0.55, 1.7)
+mesh = SubResource("LampMesh")
+
+[node name="HitchSocket" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 2.3)
+
+[node name="Implement" parent="HitchSocket" instance=ExtResource("3_impl")]

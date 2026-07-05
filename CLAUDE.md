@@ -162,7 +162,8 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   which respawns at a matching `VehicleSpawn` and emits `Level.vehicle_changed(type)` so the shell
   rebinds the dashboard/bridge to the new type. `Dashboard.bind` now reads `GameState.current_vehicle`
   (the spawned type), falling back to `LevelInfo.default_vehicle`. Open with **G** (or the touch
-  GARAGE button). Only `car` exists today, so the roster is one entry — but the mechanism is real.
+  GARAGE button). The gym roster is now `car`/`truck`/`tractor`; adding a vehicle = a `VEHICLE_SCENES`
+  entry + the type in a level's `allowed_vehicles`.
 - **Touch controls** (`src/ui/touch_controls.gd`) are a second **local `InputSource`** registered via
   `InputRouter.set_touch_source()`: a steering joystick (bottom-left, horizontal axis), gas/brake
   pedals (bottom-right), and a right-edge button stack (HORN/LIGHTS/HAND + GARAGE/RESPAWN). It
@@ -171,6 +172,48 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   **and** mouse. Visible only on touch/web (`_should_show()`); **F4** force-toggles for desktop tests.
   The bridge-conflicting buttons (HORN/LIGHTS/HAND — sloppyCAN owns those, plan §6) hide while
   `Bridge.is_active()`.
+
+## Machinery — tractor + implement + ISOBUS (M5, landed — plan §1, §3, §4.4)
+
+- **Contract is v4.** The six tractor ISOBUS signals are live (no longer `todo`): `hitch_pos`/`pto`
+  in, `hitch_pos_actual`/`pto_state`/`pto_rpm`/`engine_load` out (all `flavor: "isobus"`). Only
+  **boat** signals remain `todo` (M6). Regen the sloppyCAN copy after any contract edit
+  (`node tools/gen_js_contract.mjs`).
+- **`TractorVehicle extends BaseVehicle`** (`src/vehicles/tractor/tractor.gd`) — a real subclass
+  because it owns per-tick hitch/PTO state. It never forks `_physics_process`; the base grew **two
+  tiny virtual seams**: `_make_telemetry()` (factory, `_ready` builds `telemetry` from it — tractor
+  returns `TractorTelemetry`) and `_tick_extras(input, delta)` (empty in base, run **last** in
+  `_physics_process` so drivetrain rpm + telemetry motion are current). All tractor per-tick work is
+  in `_tick_extras`.
+- **`TractorTelemetry extends VehicleTelemetry`** adds the four ISOBUS **out** fields (named exactly
+  the contract names) and overrides `to_bridge_dict()` = `super()` + append, so the name-keyed bridge
+  marshaling and the dashboard's `t.get(name)` reads work unchanged. `engine_load` is a **modeled
+  honest value** (`engine_load_pct` — throttle demand + a PTO parasitic term, pure/unit-tested, same
+  latitude as fuel/coolant); the rest are read straight out of the sim (plan §2 rule 3).
+- **ISOBUS inputs ride `VehicleInput`, never a side channel** (same rule as lamps): `hitch_request`
+  (0..1) + `pto` (bool). `arbitrate_bridge` mirrors sloppyCAN verbatim (`hitch_pos` %→unit, absent →
+  raised/off); `arbitrate_local` fills them from **InputRouter-owned** toggles `_hitch_up`/`_pto`
+  (same owner pattern as `_lights`), advanced by per-frame `hitch_toggle`/`pto_toggle` edges the
+  sources report and `merge_local` ORs. Local keys: **V** = hitch raise/lower, **P** = PTO. All pure
+  and unit-tested.
+- **The `Implement` is cosmetic** (`src/vehicles/tractor/implement.{gd,tscn}`, `Node3D` — **no
+  CollisionShape, no joint**, plan §1/§8 scope guard). It rides a `HitchSocket` `Marker3D` on the
+  tractor; `set_hitch(pos01)` swings the `LiftArm` pivot, `set_pto(on, rpm)` spins the `Rotor` in
+  `_process`. Swap the instance to swap implements. Hitch **geometry** is scene-authored (like lamp
+  placement); the **three behaviour knobs** (`hitch_travel_time`, `pto_ratio`, `pto_load`) are
+  `@export` on `TractorVehicle` — node behaviour, not a `TractorSpec` (drive tuning stays in the
+  plain `tractor_spec.tres`). Spawn default: **raised**, PTO off (respawn re-raises).
+- **Bridge publish is vehicle-aware:** `Bridge._publish` walks
+  `Contract.signals_for_vehicle(GameState.current_vehicle, "out")`, so a car emits car signals and a
+  tractor adds the ISOBUS four (walking all `signals_out()` would warn on a car for the missing hitch/
+  PTO values now that they're not `todo`).
+- **Dashboard implement panel is contract-`flavor`-driven** (not hardcoded names): `_build_bars`
+  includes an "out" signal with a range when it's warn'd **or** `flavor == "isobus"` (→ HITCH/PTO/LOAD
+  bars); `_build_telltale_row` adds a telemetry-driven lamp for each bool isobus "out" (→ the PTO
+  lamp). Short captions (`BAR_LABEL`, `LAMP_TEXT["pto_state"]`) are hand-picked like the other lamp
+  labels. Car/truck dashes are unchanged (they declare no isobus signals).
+- **Uniform wheel radius:** RayWheel is single-radius, so the tractor's big-rear/small-front wheels
+  are **visual only** (the scene authors two cylinder meshes; physics uses one `wheel_radius`).
 
 ## Running / testing / exporting
 
@@ -219,8 +262,9 @@ optional `warn`, enum, vehicles, isobus flavor). The `Contract` autoload loads +
 startup; tests fail if a v1-era signal goes missing. Signals are unique by **(name, dir)** —
 `battery` exists in both directions (in = warning LED, out = voltage). `warn` (added **v3**) is the
 danger threshold the dashboard highlights (tacho redline, low fuel, coolant overheat); the dash
-infers low- vs high-side from which end of `range` it sits near (`SignalDef.warn_is_low()`). Tractor/boat entries are marked
-`"status": "todo"` until M5/M6. Contract edits bump `version`; both sides warn on mismatch.
+infers low- vs high-side from which end of `range` it sits near (`SignalDef.warn_is_low()`). The
+tractor ISOBUS signals landed at **M5 (v4)**; only **boat** entries are still marked
+`"status": "todo"` (until M6). Contract edits bump `version`; both sides warn on mismatch.
 
 **Contract sharing (plan §9.1, decided):** **synced copy**, canonical here. `tools/gen_js_contract.mjs`
 regenerates the sloppyCAN-side copy `../sloppycan/carlito_contract.js` (`window.CARLITO_CONTRACT`,

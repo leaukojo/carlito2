@@ -95,7 +95,10 @@ func _publish() -> void:
 		return
 	var dict: Dictionary = tel.to_bridge_dict()
 	var values := {}
-	for sig in Contract.data.signals_out():
+	# Publish only the signals the active vehicle actually declares (plan §4.4): a car emits
+	# car signals, a tractor adds the ISOBUS four. Walking all signals_out() would (now that
+	# the tractor signals are no longer todo) warn on a car for the missing hitch/PTO values.
+	for sig in Contract.data.signals_for_vehicle(GameState.current_vehicle, "out"):
 		if sig.todo:
 			continue
 		if not dict.has(sig.name):

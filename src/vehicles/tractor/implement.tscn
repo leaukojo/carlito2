@@ -1,0 +1,38 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/vehicles/tractor/implement.gd" id="1_impl"]
+
+[sub_resource type="BoxMesh" id="ArmMesh"]
+size = Vector3(0.12, 0.12, 0.9)
+
+[sub_resource type="StandardMaterial3D" id="ArmMat"]
+albedo_color = Color(0.35, 0.37, 0.4, 1)
+
+[sub_resource type="BoxMesh" id="ToolMesh"]
+size = Vector3(1.8, 0.5, 0.35)
+
+[sub_resource type="StandardMaterial3D" id="ToolMat"]
+albedo_color = Color(0.5, 0.5, 0.53, 1)
+
+[sub_resource type="BoxMesh" id="RotorMesh"]
+size = Vector3(0.7, 0.08, 0.12)
+
+[node name="Implement" type="Node3D"]
+script = ExtResource("1_impl")
+
+[node name="LiftArm" type="Node3D" parent="."]
+
+[node name="Arm" type="MeshInstance3D" parent="LiftArm"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0.45)
+mesh = SubResource("ArmMesh")
+surface_material_override/0 = SubResource("ArmMat")
+
+[node name="Tool" type="MeshInstance3D" parent="LiftArm"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0.95)
+mesh = SubResource("ToolMesh")
+surface_material_override/0 = SubResource("ToolMat")
+
+[node name="Rotor" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, -0.1)
+mesh = SubResource("RotorMesh")
+surface_material_override/0 = SubResource("ArmMat")

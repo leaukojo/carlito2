@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 ## acceleration, the impact gate, the auxiliary-system models, and the status packer.
 
 const T := preload("res://src/vehicles/base/vehicle_telemetry.gd")
+const TractorT := preload("res://src/vehicles/tractor/tractor_telemetry.gd")
 const ContractScript := preload("res://src/bridge/contract.gd")
 
 
@@ -137,11 +138,31 @@ func test_to_bridge_dict_covers_every_ground_out_signal() -> void:
 	var file := FileAccess.open(ContractScript.CONTRACT_PATH, FileAccess.READ)
 	assert_object(file).is_not_null()
 	var contract := ContractScript.ContractData.parse(file.get_as_text())
-	var keys := T.new().to_bridge_dict().keys()
-	for vehicle in ["car", "truck", "tractor"]:
+	# The tractor publishes via TractorTelemetry (adds the ISOBUS out fields), so its
+	# coverage must be checked against that subclass, not the base struct.
+	var keys_by_vehicle := {
+		"car": T.new().to_bridge_dict().keys(),
+		"truck": T.new().to_bridge_dict().keys(),
+		"tractor": TractorT.new().to_bridge_dict().keys(),
+	}
+	for vehicle in keys_by_vehicle:
+		var keys: Array = keys_by_vehicle[vehicle]
 		for sig in contract.signals_for_vehicle(vehicle, "out"):
 			if sig.todo:
 				continue
 			assert_bool(keys.has(sig.name)) \
 				.override_failure_message("to_bridge_dict missing '%s' out signal: %s" % [vehicle, sig.name]) \
 				.is_true()
+
+
+# --- tractor engine-load model (plan §3, modeled honest value) ----------------
+
+func test_engine_load_pct_throttle_and_pto_terms() -> void:
+	# Throttle only: |throttle| as a percentage.
+	assert_float(TractorT.engine_load_pct(0.0, false, 0.35)).is_equal(0.0)
+	assert_float(TractorT.engine_load_pct(0.5, false, 0.35)).is_equal(50.0)
+	assert_float(TractorT.engine_load_pct(-0.4, false, 0.35)).is_equal_approx(40.0, 1e-4)
+	# PTO adds its parasitic term.
+	assert_float(TractorT.engine_load_pct(0.3, true, 0.35)).is_equal_approx(65.0, 1e-4)
+	# Clamped at 100 %.
+	assert_float(TractorT.engine_load_pct(0.9, true, 0.35)).is_equal(100.0)

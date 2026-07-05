@@ -22,7 +22,7 @@ const MOVING_SPEED := 0.3       ## m/s standstill epsilon for the status 'moving
 
 var drivetrain: Drivetrain
 var wheels: Array[RayWheel] = []
-var telemetry := VehicleTelemetry.new()
+var telemetry: VehicleTelemetry  ## built in _ready via _make_telemetry (subclasses override the type)
 var spawn_transform: Transform3D
 
 var _steer := 0.0
@@ -34,6 +34,7 @@ var _prev_horn := false
 
 
 func _ready() -> void:
+	telemetry = _make_telemetry()
 	mass = spec.mass
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
 	center_of_mass = spec.center_of_mass
@@ -95,8 +96,25 @@ func _physics_process(delta: float) -> void:
 		_horn_player.stop()
 	_prev_horn = input.horn
 
+	# Subsystem hook, run last so the drivetrain rpm and telemetry motion fields a
+	# subclass reads are already current this tick (empty in the base — see below).
+	_tick_extras(input, delta)
+
 	if global_position.y < FALL_RESPAWN_Y:
 		respawn()
+
+
+## Telemetry factory (plan §4.4 seam): the base publishes the plain struct; a subclass
+## with extra "out" fields (e.g. the tractor's ISOBUS signals) returns its own subclass.
+func _make_telemetry() -> VehicleTelemetry:
+	return VehicleTelemetry.new()
+
+
+## Per-tick subsystem hook (plan §4.4 seam): empty in the base, run at the end of
+## _physics_process. Subclasses (tractor hitch/PTO) do their per-tick work here so they
+## never fork _physics_process / _update_telemetry.
+func _tick_extras(_input: InputRouter.VehicleInput, _delta: float) -> void:
+	pass
 
 
 func _update_telemetry(input: InputRouter.VehicleInput, delta: float) -> void:

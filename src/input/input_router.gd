@@ -46,6 +46,11 @@ class VehicleInput:
 	var brake_lamp := false   ## rear STOP state (0x1BB brake bit / local foot brake)
 	var check_engine := false ## warning LED; defaults off when the bridge doesn't send it
 	var battery_warn := false ## battery warning LED (distinct from the 'out' voltage)
+	# ISOBUS implement request (tractor only, plan §3/§4.4). Flows through the struct
+	# like the lamp bits — never a side channel. Default raised/off; other vehicles
+	# ignore it (only TractorVehicle reads them).
+	var hitch_request := 1.0  ## 0..1 requested hitch height (1 = raised/transport)
+	var pto := false          ## PTO engage request
 
 	func copy() -> VehicleInput:
 		var c := VehicleInput.new()
@@ -63,6 +68,8 @@ class VehicleInput:
 		c.brake_lamp = brake_lamp
 		c.check_engine = check_engine
 		c.battery_warn = battery_warn
+		c.hitch_request = hitch_request
+		c.pto = pto
 		return c
 
 
@@ -72,6 +79,10 @@ var _touch_source: Object = null  ## optional on-screen source (touch_controls.g
 var _vehicle: Node3D = null
 var _current := VehicleInput.new()
 var _lights := 1  ## headlight level owned here so keyboard + touch share one state
+# Local tractor implement state, owned here (like _lights) so keyboard + touch share it.
+# The bridge path ignores these — sloppyCAN is authoritative there (plan §6).
+var _hitch_up := true  ## true = raised (transport), toggled by the local hitch key
+var _pto := false      ## local PTO engage, toggled by the local PTO key
 
 
 ## Vehicles register on _ready so arbitration can read speed/gear (local reverse
@@ -110,6 +121,13 @@ func _physics_process(delta: float) -> void:
 	if bool(raw.get("lights_cycle", false)):
 		_lights = _lights % 4 + 1
 	raw["lights"] = _lights
+	# Local implement toggles owned here too (same pattern as the headlight level).
+	if bool(raw.get("hitch_toggle", false)):
+		_hitch_up = not _hitch_up
+	if bool(raw.get("pto_toggle", false)):
+		_pto = not _pto
+	raw["hitch_request"] = 1.0 if _hitch_up else 0.0
+	raw["pto"] = _pto
 	var speed := 0.0
 	var gear := GEAR_N
 	if _vehicle != null:
@@ -135,6 +153,8 @@ static func merge_local(a: Dictionary, b: Dictionary) -> Dictionary:
 		"handbrake": maxf(float(a.get("handbrake", 0.0)), float(b.get("handbrake", 0.0))),
 		"horn": bool(a.get("horn", false)) or bool(b.get("horn", false)),
 		"lights_cycle": bool(a.get("lights_cycle", false)) or bool(b.get("lights_cycle", false)),
+		"hitch_toggle": bool(a.get("hitch_toggle", false)) or bool(b.get("hitch_toggle", false)),
+		"pto_toggle": bool(a.get("pto_toggle", false)) or bool(b.get("pto_toggle", false)),
 	}
 
 
@@ -152,6 +172,9 @@ static func arbitrate_local(raw: Dictionary, speed: float, gear_byte: int,
 	out.gear_auto = true
 	out.horn = bool(raw.get("horn", false))
 	out.lights = int(raw.get("lights", 1))  # local headlight cycle (turn/warning bits stay off)
+	# Implement request from the InputRouter-owned local toggles (tractor only; ignored elsewhere).
+	out.hitch_request = clampf(float(raw.get("hitch_request", 1.0)), 0.0, 1.0)
+	out.pto = bool(raw.get("pto", false))
 
 	var accel := clampf(float(raw.get("accel", 0.0)), 0.0, 1.0)
 	var brake_rev := clampf(float(raw.get("brake_reverse", 0.0)), 0.0, 1.0)
@@ -204,6 +227,10 @@ static func arbitrate_bridge(vals: Dictionary) -> VehicleInput:
 	out.brake_lamp = bool(vals.get("brakeLamp", false))
 	out.check_engine = bool(vals.get("checkEngine", false))
 	out.battery_warn = bool(vals.get("battery", false))
+	# ISOBUS implement request mirrored from sloppyCAN (sole authority, plan §6). Absent →
+	# raised/off, the §6 default-off convention. bridge_source clamps hitch_pos to 0..100.
+	out.hitch_request = clampf(float(vals.get("hitch_pos", 100.0)) / 100.0, 0.0, 1.0)
+	out.pto = bool(vals.get("pto", false))
 	out.gear_auto = false  # bridge byte is exact and owns direction (plan §6)
 
 	var gear := int(vals.get("gear", GEAR_N))

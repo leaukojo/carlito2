@@ -5,5 +5,5 @@
 [resource]
 script = ExtResource("1_info")
 display_name = "Dev Gym"
-allowed_vehicles = PackedStringArray("car", "truck")
+allowed_vehicles = PackedStringArray("car", "truck", "tractor")
 default_vehicle = "car"

@@ -184,6 +184,47 @@ func test_merge_local_combines_keyboard_and_touch() -> void:
 	assert_bool(m["lights_cycle"]).is_false()
 
 
+# --- ISOBUS implement (tractor, plan §3/§4.4) --------------------------------
+
+func test_bridge_maps_hitch_percent_and_mirrors_pto() -> void:
+	# hitch_pos arrives 0..100 (bridge_source keeps contract units); arbitrate_bridge /100.
+	var vals := _bridge(0.0, 0.0, 0.0, 0.0, GEAR_D1)
+	vals["hitch_pos"] = 40.0
+	vals["pto"] = true
+	var out: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(vals)
+	assert_float(out.hitch_request).is_equal_approx(0.4, 1e-4)
+	assert_bool(out.pto).is_true()
+	# Absent → raised (1.0) / off, the §6 default-off convention.
+	var bare: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(0.0, 0.0, 0.0, 0.0, GEAR_D1))
+	assert_float(bare.hitch_request).is_equal(1.0)
+	assert_bool(bare.pto).is_false()
+
+
+func test_local_passes_hitch_and_pto_through() -> void:
+	var raw := _raw()
+	raw["hitch_request"] = 0.0
+	raw["pto"] = true
+	var out: RouterScript.VehicleInput = RouterScript.arbitrate_local(raw, 0.0, GEAR_D1)
+	assert_float(out.hitch_request).is_equal(0.0)
+	assert_bool(out.pto).is_true()
+	# Defaults when the keys are absent: raised / off.
+	var bare: RouterScript.VehicleInput = RouterScript.arbitrate_local(_raw(), 0.0, GEAR_D1)
+	assert_float(bare.hitch_request).is_equal(1.0)
+	assert_bool(bare.pto).is_false()
+
+
+func test_merge_local_ors_implement_toggle_edges() -> void:
+	var kbd := {"hitch_toggle": true, "pto_toggle": false}
+	var touch := {"hitch_toggle": false, "pto_toggle": true}
+	var m := RouterScript.merge_local(kbd, touch)
+	assert_bool(m["hitch_toggle"]).is_true()
+	assert_bool(m["pto_toggle"]).is_true()
+	# Neither pressed → both false.
+	var none := RouterScript.merge_local({}, {})
+	assert_bool(none["hitch_toggle"]).is_false()
+	assert_bool(none["pto_toggle"]).is_false()
+
+
 func test_bridge_mirrors_lamp_bits_verbatim() -> void:
 	var vals := _bridge(0.0, 0.0, 0.0, 0.0, GEAR_D1)
 	vals["turnL"] = true

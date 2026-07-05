@@ -20,12 +20,17 @@ const ENUM_CHIPS: PackedStringArray = ["key", "lights"]
 const LAMP_TEXT := {
 	"handbrake": "BRAKE", "turnL": "<L", "turnR": "R>", "horn": "HORN",
 	"checkEngine": "CHECK", "battery": "BATT", "brakeLamp": "STOP",
+	"pto_state": "PTO",
 }
 const LAMP_COLOR := {
 	"handbrake": Color(0.95, 0.35, 0.30), "turnL": Color(0.35, 0.85, 0.45),
 	"turnR": Color(0.35, 0.85, 0.45), "horn": Color(0.45, 0.72, 1.0),
 	"checkEngine": Color(1.0, 0.70, 0.15), "battery": Color(0.95, 0.35, 0.30),
-	"brakeLamp": Color(0.95, 0.35, 0.30),
+	"brakeLamp": Color(0.95, 0.35, 0.30), "pto_state": Color(0.35, 0.85, 0.45),
+}
+## Cosmetic short captions for the generated "out" bars (like LAMP_TEXT for lamps).
+const BAR_LABEL := {
+	"hitch_pos_actual": "HITCH", "pto_rpm": "PTO", "engine_load": "LOAD",
 }
 const LAMP_OFF := Color(0.28, 0.30, 0.34)
 const CHIP_COLOR := Color(0.85, 0.88, 0.93)
@@ -36,7 +41,8 @@ var _gear_def: RefCounted = null  ## contract "gear" out SignalDef, for gear-byt
 var _speedo: Gauge
 var _tach: Gauge
 var _bars := {}      ## signal name -> DashBar
-var _lamps := {}     ## signal name -> Label
+var _lamps := {}     ## signal name -> Label (input bool tell-tales)
+var _out_lamps := {} ## signal name -> Label (bool "out" ISOBUS tell-tales, driven from telemetry)
 var _chips := {}     ## signal name -> [Label, SignalDef]
 var _readout: Label
 
@@ -58,6 +64,7 @@ func _build(vehicle_type: String) -> void:
 		c.queue_free()
 	_bars.clear()
 	_lamps.clear()
+	_out_lamps.clear()
 	_chips.clear()
 
 	# The Dashboard control stays full-rect (set in boot.tscn). Pin the cluster panel
@@ -133,25 +140,39 @@ func _build_telltale_row(vehicle_type: String) -> Control:
 	for sig in Contract.data.signals_for_vehicle(vehicle_type, "in"):
 		if sig.type != "bool":
 			continue
-		var lamp := Label.new()
-		lamp.text = LAMP_TEXT.get(sig.name, sig.name.to_upper())
-		lamp.add_theme_font_size_override("font_size", 13)
-		lamp.add_theme_color_override("font_color", LAMP_OFF)
-		row.add_child(lamp)
-		_lamps[sig.name] = lamp
+		_lamps[sig.name] = _make_lamp(sig.name, row)
+
+	# ISOBUS bool "out" signals become tell-tales too (e.g. pto_state), driven from
+	# telemetry rather than input — plan §4.6 "generated from contract signal metadata".
+	for sig in Contract.data.signals_for_vehicle(vehicle_type, "out"):
+		if sig.type != "bool" or sig.flavor != "isobus":
+			continue
+		_out_lamps[sig.name] = _make_lamp(sig.name, row)
 	return row
 
 
-## Bars for every "out" signal (this vehicle) that has a range AND a warn threshold,
-## except the two that are gauges. Marking a signal with "warn" in the JSON is what
-## makes it show up here.
+## One tell-tale Label (caption from LAMP_TEXT, unlit color), added to `into`.
+func _make_lamp(sig_name: String, into: Node) -> Label:
+	var lamp := Label.new()
+	lamp.text = LAMP_TEXT.get(sig_name, sig_name.to_upper())
+	lamp.add_theme_font_size_override("font_size", 13)
+	lamp.add_theme_color_override("font_color", LAMP_OFF)
+	into.add_child(lamp)
+	return lamp
+
+
+## Bars for every "out" signal (this vehicle) that has a range and is either warn'd
+## (fuel/coolant) or an ISOBUS signal (the tractor implement panel — plan §4.6, driven
+## from the contract 'flavor' metadata, not hardcoded names), except the two gauges.
 func _build_bars(vehicle_type: String, into: Node) -> void:
 	for sig in Contract.data.signals_for_vehicle(vehicle_type, "out"):
-		if sig.name in GAUGE_SIGNALS or not sig.has_warn() or sig.range.size() != 2:
+		if sig.name in GAUGE_SIGNALS or sig.range.size() != 2:
+			continue
+		if not sig.has_warn() and sig.flavor != "isobus":
 			continue
 		var bar := DashBar.new()
 		bar.custom_minimum_size = Vector2(0, 18)
-		bar.label = sig.name.to_upper()
+		bar.label = BAR_LABEL.get(sig.name, sig.name.to_upper())
 		bar.units = _short_unit(sig.unit)
 		bar.min_value = float(sig.range[0])
 		bar.max_value = float(sig.range[1])
@@ -208,6 +229,13 @@ func _process(_dt: float) -> void:
 		var v: Variant = t.get(sig_name)
 		if typeof(v) != TYPE_NIL:
 			_bars[sig_name].value = v
+
+	# ISOBUS bool "out" tell-tales (pto_state) are telemetry-driven, unlike the input
+	# lamps in _update_telltales. Only present on vehicles that declare them (tractor).
+	for sig_name in _out_lamps:
+		var on := bool(t.get(sig_name))
+		var col: Color = LAMP_COLOR.get(sig_name, Color(1.0, 0.70, 0.15)) if on else LAMP_OFF
+		_out_lamps[sig_name].add_theme_color_override("font_color", col)
 
 	_update_telltales()
 	if _readout != null:

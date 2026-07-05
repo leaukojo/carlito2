@@ -15,6 +15,7 @@ signal vehicle_changed(type: String)
 const VEHICLE_SCENES := {
 	"car": "res://src/vehicles/car/car.tscn",
 	"truck": "res://src/vehicles/truck/truck.tscn",
+	"tractor": "res://src/vehicles/tractor/tractor.tscn",
 }
 
 @export var info: LevelInfo
