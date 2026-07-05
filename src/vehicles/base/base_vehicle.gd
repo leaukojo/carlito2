@@ -141,11 +141,11 @@ func _update_telemetry(input: InputRouter.VehicleInput, delta: float) -> void:
 
 	# Auxiliary systems (modeled): fuel/coolant/battery keyed off ignition + load.
 	var running := input.key == InputRouter.KEY_IGNITION
-	var load := clampf(absf(input.throttle), 0.0, 1.0)
-	telemetry.fuel = VehicleTelemetry.fuel_step(telemetry.fuel, load, running, delta)
+	var load_frac := clampf(absf(input.throttle), 0.0, 1.0)
+	telemetry.fuel = VehicleTelemetry.fuel_step(telemetry.fuel, load_frac, running, delta)
 	telemetry.coolant = VehicleTelemetry.coolant_step(
-			telemetry.coolant, VehicleTelemetry.coolant_target(running, load), COOLANT_RATE, delta)
-	telemetry.battery = VehicleTelemetry.battery_volts(running, load)
+			telemetry.coolant, VehicleTelemetry.coolant_target(running, load_frac), COOLANT_RATE, delta)
+	telemetry.battery = VehicleTelemetry.battery_volts(running, load_frac)
 
 	# Impact: gate the raw acceleration spike, then peak-hold with decay so a
 	# one-tick collision stays readable on the dash / bridge.

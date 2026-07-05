@@ -200,14 +200,14 @@ func _process(_dt: float) -> void:
 		_tach.value = t.rpm
 		_tach.center_text = _gear_def.enum_label(t.gear_byte) if _gear_def != null else ""
 
-	for name in _bars:
+	for sig_name in _bars:
 		# Bars are keyed by contract signal name; telemetry fields share those names
 		# (fuel, coolant). Guard the lookup so warn'ing a signal whose telemetry field
 		# is spelled differently (e.g. accLong -> acc_long) degrades to a static bar
 		# rather than assigning null into a float.
-		var v: Variant = t.get(name)
+		var v: Variant = t.get(sig_name)
 		if typeof(v) != TYPE_NIL:
-			_bars[name].value = v
+			_bars[sig_name].value = v
 
 	_update_telltales()
 	if _readout != null:
@@ -229,14 +229,14 @@ func _update_telltales() -> void:
 		"checkEngine": vi.check_engine,
 		"battery": vi.battery_warn,
 	}
-	for name in _lamps:
-		var on: bool = active.get(name, false)
-		var col: Color = LAMP_COLOR.get(name, Color(1.0, 0.70, 0.15)) if on else LAMP_OFF
-		_lamps[name].add_theme_color_override("font_color", col)
+	for sig_name in _lamps:
+		var on: bool = active.get(sig_name, false)
+		var col: Color = LAMP_COLOR.get(sig_name, Color(1.0, 0.70, 0.15)) if on else LAMP_OFF
+		_lamps[sig_name].add_theme_color_override("font_color", col)
 
 	var enums := {"key": vi.key, "lights": vi.lights}
-	for name in _chips:
-		var label: Label = _chips[name][0]
-		var sig: RefCounted = _chips[name][1]
-		var raw: int = enums.get(name, 0)
-		label.text = "%s:%s" % [name.to_upper(), sig.enum_label(raw)]
+	for sig_name in _chips:
+		var label: Label = _chips[sig_name][0]
+		var sig: RefCounted = _chips[sig_name][1]
+		var raw: int = enums.get(sig_name, 0)
+		label.text = "%s:%s" % [sig_name.to_upper(), sig.enum_label(raw)]

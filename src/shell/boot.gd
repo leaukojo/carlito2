@@ -4,9 +4,6 @@ extends Node3D
 ## main.tscn. The persistent HUD (dashboard, debug overlay, touch controls) lives in
 ## boot.tscn; the level-select and garage screens are transient overlays created here.
 
-const LevelSelect := preload("res://src/ui/level_select.gd")
-const GarageMenu := preload("res://src/ui/garage_menu.gd")
-
 @onready var _ui: CanvasLayer = $UI
 @onready var _hint: Label = $UI/Label
 @onready var _dashboard: Dashboard = $UI/Dashboard

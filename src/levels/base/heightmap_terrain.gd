@@ -27,6 +27,7 @@ extends StaticBody3D
 	set(value):
 		material = value
 		_rebuild_if_ready()
+@warning_ignore("unused_private_class_variable")
 @export_tool_button("Rebuild terrain") var _rebuild_action := rebuild
 
 

@@ -110,18 +110,18 @@ static func impact_gate(accel_mag: float, threshold: float) -> float:
 
 
 ## Fuel burn step (%). Only burns while running; idle burn plus a load term.
-static func fuel_step(prev_pct: float, load: float, running: bool, delta: float) -> float:
+static func fuel_step(prev_pct: float, load_frac: float, running: bool, delta: float) -> float:
 	if not running:
 		return prev_pct
-	var burn := (FUEL_IDLE_BURN + FUEL_LOAD_BURN * clampf(load, 0.0, 1.0)) * delta
+	var burn := (FUEL_IDLE_BURN + FUEL_LOAD_BURN * clampf(load_frac, 0.0, 1.0)) * delta
 	return clampf(prev_pct - burn, 0.0, 100.0)
 
 
 ## Steady-state coolant target: ambient when off, warming toward the hot end with load.
-static func coolant_target(running: bool, load: float) -> float:
+static func coolant_target(running: bool, load_frac: float) -> float:
 	if not running:
 		return COOLANT_AMBIENT
-	return lerpf(COOLANT_OPERATING, COOLANT_HOT, clampf(load, 0.0, 1.0))
+	return lerpf(COOLANT_OPERATING, COOLANT_HOT, clampf(load_frac, 0.0, 1.0))
 
 
 ## First-order lag toward the coolant target; never overshoots.
@@ -131,10 +131,10 @@ static func coolant_step(prev_c: float, target_c: float, rate: float, delta: flo
 
 ## Battery terminal voltage: resting when off, alternator-charged (drooping under
 ## load) when running.
-static func battery_volts(running: bool, load: float) -> float:
+static func battery_volts(running: bool, load_frac: float) -> float:
 	if not running:
 		return BATTERY_RESTING
-	return BATTERY_CHARGING - 0.6 * clampf(load, 0.0, 1.0)
+	return BATTERY_CHARGING - 0.6 * clampf(load_frac, 0.0, 1.0)
 
 
 ## Pack the status bitfield from current vehicle state.

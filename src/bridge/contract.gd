@@ -21,11 +21,12 @@ class SignalDef:
 	var dir := ""                      ## "in" (sloppyCAN -> game) or "out" (game -> sloppyCAN)
 	var type := ""                     ## one of Contract.TYPES
 	var unit := ""
+	@warning_ignore("shadowed_global_identifier")
 	var range := []                    ## [] or [min: float, max: float]
 	var warn := NAN                    ## optional danger threshold the dashboard highlights; NAN = none
 	var enum_entries := []             ## Array of [lo: int, hi: int, label: String, interp_prefix]
-	                                   ## interp_prefix: String when a "D1-D6"-style range label
-	                                   ## interpolates ("D" + value), null otherwise (resolved at parse)
+									   ## interp_prefix: String when a "D1-D6"-style range label
+									   ## interpolates ("D" + value), null otherwise (resolved at parse)
 	var vehicles: PackedStringArray = []
 	var flavor := ""                   ## e.g. "isobus"
 	var todo := false                  ## declared but not implemented on either side yet
@@ -139,6 +140,7 @@ class ContractData:
 
 	## Returns null (after appending errors) when the entry is unusable;
 	## a SignalDef otherwise.
+	@warning_ignore("shadowed_variable")
 	static func _parse_signal(entry: Dictionary, index: int, errors: PackedStringArray) -> SignalDef:
 		var sig := SignalDef.new()
 		var where := "signals[%d]" % index
