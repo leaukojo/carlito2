@@ -19,6 +19,7 @@ var driven: bool
 var is_rear: bool
 
 var steer_angle := 0.0  ## rad, set by BaseVehicle before tick
+var lat_grip_scale := 1.0  ## rear side-grip cut while handbraking (spec.handbrake_grip)
 var omega := 0.0        ## wheel spin, rad/s, + = rolling forward
 var compression := 0.0
 var in_contact := false
@@ -107,14 +108,15 @@ func tick(body: RigidBody3D, spec: VehicleSpec, space: PhysicsDirectSpaceState3D
 	# Lateral: slip angle vs the same curve, capped by the force that would zero
 	# lateral velocity in one tick (kills parked-car jitter, the classic 60 Hz failure).
 	var slip_angle := atan2(absf(v_lat), maxf(absf(v_long), LOW_SPEED_FLOOR))
-	var f_lat := -signf(v_lat) * spec.mu_lat * suspension_force \
+	var mu_lat := spec.mu_lat * lat_grip_scale
+	var f_lat := -signf(v_lat) * mu_lat * suspension_force \
 			* VehicleSpec.sample_curve(spec.grip_curve, slip_angle)
 	f_lat = clampf(f_lat,
 			-corner_mass * absf(v_lat) / delta, corner_mass * absf(v_lat) / delta)
 
 	# Friction circle: combined demand cannot exceed the grip budget.
 	var budget_long := spec.mu_long * suspension_force
-	var budget_lat := spec.mu_lat * suspension_force
+	var budget_lat := mu_lat * suspension_force
 	if budget_long > 0.0 and budget_lat > 0.0:
 		var demand := sqrt(pow(f_long / budget_long, 2.0) + pow(f_lat / budget_lat, 2.0))
 		if demand > 1.0:

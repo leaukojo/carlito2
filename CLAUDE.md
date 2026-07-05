@@ -54,6 +54,9 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   Controls: W/S accel + brake-then-reverse, A/D steer, Space handbrake, Backspace respawn.
 - Feel tuning: edit `car_spec.tres` numbers only; keep the §6 hierarchy test green
   (brake > peak drive > handbrake, handbrake holds only below ~30% throttle).
+- Arcade drift: `VehicleSpec.handbrake_grip` scales rear lateral grip while the handbrake is
+  pulled (car: 0.45). It exists because the hierarchy test caps `handbrake_torque` too low to
+  lock the rears — drift comes from the grip cut, not brake torque.
 
 ## Level framework (M1, landed — plan §4.5)
 

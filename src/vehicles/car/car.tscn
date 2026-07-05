@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://src/vehicles/base/base_vehicle.gd" id="1_base"]
 [ext_resource type="Resource" path="res://src/vehicles/car/car_spec.tres" id="2_spec"]
@@ -6,17 +6,45 @@
 [sub_resource type="BoxShape3D" id="BodyShape"]
 size = Vector3(1.7, 0.8, 3.4)
 
-[sub_resource type="BoxMesh" id="BodyMesh"]
-size = Vector3(1.7, 0.7, 3.4)
-
 [sub_resource type="StandardMaterial3D" id="BodyMat"]
 albedo_color = Color(0.75, 0.2, 0.15, 1)
+metallic = 0.3
+roughness = 0.4
 
-[sub_resource type="BoxMesh" id="CabinMesh"]
-size = Vector3(1.5, 0.5, 1.6)
+[sub_resource type="StandardMaterial3D" id="GlassMat"]
+albedo_color = Color(0.1, 0.13, 0.18, 1)
+metallic = 0.6
+roughness = 0.15
 
-[sub_resource type="StandardMaterial3D" id="CabinMat"]
-albedo_color = Color(0.2, 0.25, 0.35, 1)
+[sub_resource type="StandardMaterial3D" id="TrimMat"]
+albedo_color = Color(0.12, 0.12, 0.13, 1)
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="BodyMesh"]
+size = Vector3(1.7, 0.42, 3.5)
+
+[sub_resource type="BoxMesh" id="HoodMesh"]
+size = Vector3(1.64, 0.16, 0.75)
+
+[sub_resource type="BoxMesh" id="TrunkMesh"]
+size = Vector3(1.64, 0.18, 0.4)
+
+[sub_resource type="BoxMesh" id="CabinGlassMesh"]
+size = Vector3(1.42, 0.4, 1.4)
+
+[sub_resource type="PrismMesh" id="WindshieldMesh"]
+left_to_right = 0.0
+size = Vector3(0.65, 0.4, 1.42)
+
+[sub_resource type="PrismMesh" id="RearGlassMesh"]
+left_to_right = 1.0
+size = Vector3(0.5, 0.4, 1.42)
+
+[sub_resource type="BoxMesh" id="RoofMesh"]
+size = Vector3(1.36, 0.06, 1.44)
+
+[sub_resource type="BoxMesh" id="BumperMesh"]
+size = Vector3(1.74, 0.16, 0.14)
 
 [sub_resource type="CylinderMesh" id="WheelMesh"]
 top_radius = 0.32
@@ -35,67 +63,106 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
 shape = SubResource("BodyShape")
 
 [node name="BodyMesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.11, 0)
 mesh = SubResource("BodyMesh")
 surface_material_override/0 = SubResource("BodyMat")
 
+[node name="Hood" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, -1.32)
+mesh = SubResource("HoodMesh")
+surface_material_override/0 = SubResource("BodyMat")
+
+[node name="Trunk" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.41, 1.5)
+mesh = SubResource("TrunkMesh")
+surface_material_override/0 = SubResource("BodyMat")
+
 [node name="CabinMesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0.3)
-mesh = SubResource("CabinMesh")
-surface_material_override/0 = SubResource("CabinMat")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.52, 0.15)
+mesh = SubResource("CabinGlassMesh")
+surface_material_override/0 = SubResource("GlassMat")
+
+[node name="Windshield" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0.52, -0.875)
+mesh = SubResource("WindshieldMesh")
+surface_material_override/0 = SubResource("GlassMat")
+
+[node name="RearGlass" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0.52, 1.1)
+mesh = SubResource("RearGlassMesh")
+surface_material_override/0 = SubResource("GlassMat")
+
+[node name="Roof" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0.15)
+mesh = SubResource("RoofMesh")
+surface_material_override/0 = SubResource("BodyMat")
+
+[node name="BumperF" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.14, -1.76)
+mesh = SubResource("BumperMesh")
+surface_material_override/0 = SubResource("TrimMat")
+
+[node name="BumperR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.14, 1.76)
+mesh = SubResource("BumperMesh")
+surface_material_override/0 = SubResource("TrimMat")
 
 [node name="WheelFL" type="MeshInstance3D" parent="."]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.78, -0.35, -1.25)
 mesh = SubResource("WheelMesh")
+surface_material_override/0 = SubResource("TrimMat")
 
 [node name="WheelFR" type="MeshInstance3D" parent="."]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.78, -0.35, -1.25)
 mesh = SubResource("WheelMesh")
+surface_material_override/0 = SubResource("TrimMat")
 
 [node name="WheelRL" type="MeshInstance3D" parent="."]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.78, -0.35, 1.25)
 mesh = SubResource("WheelMesh")
+surface_material_override/0 = SubResource("TrimMat")
 
 [node name="WheelRR" type="MeshInstance3D" parent="."]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.78, -0.35, 1.25)
 mesh = SubResource("WheelMesh")
+surface_material_override/0 = SubResource("TrimMat")
 
 [node name="Lamps" type="Node3D" parent="."]
 
 [node name="HeadlightL" type="SpotLight3D" parent="Lamps"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.3, -1.7)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.28, -1.75)
 visible = false
 light_energy = 0.0
 spot_range = 28.0
 spot_angle = 38.0
 
 [node name="HeadlightR" type="SpotLight3D" parent="Lamps"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.3, -1.7)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.28, -1.75)
 visible = false
 light_energy = 0.0
 spot_range = 28.0
 spot_angle = 38.0
 
 [node name="BrakeLampL" type="MeshInstance3D" parent="Lamps"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.3, 1.72)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.32, 1.76)
 mesh = SubResource("LampMesh")
 
 [node name="BrakeLampR" type="MeshInstance3D" parent="Lamps"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.3, 1.72)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.32, 1.76)
 mesh = SubResource("LampMesh")
 
 [node name="TurnLF" type="MeshInstance3D" parent="Lamps"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.82, 0.28, -1.6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.82, 0.28, -1.65)
 mesh = SubResource("LampMesh")
 
 [node name="TurnLR" type="MeshInstance3D" parent="Lamps"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.82, 0.28, 1.6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.82, 0.32, 1.65)
 mesh = SubResource("LampMesh")
 
 [node name="TurnRF" type="MeshInstance3D" parent="Lamps"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.82, 0.28, -1.6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.82, 0.28, -1.65)
 mesh = SubResource("LampMesh")
 
 [node name="TurnRR" type="MeshInstance3D" parent="Lamps"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.82, 0.28, 1.6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.82, 0.32, 1.65)
 mesh = SubResource("LampMesh")

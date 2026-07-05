@@ -84,6 +84,7 @@ func _physics_process(delta: float) -> void:
 		var brake_t := input.brake * spec.brake_torque
 		if w.is_rear:
 			brake_t += input.handbrake * spec.handbrake_torque
+			w.lat_grip_scale = lerpf(1.0, spec.handbrake_grip, input.handbrake)
 		w.tick(self, spec, space, drive_t, brake_t, delta)
 
 	_update_telemetry(input, delta)

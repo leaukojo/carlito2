@@ -38,6 +38,10 @@ extends Resource
 ])
 @export var mu_long := 1.05
 @export var mu_lat := 0.95
+## Rear lateral grip multiplier while the handbrake is pulled (1 = no effect).
+## The arcade drift knob: the §6 hierarchy caps handbrake_torque too low to lock the
+## rears, so kicking the tail out is done by cutting rear side grip instead.
+@export_range(0.0, 1.0) var handbrake_grip := 1.0
 
 @export_group("Drivetrain")
 ## rpm -> engine Nm at full throttle.
