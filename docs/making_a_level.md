@@ -63,6 +63,7 @@ draw calls (budget: under ~500 in the worst view).
    |---|---|---|---|
    | `roads.meshlib` | `(8, 2, 8)` | **off** | city streets; one vertical cell = one `tile-high` step |
    | `racing.meshlib` | `(10, 10, 10)` | **off** | wide race track, ramps, bridges |
+   | `suburban.meshlib` | `(2.88, 2, 3.2)` | **off** | `driveway-long` gravel-lane tile (farm tracks); single-lane straights |
 
    Also set `cell_octant_size` to 8. (That's dev-play collision granularity; the bake
    replaces it anyway.)

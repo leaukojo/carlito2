@@ -2,7 +2,14 @@
 	"kit": "suburban",
 	"source": "res://kit/raw/suburban",
 	"scale": 8.0,
-	"_notes": "City Kit Suburban: authored clean (XZ-centered, Y=0 base). Scale 8 matches the roads kit so houses sit right on 8 m streets (type-a house -> 10.4 x 6.7 m). Driveways/paths are drivable flat slabs -> weld, so wheels roll onto them without a body seam.",
+	"_notes": "City Kit Suburban: authored clean (XZ-centered, Y=0 base). Scale 8 matches the roads kit so houses sit right on 8 m streets (type-a house -> 10.4 x 6.7 m). driveway-long is a uniform 2.88 x 3.2 m drivable slab -> promoted to a GridMap palette tile (the farm's gravel lane; tiles abut with cell_size [2.88,2,3.2]). The smaller/mixed-width paths stay weld prefabs for one-off decoration.",
+	"palette": {
+		"output": "res://kit/palettes/suburban.meshlib",
+		"cell_size": [2.88, 2.0, 3.2],
+		"align": "raw",
+		"include": ["driveway-long"],
+		"overrides": {}
+	},
 	"prefabs": {
 		"output": "res://kit/prefabs/suburban",
 		"align": "center_floor",
