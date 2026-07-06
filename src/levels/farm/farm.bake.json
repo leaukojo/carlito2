@@ -1,0 +1,14 @@
+{
+	"baker_version": 1,
+	"chunk_size": 48.0,
+	"input_hash": "48c6f3eb46c816e751a13e0b872e0b94954c6831aefe1f033fe663adab0d5292",
+	"level": "res://src/levels/farm/farm.tscn",
+	"stats": {
+		"bodies": 5,
+		"chunks": 5,
+		"drivable_triangles": 108,
+		"shapes": 9,
+		"surfaces": 6,
+		"vertices": 8980
+	}
+}
