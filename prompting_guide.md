@@ -244,23 +244,54 @@ skip if budget is tight.
 
 ### P8 — Water + boat + harbor level  *(plan M6)*
 
-> Read version2_plan.md §4.4 (Boat), §4.5, §8 (water risks). Implement the water height API (flat
-> at launch, visual waves independent), probe buoyancy (4–6 probes), boat spec with thrust +
-> rudder, water spawn markers, kill/respawn volume for non-boats entering water, boat telemetry
-> (pitch/roll/rudder) through contract + dashboard + carlito.js. Build the harbor level with the
-> kit. Test buoyancy math with gdUnit4. think hard.
+> Read version2_plan.md §4.4 (Boat), §4.5, §8 (water risks), then CLAUDE.md's "Machinery" section —
+> the tractor is the template for adding a vehicle subclass, follow it exactly. Implement:
+> 1. Water height API in `src/water/` — flat `get_height(pos) = const` at launch; visual waves are
+>    shader-only and must NOT feed physics.
+> 2. `BoatVehicle extends BaseVehicle` using ONLY the two existing virtual seams
+>    (`_make_telemetry()` returning a `BoatTelemetry extends VehicleTelemetry`, and
+>    `_tick_extras(input, delta)` for buoyancy/thrust/rudder). Do not fork `_physics_process` and
+>    do not add new seams to BaseVehicle without flagging it first. Buoyancy = 4–6 probes, pure
+>    static math fns (per-probe force from depth), unit-tested in `tests/test_boat.gd` like
+>    Drivetrain. Respect the 60 Hz locked tick: clamp per-probe force per tick the same way
+>    RayWheel clamps suspension (no unclamped spring forces).
+> 3. Contract v5: fill the boat `todo` signals (they already exist as entries — edit, don't add
+>    duplicates; signals are unique by (name, dir)). Bump `version`, then run
+>    `node tools/gen_js_contract.mjs` to regen the sloppyCAN copy.
+> 4. `BoatTelemetry.to_bridge_dict()` = `super()` + boat fields named exactly as the contract —
+>    the existing `test_telemetry` coverage gate must stay green. Dashboard needs no new code if
+>    boat signals carry proper range/warn metadata (bars/lamps are contract-generated).
+> 5. Wiring: `boat` entry in `Level.VEHICLE_SCENES`; spawns use the existing
+>    `VehicleSpawn.is_water` flag; non-boat entering water = kill/respawn volume (reuse the
+>    respawn path, which already zeroes accel history). Give the gym pool water for regression.
+> 6. Harbor level: author per docs/making_a_level.md with the watercraft kit (2x scale), bake with
+>    `res://tools/bake_levels.tscn` (game-mode tool scene, NOT --script), register in
+>    `LevelRegistry.LEVELS`, and confirm `res://tools/check_bakes.tscn` passes.
+> Drive tuning goes in `boat_spec.tres` (a plain VehicleSpec); boat-node behaviour knobs are
+> `@export` on BoatVehicle, like the tractor's hitch knobs. think hard.
 
 - **Run with:** Opus 4.8 or Fable 5, `think hard`, **Plan Mode** first (buoyancy is the one
   genuinely novel physics piece left).
-- **You verify:** boat floats, pitches under throttle, rolls in turns; car driven off the dock
-  respawns; gym pool now holds water for regression tests.
+- **You verify:** boat floats, pitches under throttle, rolls in turns — and does NOT explode or
+  jitter at rest (the clamp check); car driven off the dock respawns; gym pool now holds water;
+  boat gauges/bars appear on the dash with no dashboard code changes; sloppyCAN shows the boat
+  signals and warns on neither side (contract versions match after the regen).
 
 ### P9 — Island remake  *(plan M7, part 1)*
 
-> Using the level kit, rebuild the v1 island as a v2 level: city grid, racing circuit, suburbs,
-> mainland skyline backdrop. Match v1's layout spirit (run the deployed v1 for reference), not its
-> geometry exactly. All vehicle types spawnable except boat unless a coastline water region fits
-> naturally.
+> Follow docs/making_a_level.md exactly (kit_demo is the worked example) to rebuild the v1 island
+> as a v2 level: city grid, racing circuit, suburbs, mainland skyline backdrop. Match v1's layout
+> spirit (run the deployed v1 for reference — never read its source), not its geometry exactly.
+> Kit rules that bite here: everything lives under ONE AuthoringRoot; GridMap palettes only for
+> road/tile kits (all palette GridMaps need `cell_center_y = false`; roads cell is (8,2,8),
+> racing is (10,10,10)); everything else is a KitPiece prefab with the right `collision_mode` —
+> drivable structures (the circuit's bridges/ramps) must be `weld`, props box/hull, never trimesh.
+> The racing kit's v1 corner-anchor profile and bridge y-offsets were flagged "re-verify at
+> island" — check corner tiles line up before painting the whole circuit. Do NOT regenerate
+> palettes/prefabs (`gen_kit_assets.gd`) unless a recipe actually changes. All vehicle types
+> spawnable except boat unless a coastline water region fits naturally. Finish: bake with
+> `res://tools/bake_levels.tscn`, register in `LevelRegistry.LEVELS`, confirm
+> `res://tools/check_bakes.tscn` and a headless smoke of the level (`CARLITO_LEVEL=<id>`) pass.
 
 - **Run with:** Sonnet 5, auto-accept edits. Art-labor, not design.
 - **You verify:** side-by-side with deployed v1: everything you can do there works here, but
@@ -268,10 +299,17 @@ skip if budget is tight.
 
 ### P10 — Perf pass + launch + retire v1  *(plan M7, part 2)*
 
-> Read version2_plan.md §5.4. Profile the web build (worst view per level) against the budget and
-> fix what misses. Then launch: final deploy, update both repos' READMEs, and set up the v1 URL
-> redirect to v2. Stretch (only if budget already met): custom export template with unused modules
-> stripped to shrink the wasm.
+> Read version2_plan.md §5.4 and CLAUDE.md. Profile the DEPLOYED web build first — use the F3
+> debug overlay (FPS / frame ms / draw calls / primitives / VRAM) in the worst view of each level;
+> the guardrail is < ~500 draw calls. Only fix what a measurement shows missing the budget —
+> measure, change ONE thing, re-measure; no speculative optimization. Hard constraints: physics
+> stays 60 Hz + interpolation (never touch the tick); do NOT set `scaling_3d/scale.web` below 1
+> (it adds an upscale pass on gl_compatibility and measures WORSE); `.web` overrides
+> (msaa_3d.web=0, soft shadows off) already exist — check they still apply before adding new ones.
+> If a level is heavy on draw calls, suspect its bake (chunk count / material dedup) before
+> touching renderer settings. Then launch: deploy via CI (never manual — plan §2 rule 7), update
+> both repos' READMEs, set up the v1 URL redirect to v2. Stretch (only if budget already met):
+> custom export template with unused modules stripped to shrink the wasm.
 
 - **Run with:** Opus 4.8, `think hard`, default mode. Profiling-driven work; the
   performance-profiler agent is a good fit if offered.

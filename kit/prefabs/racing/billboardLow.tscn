@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_d8wce"]
+[ext_resource type="PackedScene" path="res://kit/raw/racing/billboardLow.glb" id="2_k7gv2"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_rr073"]
+size = Vector3(10, 6.9, 4.762)
+
+[node name="BillboardLow" type="Node3D" unique_id=1399157577]
+script = ExtResource("1_d8wce")
+
+[node name="Model" type="Node3D" parent="." unique_id=1069984167 instance=ExtResource("2_k7gv2")]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, -0.862, 0.099999994, 8.480999)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1637801424]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1547963192]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.45, -9.536743e-07)
+shape = SubResource("BoxShape3D_rr073")

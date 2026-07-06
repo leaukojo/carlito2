@@ -7,6 +7,8 @@ extends RefCounted
 ## integrates wheel spin from drive/brake/road-reaction torque. Tuned for the locked
 ## 60 Hz tick — the guardrails below (damper clamp, force clamp, low-speed slip
 ## clamps) are what keep explicit integration stable there.
+## DO NOT remove or weaken any clamp, and DO NOT raise the physics tick to "fix"
+## instability (plan §1) — retune VehicleSpec values instead.
 ## Approach informed by Dechode/Godot-Advanced-Vehicle and
 ## Tobalation/GDCustomRaycastVehicle (both MIT, credited in README); no code copied.
 

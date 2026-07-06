@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_38q8f"]
+[ext_resource type="PackedScene" path="res://kit/raw/commercial/detail-parasol-a.glb" id="2_l3bcw"]
+
+[node name="DetailParasolA" type="Node3D" unique_id=1986628623]
+script = ExtResource("1_38q8f")
+collision_mode = "none"
+
+[node name="Model" type="Node3D" parent="." unique_id=2114003324 instance=ExtResource("2_l3bcw")]
+transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, 0)

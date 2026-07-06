@@ -7,8 +7,10 @@ Carlito v1 with real vehicle physics (raycast suspension + simplified drivetrain
 shared signal contract (`contract/carlito_contract.json`), and CI-deployed web builds.
 
 - **Plan of record:** [`version2_plan.md`](version2_plan.md) — architecture, milestones, rules.
-- **Status:** M1 core — raycast-suspension car + real drivetrain drivable on a flat dev scene
-  (keyboard/gamepad, chase camera, respawn). Gym level, dashboard, and bridge input still ahead.
+- **Status:** M5 + level kit — car/truck/tractor with telemetry dashboard, web CAN bridge,
+  ISOBUS implement signals, and the level-authoring kit (Kenney palettes/prefabs + chunk bake
+  tool with CI stale-bake gate). See [`docs/making_a_level.md`](docs/making_a_level.md) to
+  build a level without design skills.
 - **Deployed build:** https://leaukojo.github.io/carlito2/
 - **Dev docs:** [`CLAUDE.md`](CLAUDE.md) (how to run, test, export).
 
@@ -18,6 +20,9 @@ Code is MIT (see [LICENSE](LICENSE)); bundled art/audio assets are CC0 (Kenney k
 
 ### Credits
 
+- [Kenney](https://kenney.nl) (CC0) — the level-kit source models under `kit/raw/`:
+  City Kit (Roads / Suburban / Commercial / Industrial), Racing Kit, and Watercraft Pack.
+  Per-kit `License.txt` files are kept alongside the models.
 - [gdUnit4](https://github.com/MikeSchulze/gdUnit4) (MIT) — vendored test framework at
   `addons/gdUnit4/`.
 - [Dechode/Godot-Advanced-Vehicle](https://github.com/Dechode/Godot-Advanced-Vehicle) (MIT) and

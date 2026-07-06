@@ -54,9 +54,25 @@ jobs:
             exit 1
           fi
 
-      # TODO(P6): stale-bake check — once the level bake tool exists, compare each
-      # bake's stamped input hash against the current authoring scenes and fail on
-      # divergence (plan §2 rule 1 / §5.1).
+      # Stale-bake check (plan §2 rule 1 / §5.1): recompute each registered level's
+      # authoring-input hash and compare against its committed bake manifest.
+      # Game-mode tool scene (not --script): level scripts only compile with
+      # autoloads registered.
+      - name: Stale-bake check
+        run: godot --headless res://tools/check_bakes.tscn
+
+      # Second smoke on the baked demo level: exercises load -> baked-scene swap ->
+      # spawn -> play (the gym smoke above covers the unbaked path).
+      - name: Headless smoke (baked kit_demo)
+        shell: bash
+        env:
+          CARLITO_LEVEL: kit_demo
+        run: |
+          godot --headless --quit-after 120 2>&1 | tee smoke_kit_demo.log
+          if grep -E "SCRIPT ERROR|ERROR:" smoke_kit_demo.log | grep -vE "still in use at exit|leaked at exit"; then
+            echo "kit_demo smoke failed: errors above"
+            exit 1
+          fi
 
       # Cache-busting: Godot derives every artifact name (.js/.pck/.wasm/.side.wasm,
       # PWA worker + manifest) from the export basename, so exporting as c2-<sha>.html

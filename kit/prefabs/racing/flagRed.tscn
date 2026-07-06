@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_ph2y3"]
+[ext_resource type="PackedScene" path="res://kit/raw/racing/flagRed.glb" id="2_0xiep"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_xa2pa"]
+size = Vector3(1.972, 12.5, 0.352)
+
+[node name="FlagRed" type="Node3D" unique_id=1145964090]
+script = ExtResource("1_ph2y3")
+
+[node name="Model" type="Node3D" parent="." unique_id=482933987 instance=ExtResource("2_0xiep")]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 2.514, 0.099999994, 6.6759996)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1498920398]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=2129681644]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.9604645e-08, 6.25, -3.5762787e-07)
+shape = SubResource("BoxShape3D_xa2pa")

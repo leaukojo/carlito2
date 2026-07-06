@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_kp252"]
+[ext_resource type="PackedScene" path="res://kit/raw/racing/fenceCurved.glb" id="2_75tlr"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_jp2iw"]
+size = Vector3(10, 8.2, 3.2)
+
+[node name="FenceCurved" type="Node3D" unique_id=91427064]
+script = ExtResource("1_kp252")
+
+[node name="Model" type="Node3D" parent="." unique_id=561700752 instance=ExtResource("2_75tlr")]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, -1.5, 0.099999994, 7.2599993)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1003207510]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=881696451]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.1, -8.34465e-07)
+shape = SubResource("BoxShape3D_jp2iw")

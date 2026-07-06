@@ -48,7 +48,11 @@ func _ready() -> void:
 		for node in find_children("*", "ChaseCamera", true, false):
 			camera = node as ChaseCamera
 			break
-	GameState.current_level = scene_file_path
+	# GameState is fetched by path, not by autoload identifier: the CLI bake tools
+	# (--script mode, plan §2 rule 1) load level scenes headless, where autoload
+	# globals don't resolve at compile time. Runtime behaviour is identical.
+	_game_state().current_level = scene_file_path
+	_setup_baked()
 	_capture_day_night()
 	_spawn_vehicle(info.default_vehicle)
 
@@ -58,6 +62,43 @@ func _unhandled_input(event: InputEvent) -> void:
 		vehicle.respawn()
 	elif event.is_action_pressed("day_night"):
 		_toggle_day_night()
+
+
+## Swap kit authoring content for the baked scene when one exists (plan §2 rule 1).
+## The AuthoringRoot subtree (GridMap palettes + KitPiece prefabs) is the bake
+## tool's INPUT: with a bake present it is freed at load (and export strips it from
+## shipped builds entirely); without one the level plays the authoring content
+## directly — fine for dev iteration, but per-piece collision means seams are
+## possible until the level is baked. Bake output sits next to the level scene by
+## convention: <level>.baked.scn (see kit/bake/level_baker.gd).
+func _setup_baked() -> void:
+	if scene_file_path.is_empty():
+		return
+	var baked_path := scene_file_path.get_basename() + ".baked.scn"
+	if not ResourceLoader.exists(baked_path):
+		return
+	var authoring := _find_authoring(self)
+	add_child((load(baked_path) as PackedScene).instantiate())
+	if authoring != null:
+		authoring.queue_free()
+
+
+## See the note in _ready: bare `GameState` would fail to compile under the CLI
+## bake tools. Only called from inside the tree, where the autoload exists.
+func _game_state() -> Node:
+	return get_node("/root/GameState")
+
+
+## AuthoringRoot is detected by its duck-typing marker (same contract the baker and
+## the export-strip plugin use), so this file never depends on kit/ scripts.
+static func _find_authoring(node: Node) -> Node:
+	if node.has_method("is_carlito_authoring"):
+		return node
+	for child in node.get_children():
+		var found := _find_authoring(child)
+		if found != null:
+			return found
+	return null
 
 
 ## Grab the level's sun + environment and remember the authored (day) lighting so the
@@ -113,7 +154,7 @@ func _spawn_vehicle(type: String) -> void:
 	vehicle.global_transform = spawn.global_transform
 	vehicle.spawn_transform = spawn.global_transform
 	vehicle.reset_physics_interpolation()
-	GameState.current_vehicle = type
+	_game_state().current_vehicle = type
 
 	if camera != null:
 		camera.target = vehicle.get_camera_target()

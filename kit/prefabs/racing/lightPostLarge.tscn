@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_oqnrm"]
+[ext_resource type="PackedScene" path="res://kit/raw/racing/lightPostLarge.glb" id="2_voe2c"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_ard43"]
+points = PackedVector3Array(-1.9627645, 7.514171, -0.42225346, -1.7098774, 7.1351867, -0.5486476, -0.19485365, -0.063147545, -0.043404832, -1.7098774, 7.514171, 0.58800954, 1.6987344, 7.1351867, -0.5486476, 1.8251779, 7.3867884, 0.58800954, 0.18371068, -0.063147545, -0.5486476, 0.18371068, 8.019748, -0.1696877, 1.9516215, 7.514171, -0.42225346, 0.18371068, -0.063147545, -0.043404832, -0.19485365, -0.063147545, -0.5486476, 1.8251779, 6.7554107, 0.20904966, -1.9627645, 7.766564, -0.1696877, -1.7098774, 6.882794, 0.33533254, 1.8251779, 7.514171, 0.58800954, 1.9516215, 7.766564, -0.1696877, -1.7098774, 7.3867884, -0.5486476, -1.7098774, 7.3867884, 0.58800954, -1.9627645, 7.514171, -0.1696877, 1.8951404, 7.6572413, -0.4095, -1.9, 7.6450796, -0.40808123, 1.6987344, 7.3867884, -0.5486476, -0.18252437, 7.7565, -0.39346716, -0.19485365, 8.019748, -0.1696877, 1.8251779, 6.7554107, -0.043404832, 1.8251779, 6.882794, 0.33533254, 1.9516215, 7.514171, -0.1696877, 0.1713814, 7.7565, -0.39346716, -1.7098774, 6.7554107, 0.20904966)
+
+[node name="LightPostLarge" type="Node3D" unique_id=1049635298]
+script = ExtResource("1_oqnrm")
+collision_mode = "multiconvex"
+
+[node name="Model" type="Node3D" parent="." unique_id=926783705 instance=ExtResource("2_voe2c")]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 3.4999995, 0.099999994, 6.1905)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=929023437]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1105412753]
+shape = SubResource("ConvexPolygonShape3D_ard43")

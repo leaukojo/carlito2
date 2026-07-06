@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_atpw4"]
+[ext_resource type="PackedScene" path="res://kit/raw/racing/lightPostModern.glb" id="2_613ye"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_xfl0s"]
+points = PackedVector3Array(-0.17082523, 1.3689399, -0.91270155, 0.17746215, 7.8377814, 0.9281946, -0.12104692, 7.688471, -0.8130524, 0.17746215, -0.02488184, -0.51464564, 0.12768385, 7.688471, -0.8130524, -0.22060353, -0.02488184, -0.51464564, -0.27038184, 7.8377814, 0.08234822, 0.27701876, 7.8377814, 0.08234822, 0.17278874, 0.0806213, -0.88799995, -0.27038184, 7.8377814, 0.82854545, -0.22060353, -0.02488184, -0.91270155, 0.27701876, 7.489134, 0.778811, 0.17746215, 7.489134, 0.9281946, 0.17746215, 1.3689399, -0.91270155, -0.22060353, 1.1696026, -0.91270155, -0.27038184, 7.489134, 0.82854545, -0.12104692, 7.787755, -0.71358347, 0.27701876, 7.489134, 0.08234822, 0.17746215, 7.8377814, -0.31552753, 0.27701876, 7.8377814, 0.778811, -0.27038184, 7.489134, 0.08234822, 0.12768385, 7.787755, -0.71358347)
+
+[node name="LightPostModern" type="Node3D" unique_id=871614524]
+script = ExtResource("1_atpw4")
+collision_mode = "multiconvex"
+
+[node name="Model" type="Node3D" parent="." unique_id=2034047075 instance=ExtResource("2_613ye")]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 3.5, 0.099999994, 5.7879996)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1678815375]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=693724409]
+shape = SubResource("ConvexPolygonShape3D_xfl0s")

@@ -1,0 +1,24 @@
+{
+	"kit": "roads",
+	"source": "res://kit/raw/roads",
+	"scale": 16.0,
+	"_notes": "City Kit Roads: 1x1 tiles, XZ-centered, Y=0 base (measured). Scale 16 = 16 m tile, wide arcade lanes vs the 1.8 m car. tile-high is 0.25 -> exactly one 4 m vertical cell, so cell_size is [16,4,16]; paint the deck level at y-index 1. GridMaps using this palette need cell_center_y = false.",
+	"palette": {
+		"output": "res://kit/palettes/roads.meshlib",
+		"cell_size": [16.0, 4.0, 16.0],
+		"align": "raw",
+		"include": ["road-*", "tile-*", "bridge-pillar*"],
+		"overrides": {}
+	},
+	"prefabs": {
+		"output": "res://kit/prefabs/roads",
+		"align": "center_floor",
+		"include": {
+			"construction-*": "box",
+			"light-*": "multiconvex",
+			"sign-*": "multiconvex"
+		},
+		"overrides": {}
+	},
+	"exclude": []
+}

@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_t4d72"]
+[ext_resource type="PackedScene" path="res://kit/raw/roads/light-square-double.glb" id="2_fc5qs"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_bssas"]
+points = PackedVector3Array(-0.23809522, -0.038095474, -0.21419623, 0.19999999, 4.63492, 1.6206348, -0.23809522, 4.8380947, 1.7666665, -0.23809522, 4.8380947, -1.7380952, 0.2190476, 4.5330944, -1.7380952, 0.2190476, -0.038095474, 0.2427676, -0.23809522, -0.038095474, 0.2427676, 0.2190476, 4.5330944, 1.7666665, 0.19999999, 0.16507912, -0.19515608, -0.23809522, 4.5330944, -1.7380952, -0.23809522, 4.5330944, 1.7666665, 0.19999999, 4.63492, -1.5920634)
+
+[node name="LightSquareDouble" type="Node3D" unique_id=1620985944]
+script = ExtResource("1_t4d72")
+collision_mode = "multiconvex"
+
+[node name="Model" type="Node3D" parent="." unique_id=1953280420 instance=ExtResource("2_fc5qs")]
+transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, 0)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=2053538608]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1399641024]
+shape = SubResource("ConvexPolygonShape3D_bssas")

@@ -8,8 +8,13 @@ Guidance for Claude Code sessions in this repository.
 (car/truck/tractor/boat) in a browser while exchanging live CAN signals with the sloppyCAN/RAMN
 simulator over a postMessage bridge. Godot 4.6, web-first.
 
+`docs/overview.md` is the human-readable architecture map; `prompting_guide.md` (repo root) is
+the prompt-per-milestone build playbook — read the current prompt's entry before starting a
+milestone task.
+
 **`version2_plan.md` (repo root) is the plan of record.** Read the section a task references
-before implementing. Milestones M0–M7 are in §5.3; this repo is currently at **M0 (scaffold)**.
+before implementing. Milestones M0–M7 are in §5.3; **M0–M5 plus the level kit (P6) have landed** — remaining:
+water/boat/harbor (M6/P8), island (M7/P9), perf pass + launch (P10).
 
 ## v1 is a reference spec, NEVER a code source
 
@@ -218,6 +223,50 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
 - **Uniform wheel radius:** RayWheel is single-radius, so the tractor's big-rear/small-front wheels
   are **visual only** (the scene authors two cylinder meshes; physics uses one `wheel_radius`).
 
+## Level-authoring kit & bake tool (P6, landed — plan §2 rules 1-2, §4.5)
+
+- **Layout:** `kit/raw/<kit>/` CC0 Kenney GLBs (6 kits; keep `Textures/` beside the glbs — relative
+  refs), `kit/import/<kit>.json` recipes (scale, align, palette include / prefab pattern→collision
+  maps), `kit/palettes/*.meshlib` + `kit/prefabs/<kit>/*.tscn` **generated** by
+  `tools/gen_kit_assets.gd` (`--script` mode; re-run only after recipe/kit edits; meshlib item ids
+  are preserved across regens so painted GridMaps never break). Scales fit the 1.8 m car: roads/
+  suburban/commercial/industrial **8x** (roads cell `(8,2,8)`, `tile-high` = one 2 m y-cell),
+  racing **10x** cell `(10,10,10)` (v1 corner-anchor profile, bridge y-offsets kept as overrides,
+  re-verify at island), watercraft **2x**. All palette GridMaps need `cell_center_y = false`.
+- **Authoring model (hybrid):** GridMap palettes for road/tile kits only; everything else is a
+  `KitPiece` prefab (`kit/helpers/kit_piece.gd`) whose `collision_mode`
+  (`none|box|hull|multiconvex|weld`) rides the prefab root; its `DevCollision` body makes unbaked
+  levels playable. All authoring lives under one `AuthoringRoot` node
+  (`kit/helpers/authoring_root.gd`, `chunk_size` + editor **Bake** button).
+- **Bake (`kit/bake/level_baker.gd`):** merges render meshes per XZ chunk (one MeshInstance3D per
+  chunk, one surface per deduped material, verts chunk-local), harvests prefab shapes into **one
+  StaticBody3D per chunk**, and welds ALL drivable geometry (every palette cell + `weld` prefabs)
+  into **one level-wide ConcavePolygonShape3D body** — vertices snapped to 1 mm so tile borders are
+  internal edges, never body seams. Outputs `<level>.baked.scn` + `<level>.bake.json` (input-hash
+  manifest, timestamp-free). Pure fns (weld, chunking, hashing, spawn validation, accumulator) are
+  unit-tested in `tests/test_bake.gd`. Spawn validation is a bake gate.
+- **Runtime seam:** `Level._setup_baked()` loads `<level>.baked.scn` by convention and frees the
+  authoring subtree; unbaked levels play authoring content directly (dev). Detection everywhere is
+  duck-typed marker methods (`is_carlito_authoring` / `is_carlito_kit_piece`), never class_name.
+- **Export never ships authoring:** `addons/carlito_kit/` (enabled EditorPlugin) registers an
+  EditorExportPlugin whose `_customize_scene` strips AuthoringRoot from exported scenes;
+  `export_presets.cfg` excludes kit glbs/palettes/prefabs/tools (colormap + racing banner PNGs ship
+  — baked materials reference them). Verified by byte-scanning the pck.
+- **CI gate:** `tools/check_bakes.tscn` recomputes each registered level's input hash (level .tscn
+  + transitive `res://kit/**` deps + `.import` sidecars, CRLF-normalized text hashing) vs the
+  manifest; ci.yml fails on missing/stale, plus a second headless smoke boots baked `kit_demo`
+  (`CARLITO_LEVEL` env picks the registry id headless).
+- **Gotchas that cost time:** (1) **`--script`-mode tools cannot load level scenes** — autoload
+  identifiers (InputRouter via BaseVehicle) don't compile there; bake/check run as **game-mode tool
+  scenes** (`godot --headless res://tools/bake_levels.tscn`), and `level.gd` fetches GameState via
+  `get_node("/root/GameState")` for the same reason. (2) A **freed node compares equal to null** —
+  read results before `free()`. (3) 4.6 renamed the decomposition helper to
+  `create_multiple_convex_collisions` (plural). (4) SurfaceTool.append_from leaves scaled normals
+  unnormalized — the baker's SurfaceAccumulator merges at array level instead.
+- **Docs:** `docs/making_a_level.md` is the non-designer walkthrough (kit_demo
+  `src/levels/dev/kit_demo.tscn` is its worked example — road loop, ramp, prefabs, baked +
+  registered). Gym predates the kit and stays hand-built (no AuthoringRoot: check skips it).
+
 ## Running / testing / exporting
 
 Godot binaries (4.6.3-stable): `C:\Users\Ccamy\Desktop\Godot\`. **Use
@@ -237,6 +286,12 @@ $env:GODOT_BIN = $GODOT; .\addons\gdUnit4\runtest.cmd -a tests
 
 # headless smoke (boots boot.tscn; --quit-after counts frames)
 & $GODOT --headless --path . --quit-after 120
+
+# level kit: regenerate palettes/prefabs (after kit/import recipe edits only)
+& $GODOT --headless --path . --script res://tools/gen_kit_assets.gd
+# bake all registered levels / CI stale-bake check (game-mode tool scenes — see kit section)
+& $GODOT --headless --path . res://tools/bake_levels.tscn
+& $GODOT --headless --path . res://tools/check_bakes.tscn
 
 # local web export (CI does the real one)
 & $GODOT --headless --path . --export-release "Web" build/web/index.html

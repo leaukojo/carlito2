@@ -5,11 +5,13 @@ extends Node
 ## single VehicleInput. ALL arbitration lives here and nowhere else (plan §2 rule 5):
 ## throttle only ever comes from the accelerator (brake is never throttle); key must
 ## be Ignition for throttle; locally S brakes and engages R near standstill; when the
-## bridge is active and not Neutral the gear owns direction (plan §6 — lands with the
-## bridge source in M3). Vehicles never know which source is active.
+## bridge is active and not Neutral the gear owns direction (plan §6). Vehicles never
+## know which source is active.
 ##
-## Arbitration is static/pure (like contract.gd's parser) so tests exercise it
-## without the autoload lifecycle. Local source: P1a (this). Touch: M4. Bridge: M3.
+## Arbitration is static/pure (like contract.gd's parser) so tests exercise it without
+## the autoload lifecycle — tests/test_input_arbitration.gd MUST stay green. All three
+## sources are live (local keyboard, touch via merge_local, bridge). Shared toggles the
+## sources can only edge (_lights, _hitch_up, _pto) are owned HERE, not by a source.
 
 const KEY_LOCK := 1
 const KEY_ON := 2

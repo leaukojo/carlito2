@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_hwn75"]
+[ext_resource type="PackedScene" path="res://kit/raw/racing/lightColored.glb" id="2_4bjbk"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_vjxeo"]
+points = PackedVector3Array(-0.40524286, 4.354439, -0.28728572, 0.107185684, 6.405116, 0.63508564, -0.09778573, 6.405116, 0.63508564, 0.2096714, -0.05124283, -0.18471976, 0.4146428, 6.405116, -0.18471976, -0.20027144, 6.5078425, -0.4921769, -0.20027144, -0.05124283, -0.59474283, -0.30275714, 4.5598917, 0.63508564, 0.3121571, 4.5598917, 0.63508564, 0.2096714, -0.05124283, -0.59474283, -0.40524286, 6.5078425, 0.4300741, -0.20027144, -0.05124283, -0.18471976, 0.4146428, 4.2529964, 0.4300741, 0.4146428, 6.5078425, 0.4300741, -0.40524286, 4.2529964, 0.4300741, 0.099999994, 6.2779007, -0.45625407, -0.40524286, 6.3023896, -0.28728572, 0.2096714, 1.691255, -0.59474283, 0.4146428, 4.354439, -0.18471976, -0.20027144, 1.691255, -0.59474283, 0.3121571, 6.3023896, 0.63508564, -0.30275714, 6.3023896, 0.63508564, 0.4146428, 6.5078425, 0.020171404, -0.40524286, 6.5078425, 0.020171404, -0.40524286, 4.2529964, -0.082274176, 0.4146428, 4.2529964, -0.082274176, -0.40524286, 6.405116, -0.18471976)
+
+[node name="LightColored" type="Node3D" unique_id=153393867]
+script = ExtResource("1_hwn75")
+collision_mode = "multiconvex"
+
+[node name="Model" type="Node3D" parent="." unique_id=1868027894 instance=ExtResource("2_4bjbk")]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 3.5, 0.099999994, 6.1325)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=397174336]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1323750589]
+shape = SubResource("ConvexPolygonShape3D_vjxeo")

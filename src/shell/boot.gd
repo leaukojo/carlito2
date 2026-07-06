@@ -24,8 +24,15 @@ func _ready() -> void:
 	_touch.respawn_pressed.connect(_respawn)
 	# The headless CI smoke can't click the menu, so boot straight into the first level
 	# there — this keeps the smoke exercising the full load -> spawn -> play path.
+	# CARLITO_LEVEL picks a different registry id, so CI can also smoke a baked level
+	# (kit_demo) without reordering the registry.
 	if DisplayServer.get_name() == "headless":
-		_load_level(String(LevelRegistry.LEVELS[0]["scene"]))
+		var wanted := OS.get_environment("CARLITO_LEVEL")
+		var scene := String(LevelRegistry.LEVELS[0]["scene"])
+		for entry in LevelRegistry.LEVELS:
+			if String(entry["id"]) == wanted:
+				scene = String(entry["scene"])
+		_load_level(scene)
 	else:
 		_show_level_select()
 

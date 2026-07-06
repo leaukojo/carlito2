@@ -1,0 +1,17 @@
+{
+	"kit": "commercial",
+	"source": "res://kit/raw/commercial",
+	"scale": 8.0,
+	"_notes": "City Kit Commercial: scale 8 matches the roads kit (building-a -> ~10 m / 3 storeys, skyscraper-a -> 23 m). low-detail-* is the distant-skyline set (v1 lesson) and detail-* are facade decorations - both unreachable, so no collision.",
+	"prefabs": {
+		"output": "res://kit/prefabs/commercial",
+		"align": "center_floor",
+		"include": {
+			"building-*": "box",
+			"low-detail-*": "none",
+			"detail-*": "none"
+		},
+		"overrides": {}
+	},
+	"exclude": []
+}

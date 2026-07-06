@@ -23,7 +23,7 @@ GameState="*res://src/shell/game_state.gd"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg")
+enabled=PackedStringArray("res://addons/carlito_kit/plugin.cfg", "res://addons/gdUnit4/plugin.cfg")
 
 [input]
 

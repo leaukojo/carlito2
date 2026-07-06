@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_374jf"]
+[ext_resource type="PackedScene" path="res://kit/raw/racing/bannerTowerGreen.glb" id="2_1pcxm"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_i8lhd"]
+points = PackedVector3Array(1.8499999, 12.301885, 1.8499999, -1.926, 0.21631882, -1.926, -1.926, 0.21631882, 1.8307523, 1.9292269, -0.098861694, 1.9292269, 1.8307523, 0.21631882, -1.926, -1.8499999, 11.997032, -1.8499999, 1.7547522, 11.997032, -1.8499999, -1.8499999, 11.997032, 1.7547522)
+
+[node name="BannerTowerGreen" type="Node3D" unique_id=1122999232]
+script = ExtResource("1_374jf")
+collision_mode = "multiconvex"
+
+[node name="Model" type="Node3D" parent="." unique_id=1990112730 instance=ExtResource("2_1pcxm")]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 1.574, 0.099999994, 8.426)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1464419679]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=986814052]
+shape = SubResource("ConvexPolygonShape3D_i8lhd")

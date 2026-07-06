@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_bgpnu"]
+[ext_resource type="PackedScene" path="res://kit/raw/roads/sign-highway.glb" id="2_vin8c"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_1fyqt"]
+points = PackedVector3Array(0.42279452, 5.7777777, 3.3013885, 0.041954033, -0.06292057, -4.0634923, 0.041954033, 1.079949, -4.0634923, -0.5927801, 3.8722327, 3.3013885, 0.52959996, 0.04060614, 3.919441, 0.5498532, 4.8881803, -3.9362097, -0.5927801, 3.8722327, -3.3013885, 0.52959996, 0.04060614, -3.919441, -0.08488094, 5.7777777, -3.3013885, 0.041954033, -0.06292057, 4.0634923, 0.5498532, 4.8881803, 3.9362097, -0.08488094, 5.7777777, 3.3013885, 0.42279452, 5.7777777, -3.3013885, 0.16890086, 4.8881803, 3.9362097, 0.5498532, 1.079949, -4.0634923, 0.16890086, 4.8881803, -3.9362097, 0.5498532, 1.079949, 4.0634923, 0.041954033, 1.079949, 4.0634923)
+
+[node name="SignHighway" type="Node3D" unique_id=748155921]
+script = ExtResource("1_bgpnu")
+collision_mode = "multiconvex"
+
+[node name="Model" type="Node3D" parent="." unique_id=27611336 instance=ExtResource("2_vin8c")]
+transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 0.32959998, 0, 0)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=445746309]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1487169485]
+shape = SubResource("ConvexPolygonShape3D_1fyqt")

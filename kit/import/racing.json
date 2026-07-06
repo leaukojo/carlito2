@@ -1,0 +1,45 @@
+{
+	"kit": "racing",
+	"source": "res://kit/raw/racing",
+	"scale": 10.0,
+	"_notes": "Racing Kit: v1-validated profile. Tiles share a +X/+Z corner (max.x=0.65, max.z=-0.65 at 1x); corner-anchor puts that corner at (+cell/2,+cell/2) so asymmetric tiles (roadCurved, Larger corners) stay on the 10 m lattice. Offsets are world units at scale 10, from the v1 registry; bridge offsets re-verify at island time. cell_center_y = false.",
+	"palette": {
+		"output": "res://kit/palettes/racing.meshlib",
+		"cell_size": [10.0, 10.0, 10.0],
+		"align": "corner",
+		"include": ["road*"],
+		"overrides": {
+			"roadCornerBridgeSmall": {"y_offset": 1.4338},
+			"roadCornerBridgeLarge": {"y_offset": 1.4338},
+			"roadCornerBridgeLarger": {"y_offset": 1.4338},
+			"roadStraightBridgeMid": {"y_offset": -2.5},
+			"roadStart": {"x_offset": 1.3},
+			"roadStartPositions": {"x_offset": 5.0}
+		}
+	},
+	"prefabs": {
+		"output": "res://kit/prefabs/racing",
+		"align": "center_floor",
+		"include": {
+			"ramp": "weld",
+			"barrier*": "box",
+			"pylon": "box",
+			"fence*": "box",
+			"rail*": "box",
+			"tent*": "multiconvex",
+			"grandStand*": "multiconvex",
+			"bannerTower*": "multiconvex",
+			"billboard*": "box",
+			"flag*": "box",
+			"light*": "multiconvex",
+			"overhead*": "multiconvex",
+			"tree*": "hull",
+			"grass": "none",
+			"radarEquipment": "box",
+			"camera_exclusive": "box",
+			"pits*": "box"
+		},
+		"overrides": {}
+	},
+	"exclude": ["raceCar*"]
+}

@@ -1,0 +1,20 @@
+{
+	"kit": "suburban",
+	"source": "res://kit/raw/suburban",
+	"scale": 8.0,
+	"_notes": "City Kit Suburban: authored clean (XZ-centered, Y=0 base). Scale 8 matches the roads kit so houses sit right on 8 m streets (type-a house -> 10.4 x 6.7 m). Driveways/paths are drivable flat slabs -> weld, so wheels roll onto them without a body seam.",
+	"prefabs": {
+		"output": "res://kit/prefabs/suburban",
+		"align": "center_floor",
+		"include": {
+			"building-*": "box",
+			"fence*": "box",
+			"driveway-*": "weld",
+			"path-*": "weld",
+			"planter": "box",
+			"tree-*": "hull"
+		},
+		"overrides": {}
+	},
+	"exclude": []
+}

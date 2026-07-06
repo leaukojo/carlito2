@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_st6sb"]
+[ext_resource type="PackedScene" path="res://kit/raw/racing/tentClosed.glb" id="2_ksph2"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_ojkb0"]
+points = PackedVector3Array(-0.7537571, 6.888758, 0.75455517, -4.9664907, 4.440892e-16, -4.9655185, -4.9664907, -4.440892e-16, 4.9655185, 4.9664907, 0, 4.9655185, 4.882753, 5.2466383, -4.881797, -4.8827558, 5.2466397, -4.8817997, 4.882753, 5.2466383, 4.881797, -4.8827558, 5.2466397, 4.8817997, 4.9664907, 4.440892e-16, -4.9655185, 0.7546909, 6.8887043, -0.7545432, 3.491318, -0.07936525, 4.919299, -0.7537723, 6.888827, -0.7545704, 0.7546909, 6.8887043, 0.7545432)
+
+[node name="TentClosed" type="Node3D" unique_id=1245306836]
+script = ExtResource("1_st6sb")
+collision_mode = "multiconvex"
+
+[node name="Model" type="Node3D" parent="." unique_id=1357535477 instance=ExtResource("2_ksph2")]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, -1.5, 0.099999994, 11.5)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1109889792]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1575210459]
+shape = SubResource("ConvexPolygonShape3D_ojkb0")

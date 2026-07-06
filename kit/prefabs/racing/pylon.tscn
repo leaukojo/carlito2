@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_sqiom"]
+[ext_resource type="PackedScene" path="res://kit/raw/racing/pylon.glb" id="2_8p6t2"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_avu3q"]
+size = Vector3(1.1999999, 1.3199999, 1.1999999)
+
+[node name="Pylon" type="Node3D" unique_id=1115149290]
+script = ExtResource("1_sqiom")
+
+[node name="Model" type="Node3D" parent="." unique_id=1724308781 instance=ExtResource("2_8p6t2")]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 3.5, 0.099999994, 6.5)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=716920062]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1461216400]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65999997, 0)
+shape = SubResource("BoxShape3D_avu3q")
