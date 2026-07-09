@@ -15,8 +15,11 @@ milestone task.
 **`version2_plan.md` (repo root) is the plan of record.** Read the section a task references
 before implementing. Milestones M0–M7 are in §5.3; **M0–M6 plus the level kit (P6) have landed** — remaining:
 the level-kit authoring rework (**`level_kit_plan.md`**, phases LK0–LK8, prompts in
-`level_kit_prompts.md` — runs before the island; LK0 deletes the P7/P8 farm + harbor, LK8
-rebuilds them with the new tools), then island (M7/P9), perf pass + launch (P10).
+`level_kit_prompts.md` — runs before the island; LK0 deletes every kit level (farm, harbor,
+kit_demo — clean slate, zero legacy compat), LK1 builds the permanent `kit_fixture` CI bake
+level, LK8 rebuilds farm + harbor with the new tools), then island (M7/P9), perf pass +
+procedural engine audio + launch (P10). Launch levels are **signal playgrounds** (level
+kit plan §2): content must make contract signals visibly perform — no missions.
 
 ## v1 is a reference spec, NEVER a code source
 

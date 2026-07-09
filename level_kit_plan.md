@@ -46,56 +46,83 @@ welded drivable bodies, trimesh never the default), and 60 Hz locked physics.
 - **Low-poly first.** Ground variation is **color splat** (grass/dirt/sand/rock albedo
   colors blended by a painted splatmap), not 4K texture layers — matches the Kenney
   colormap aesthetic, keeps the shader trivial on gl_compatibility/web.
+- **Levels are signal playgrounds, not scenery.** There are no missions — Carlito is a
+  sandbox for learning CAN telemetry — but "fun" means the signals visibly react. Every
+  launch level must give specific contract signals a place to perform: the farm a field
+  where lowering the hitch and running the PTO along crop rows feels like plowing; the
+  harbor a course (wake ramp, tight turns) that makes pitch/roll perform; the island
+  (P9) a road deliberately routed over a long grade (`engine_load`), hairpins (slip), a
+  crest (the impact bit), and a dark stretch (lights). LK8's acceptance gate includes
+  this; P9 inherits it.
 - **Keep the author's existing sorting.** The v1 family taxonomy is imported as data and
   becomes the visible organization of the palette dock and the meshlib groups.
 - **One thumbnail pipeline, every consumer.** A single offline render pass produces
   `kit/thumbs/<kit>/<name>.png` for every prefab and palette tile; the meshlibs embed them
   (built-in GridMap palette gets pictures), the palette dock loads them, docs can link them.
 - **Scoped, explicit non-goals** (§6) so no phase balloons.
-- **Clean slate — the existing kit levels are throwaway.** The user's call: farm, harbor,
-  and kit_demo are P6/P7-era demos, not content worth preserving, so **no legacy-compat
-  constraint survives for their sake**. Farm + harbor are deleted up front (LK0); kit_demo
-  stays *only* as the baker's CI regression fixture (the baked-smoke target) until LK8
-  builds the real levels and deletes it. That frees LK1 to fix the inherited warts at the
-  root instead of preserving them: per-kit scales are **re-derived from measurement** with
+- **Clean slate — every kit level is throwaway.** The user's call: farm, harbor, and
+  kit_demo are P6–P8-era demos, not content worth preserving — **all three are deleted in
+  LK0** and **no legacy-compat constraint survives for any of them**. Nothing built on the
+  old lattice outlives LK0. LK1 then builds **`kit_fixture`**, a new minimal level on the
+  clean lattice (small road loop, one prefab per collision mode, a weld ramp, a spawn):
+  it is the scale-verification step and the **permanent** CI bake fixture — a test asset
+  like `tests/fixtures/`, registered so the bake/check tools cover it but flagged `dev`
+  and hidden from the level-select UI, never shipped content. The one-phase LK0→LK1
+  window with no baked-smoke coverage is accepted (run the two back-to-back). That frees
+  LK1 to fix the inherited warts at the root instead of preserving them: per-kit scales
+  are **re-derived from measurement** with
   an explicit cross-kit rule (consistent lane-width-to-car ratio where kits interoperate)
   instead of the eyeballed 8×/10×/2×; the racing y-offsets inherited from v1 are
   re-measured from AABBs, not trusted; the suburban `driveway-long` palette is deleted
   (the RoadPath gravel profile is its replacement; driveway/path pieces remain as weld
   prefabs); and meshlib item ids restart clean — the id-stability *mechanism* stays, since
-  it protects every level built from LK1 onward. The **gym and flat are not kit levels**
-  (hand-built physics/boat/drown regression rigs, no AuthoringRoot) and are untouched.
+  it protects every level built from LK1 onward. The **gym and flat are untouched** — not
+  for compatibility's sake, but because they are hand-built physics/boat/drown regression
+  rigs with zero kit content (no AuthoringRoot); they are test equipment, not legacy.
   The launch roster (plan §5.3: gym, island, farm, harbor) is unchanged — farm and harbor
   are rebuilt from scratch in LK8, the island in P9.
+- **Build vs. adopt — decided, not skipped (plan §7 policy applied).** The custom tools
+  are a choice with reasons, not not-invented-here: Terrain3D is a GDExtension with its
+  own clipmap renderer and collision, conflicting with ground rule §2-2 (HeightMapShape3D
+  ground) and the web/gl_compatibility target; spline-road addons bring junction/marking
+  systems we explicitly exclude and none weld into our baked drivable body; HungryProton's
+  Scatter is the closest fit, but its output would still need converting into the
+  stored-transform bake contract below, which is most of the work — LK5 skims its API for
+  prior art before designing ours (plan §7 line-by-line credit rules apply if any code is
+  adopted). The deciding constraints are deterministic CI hashing, editor-free bake, and
+  web-first rendering; if one of those ever falls, re-evaluate adoption.
 
 ## 3. Phase overview
 
 | Phase | Delivers | Depends on |
 |---|---|---|
-| LK0 | Clean slate: farm + harbor deleted, registry/CI trimmed (kit_demo kept as CI bake fixture) | — |
-| LK1 | Clean kit re-derivation (scales, offsets, palettes) + curation import + nature kit + thumbnails | LK0 |
+| LK0 | Clean slate: farm + harbor + kit_demo deleted, registry/CI trimmed (baked smoke suspended until LK1) | — |
+| LK1 | Clean kit re-derivation (scales, offsets, palettes) + curation import + nature kit + `kit_fixture` CI bake level + thumbnails | LK0 |
 | LK2 | Palette dock: browse by family, search, click-to-place with ground snap | LK1 |
 | LK3 | Terrain generation: noise presets + island falloff + color-splat ground material | — |
 | LK4 | Terrain editing: sculpt brushes (raise/lower/smooth/flatten) + splat paint brush | LK3 |
 | LK5 | Scatter regions: seeded procedural fill node, bake integration | LK1 |
 | LK6 | Scatter brush: paint/erase front-end on the LK5 core | LK5, LK4's brush chassis |
 | LK7 | Spline road: extruded ribbon, terrain conform, welds into drivable body | LK3 |
-| LK8 | Build farm + harbor from scratch with the new tools; delete kit_demo; docs rewrite; perf check | all |
+| LK8 | Build farm + harbor from scratch with the new tools; docs rewrite; perf check | all |
 
-LK0→LK1 and LK3 are independent starts. If budget forces merges, LK0+LK1, LK3+LK4, and
-LK5+LK6 are the safe pairs to combine; never merge LK7 into anything.
+LK0→LK1 and LK3 are independent starts. If budget forces merges, LK0+LK1 (which also
+closes the baked-smoke coverage gap), LK3+LK4, and LK5+LK6 are the safe pairs to combine;
+never merge LK7 into anything. LK1 is one phase but two sessions: the thumbnail pipeline
+runs as its own prompt (LK1b), independent of the scale/curation work.
 
 ## 4. Phase details
 
 ### LK0 — Clean slate
 
-- Delete `src/levels/farm/` and `src/levels/harbor/` entirely (scenes, infos, bakes,
-  manifests, heightmap PNGs they alone use) and their `level_registry.gd` entries.
-- **kit_demo survives on purpose**: it is CI's baked-smoke target (`CARLITO_LEVEL:
-  kit_demo`) and the only coverage of the load→baked-swap→spawn path while LK5/LK7 are
-  rewiring the baker. It dies in LK8 when the new farm takes over that role.
+- Delete `src/levels/farm/`, `src/levels/harbor/`, **and kit_demo** entirely (scenes,
+  infos, bakes, manifests, heightmap PNGs they alone use) and their `level_registry.gd`
+  entries. No kit level built on the old lattice survives.
+- The CI baked-smoke step (`CARLITO_LEVEL: kit_demo`) is **removed from ci.yml here** and
+  reinstated by LK1 against `kit_fixture` — an accepted one-phase coverage gap; run LK0
+  and LK1 back-to-back.
 - Sweep for stragglers (docs links, test fixtures, CLAUDE.md's landed-levels claims);
-  full test suite + both CI smokes stay green.
+  full test suite + the default-boot smoke stay green.
 
 ### LK1 — Clean kit re-derivation, curation, nature kit, thumbnails
 
@@ -112,8 +139,11 @@ LK5+LK6 are the safe pairs to combine; never merge LK7 into anything.
   racing kit's v1-inherited y-offset overrides re-measured from the pieces' AABBs; the
   suburban `driveway-long` palette deleted (driveway/path pieces stay weld prefabs).
   Meshlib ids restart clean; the id-preservation mechanism and its test remain for
-  everything painted after this point. kit_demo's small road loop is repainted to the new
-  lattice as the scale-verification step and re-baked.
+  everything painted after this point. **`kit_fixture` is built here**
+  (`src/levels/dev/kit_fixture.tscn`): a minimal level on the new lattice — small road
+  loop, one prefab of each collision mode, a weld ramp, a spawn — registered with a `dev`
+  flag the level-select UI hides. It is the scale-verification step, the permanent CI
+  bake fixture, and the reinstated baked-smoke target (`CARLITO_LEVEL: kit_fixture`).
 - **Nature kit is in the repo, props-only (already copied).** Across the six original kits
   the vegetation inventory was four tree models, one grass tuft, and zero rocks — seeded
   scatter amplifies asset variety, and an island dressed from four items reads as
@@ -127,12 +157,23 @@ LK5+LK6 are the safe pairs to combine; never merge LK7 into anything.
   terrain is generated/sculpted heightmap and water is `WaterSurface`. LK1 only writes the
   recipe: measure with `tools/measure_kit.gd`, scale to the 1.8 m car, trees/rocks/stumps
   as `hull`/`box`, flat foliage/crops as `none`.
+- **Coverage gate — every asset in every kit is available, guaranteed.** The v1 workflow
+  worked because the importer processed *everything* by default; v2's include-globs made
+  availability an accident of pattern-writing (today roads exposes 12 of 72 GLBs as
+  prefabs, racing 52 of 112 — the rest palette tiles or silently unmatched).
+  `gen_kit_assets.gd` gains an exhaustiveness check: every GLB under `kit/raw/<kit>/`
+  must be matched by a palette include, a prefab pattern, or an explicit `exclude` entry
+  (with a reason string); the generator **fails listing the unaccounted assets**. LK1
+  brings all six existing recipes + nature to full coverage. From then on, dropping a new
+  kit in means: write one recipe, run the gen, and *all* of it is in the dock — the v1
+  "grab anything and start" experience, but checked.
 - **Thumbnail pipeline**: a game-mode tool scene (`tools/gen_thumbs.tscn`, run **windowed**
   — headless can't render) frames each prefab/palette mesh in a SubViewport against a
   neutral backdrop and writes `kit/thumbs/<kit>/<name>.png` (128², import as lossless).
   `gen_kit_assets.gd` then embeds them as MeshLibrary item previews, so the **built-in
   GridMap palette shows pictures immediately**. Thumbs regenerate only with the gen tool
-  (local, like palette regen — never CI).
+  (local, like palette regen — never CI). Runs as its own prompt (**LK1b**) — it is
+  independent of the scale/curation work and has a different failure mode.
 - Gallery scenes are **not** built — the LK2 dock supersedes them.
 - Meshlib item ids remain stable across regen (existing guarantee, keep it tested).
 - Export: `kit/thumbs/**` excluded from the web export like the rest of the kit sources.
@@ -146,6 +187,10 @@ LK5+LK6 are the safe pairs to combine; never merge LK7 into anything.
   level's `AuthoringRoot` (auto-found; error toast if absent), positioned by a physics
   raycast to the ground, with optional **random yaw** and **snap-to-grid** toggles in the
   dock toolbar. Escape/right-click cancels. Placement is undoable (`EditorUndoRedoManager`).
+  The placement ray tests physics first, then falls back to the level's
+  `HeightmapTerrain` height sample (or the Y=0 plane) on a miss — painted GridMap tiles
+  only have edit-time collision if the meshlib items carry shapes, and a click must never
+  dead-drop.
 - Palette *tiles* shown in the dock too, but selecting one just selects the right GridMap
   and item (painting stays the built-in GridMap workflow — never reimplement it).
 - Non-goal: no transform gizmo replacement — after placement, editing is normal editor work.
@@ -155,16 +200,23 @@ LK5+LK6 are the safe pairs to combine; never merge LK7 into anything.
 - `HeightmapTerrain` grows a **generator**: `FastNoiseLite`-driven, with `@export` knobs
   (preset enum: *island / rolling hills / plains / dunes*, seed, amplitude, feature scale,
   octaves) and a **radial falloff curve** for island shapes (edges → sea level). A
-  **Generate** tool button writes the heightmap image; **Rebuild** stays as-is. Generated
+  **Generate** tool button writes the heightmap image; **Rebuild** keeps its API. Generated
   heightmaps save as the level's PNG (lossless import rules unchanged), so the runtime
   path, `HeightMapShape3D` collision, and the §2-2 rule are untouched.
+- **The render mesh becomes chunked** (fixed-size tiles, e.g. 32–64 cells, one
+  MeshInstance3D each): a single terrain mesh is one cull unit, and an island-scale map
+  would draw ~500k always-on triangles on gl_compatibility. Chunks frustum-cull, and LK4
+  strokes rebuild only the chunks they touch. Collision stays **one** `HeightMapShape3D`
+  (§2-2 untouched). This is culling granularity, not LOD — LOD stays a non-goal.
 - **Color-splat ground material** (`kit/terrain/terrain_splat.gdshader` + a small material
   resource): 4 albedo colors (grass/dirt/sand/rock) blended by an RGBA **splatmap image**;
   a one-click **auto-splat** seeds it from slope + height (sand near water level, rock on
   steep slopes). No texture layers — low-poly color fields, gl_compatibility-safe.
 - Pure fns (falloff, noise→height remap, auto-splat classification) unit-tested in
   `tests/test_terrain_gen.gd`.
-- Generation is **destructive-by-button** (writes the image once, deterministic from seed),
+- Generation is **destructive-by-button and undoable** (writes the image once,
+  deterministic from seed, wrapped in one UndoRedo action snapshotting the prior image —
+  once LK4 sculpting exists, a stray Generate click must not destroy hours of brush work),
   never per-frame — bake hashing and git diffs stay sane.
 
 ### LK4 — Terrain brushes
@@ -172,13 +224,15 @@ LK5+LK6 are the safe pairs to combine; never merge LK7 into anything.
 - A viewport **brush chassis** in `addons/carlito_kit` (shared with LK6): while a
   `HeightmapTerrain` is selected, `EditorPlugin._forward_3d_gui_input` drives a circular
   brush cursor (radius/strength/falloff in an inspector-side panel); strokes edit the
-  in-memory `Image` and rebuild mesh+shape incrementally (region-limited rebuild — full
-  rebuild per stroke would crawl on big maps).
+  in-memory `Image` and rebuild incrementally — only the LK3 terrain chunks the stroke
+  touched, plus the shape's region — a full rebuild per stroke would crawl on big maps.
 - **Sculpt modes**: raise / lower / smooth / flatten-to-height. **Paint mode**: splat
   channel painting on the LK3 splatmap.
 - Strokes are undoable (snapshot the touched image region); **saving the scene saves the
   PNGs** (explicit save hook — never reimport per stroke).
-- Editor-only by construction: nothing the baker or runtime reads changes shape.
+- Editor-only by construction: the brushes change image **content** only — no new data
+  formats, no new runtime or baker code paths; the heightmap/splat PNGs stay the sole
+  artifact both already read.
 
 ### LK5 — Scatter regions
 
@@ -198,11 +252,18 @@ LK5+LK6 are the safe pairs to combine; never merge LK7 into anything.
   is just "transforms live in the .tscn".
 - **Editor/dev-play**: renders as one `MultiMeshInstance3D` per item type (cheap preview),
   plus dev collision only when the level is played unbaked.
-- **Bake**: the baker detects scatter nodes (duck-typed marker, like `is_carlito_kit_piece`)
-  and feeds each stored instance through the existing prefab path — meshes merge into
-  chunks, `hull`/`box` shapes harvest into chunk bodies. Bake stats report instance +
-  shape counts so a 5 000-tree mistake is visible before it ships. Collision-off items
-  (grass tufts, small rocks) cost zero physics.
+- **Bake**: the baker detects scatter nodes (duck-typed marker, like `is_carlito_kit_piece`).
+  Items **above an instance-count threshold** (default ~64, per-item override) bake as one
+  `MultiMeshInstance3D` per chunk × item type — same draw-call order as a merged surface
+  but geometry stored **once**, so an island-scale forest doesn't duplicate its verts into
+  every chunk mesh (.scn size, VRAM, web load time all scale with unique geometry, not
+  instance count). Items below the threshold merge through the existing prefab path.
+  Collision harvest is identical either way (`hull`/`box` shapes into chunk bodies). Bake
+  stats report instance + shape counts so a 5 000-tree mistake is visible before it ships.
+  Collision-off items (grass tufts, small rocks) cost zero physics.
+- **Stale-scatter guard**: each region stores a hash of the heightmap it snapped against;
+  on mismatch the node shows an editor configuration warning ("terrain changed —
+  regenerate"), so sculpting after scattering can't silently bake floating or buried props.
 - Non-goal: no runtime re-scatter, no painting-on-region masks (that's LK6's job).
 
 ### LK6 — Scatter brush
@@ -210,7 +271,8 @@ LK5+LK6 are the safe pairs to combine; never merge LK7 into anything.
 - Second front-end on the LK5 core, using the LK4 brush chassis: **`ScatterCanvas`**
   (`@tool` node under `Authoring`) stores hand-painted instances (item, transform) as data;
   brush **paints** (density-per-stroke, same jitter knobs) and **erases** (radius). Renders
-  and bakes exactly like a region (MultiMesh preview → baked merge/harvest).
+  and bakes exactly like a region (MultiMesh preview; at bake, the same LK5 path — MultiMesh
+  above the instance threshold, prefab merge below, identical collision harvest).
 - Undoable strokes; instances persist in the scene file (they're authored content, hashed
   by CI like everything else).
 
@@ -244,10 +306,18 @@ The riskiest phase; keep it on rails:
   dock. **Build the harbor from scratch**: quay + seabed + `WaterSurface` as before, but
   shoreline dressed with rock/vegetation scatter and watercraft prefabs from the dock.
   Both registered and baked; CI green.
-- **kit_demo is deleted** and the CI baked smoke retargets `CARLITO_LEVEL: farm`; the new
-  farm also replaces kit_demo as the docs' worked example.
-- This is the acceptance gate: if farm-quality dressing still feels like labor, the tools
-  failed — fix them now, before the island.
+- **Both levels are signal playgrounds** (§2): the farm gets a field where hitch + PTO
+  row-work feels like plowing (the implement already animates — the field layout is what
+  sells it); the harbor gets a course that makes pitch/roll perform (wake ramp off the
+  boat launch, tight buoy turns). Verified with sloppyCAN open: the signals must visibly
+  react to playing the level.
+- The CI baked smoke **adds** a `CARLITO_LEVEL: farm` run alongside the permanent
+  `kit_fixture` one — the fixture stays CI's minimal bake canary forever (levels can then
+  change freely without retargeting CI), the farm run covers a real shipped level
+  end-to-end; the farm is the docs' worked example.
+- This is the acceptance gate, on both axes: if farm-quality dressing still feels like
+  labor, the tools failed; if driving the farm doesn't make the ISOBUS signals perform,
+  the content failed. Fix either now, before the island.
 - **`docs/making_a_level.md` rewritten** around the new workflow (generate terrain → roads
   → paint splat → scatter → dress → bake); CLAUDE.md kit section updated.
 - **Perf check** stays the §5.4 guardrail: F3 in the worst view, < ~500 draw calls, on the
@@ -259,12 +329,15 @@ The riskiest phase; keep it on rails:
 | Risk | Mitigation |
 |---|---|
 | Brush editing feels laggy on big heightmaps | Region-limited mesh/shape rebuild (LK4); if still slow, rebuild shape on stroke-end only |
+| Island-scale terrain draws every triangle every frame (one mesh = one cull unit) | LK3 chunks the terrain render mesh; collision stays one HeightMapShape3D; LOD remains a non-goal |
 | Scatter collision explodes physics (1000s of static hulls) | Per-item collision toggle, bake-stat visibility, hull→cylinder simplification if Jolt broadphase ever measures hot |
+| Merged scatter geometry inflates .scn size / VRAM at island scale | MultiMesh emission above the per-item instance threshold (LK5) — geometry stored once, not per instance |
+| Sculpting after scattering silently bakes floating/buried props | Stale-scatter guard (LK5): heightmap hash per region + editor configuration warning |
 | Road ribbon vs. terrain z-fighting at the blend edges | Ribbon sits at flattened height + small epsilon; conform button owns the terrain under it |
 | Editor-tool code leaking into CI/headless paths | Hard split: expansion/generation logic is `@tool`-safe and editor-free; only `addons/carlito_kit` touches editor APIs (existing P6 rule, now load-bearing) |
 | Thumbnail pass needs a window | Local-only tool like palette regen (CI never renders thumbs; it only hashes them) |
 | Scope creep in LK7 | Non-goals written into the phase and the docs; junctions explicitly out |
-| No shipped level exercises the bake between LK0 and LK8 | kit_demo is retained as the CI bake fixture through exactly that window, repainted to the new lattice in LK1, deleted only when LK8's farm replaces it |
+| No level exercises the bake between LK0 and LK1 | Accepted one-phase gap — run LK0 and LK1 back-to-back; from LK1 on, the permanent `kit_fixture` covers load→baked-swap→spawn |
 
 ## 6. Global non-goals
 

@@ -2,7 +2,7 @@
 
 Companion to `level_kit_plan.md` (the spec — prompts reference its sections, don't paste
 them). All `prompting_guide.md` ground rules apply: one prompt = one fresh session, start
-in `carlito2`, zero v1 *code* reuse (LK1 reads v1 **settings JSON as data** — that's the
+in `carlito2`, zero v1 *code* reuse (LK1a reads v1 **settings JSON as data** — that's the
 user's authored curation, explicitly allowed by the plan), verify before moving on, commit
 at the end, update CLAUDE.md at the end of every prompt.
 
@@ -11,7 +11,8 @@ at the end, update CLAUDE.md at the end of every prompt.
 | Prompt | Review | Why |
 |---|---|---|
 | LK0 | none | mechanical deletion, gated by CI |
-| LK1 | quick (medium, same session) | data port + generator extension; regen output is inspectable |
+| LK1a | quick (medium, same session) | data port + generator extension; regen output is inspectable |
+| LK1b | none | local render pass; thumbs are inspected by eye |
 | LK2 | quick | editor-only dock; bugs are visible, not silent |
 | LK3 | quick | pure generation math is unit-tested; visuals verified by eye |
 | LK4 | quick | editor-only brushes; worst failure is a bad stroke you undo |
@@ -24,18 +25,21 @@ at the end, update CLAUDE.md at the end of every prompt.
 
 ### LK0 — Clean slate *(plan LK0)*
 
-> Read level_kit_plan.md §2 (clean slate) and §4 LK0. Delete src/levels/farm and
-> src/levels/harbor entirely (scenes, infos, bakes, manifests, and any heightmap PNGs only
-> they use) and remove their level_registry.gd entries. Keep kit_demo — it stays as CI's
-> baked-smoke fixture until LK8 — and do not touch gym or flat (hand-built regression
-> rigs). Sweep the repo for stragglers: docs links, test references, and CLAUDE.md's
-> landed-levels claims (update it to say farm/harbor are rebuilt in LK8). Run the full
-> test suite plus both headless smokes (default gym boot and CARLITO_LEVEL=kit_demo).
+> Read level_kit_plan.md §2 (clean slate) and §4 LK0. Delete src/levels/farm,
+> src/levels/harbor, and kit_demo entirely (scenes, infos, bakes, manifests, and any
+> heightmap PNGs only they use) and remove their level_registry.gd entries — no kit level
+> built on the old lattice survives. Remove the CI baked-smoke step
+> (CARLITO_LEVEL: kit_demo) from ci.yml; LK1a reinstates it against kit_fixture. Do not
+> touch gym or flat (hand-built physics regression rigs, not kit content). Sweep the repo
+> for stragglers: docs links, test references, and CLAUDE.md's landed-levels claims
+> (update it to say farm/harbor are rebuilt in LK8). Run the full test suite plus the
+> default-boot headless smoke.
 
 - **Run with:** Sonnet 5, default mode.
-- **You verify:** level select shows Gym + Kit Demo only; CI fully green.
+- **You verify:** level select shows Gym only; CI fully green (baked smoke absent by
+  design until LK1a).
 
-### LK1 — Clean kit re-derivation, curation, nature kit, thumbnails *(plan LK1)*
+### LK1a — Clean kit re-derivation, curation, nature kit, fixture level *(plan LK1)*
 
 > Read level_kit_plan.md §4 LK1. Extend the kit recipe schema (`kit/import/<kit>.json`)
 > with a `families` block (name, regex match list, label) and per-asset overrides, then
@@ -54,27 +58,43 @@ at the end, update CLAUDE.md at the end of every prompt.
 > in each recipe), re-measure the racing kit's y-offsets from piece AABBs instead of
 > inheriting v1's numbers, delete the suburban driveway-long palette (driveway/path stay
 > weld prefabs), and let meshlib ids restart clean while keeping the id-preservation
-> mechanism and its test. Repaint kit_demo's road loop to the new lattice and re-bake it —
-> that is the scale-verification step. Build the thumbnail
-> pipeline: a game-mode tool scene `tools/gen_thumbs.tscn` (run windowed, not headless)
-> rendering each prefab and palette item to `kit/thumbs/<kit>/<name>.png` (128px, lossless
-> import), and make gen_kit_assets.gd embed them as MeshLibrary item previews. Preserve
-> meshlib item ids across regen (keep that test green). Exclude kit/thumbs from the web
-> export and verify by pck byte-scan like P6 did. Regenerate everything, re-bake affected
-> levels, run the full test suite.
+> mechanism and its test. Add the coverage gate to gen_kit_assets.gd: every GLB under
+> kit/raw/<kit>/ must be matched by a palette include, a prefab pattern, or an explicit
+> exclude entry carrying a reason string — the generator fails listing unaccounted assets
+> — then bring all seven recipes to full coverage (today roads exposes 12/72 GLBs as
+> prefabs, racing 52/112; account for every one). Build kit_fixture (src/levels/dev/kit_fixture.tscn): a minimal
+> level on the new lattice — small road loop, one prefab of each collision mode, a weld
+> ramp, a vehicle spawn — registered with a dev flag that hides it from the level-select
+> UI. It is the scale-verification step and the permanent CI bake fixture: bake it and
+> reinstate the CI baked-smoke step as CARLITO_LEVEL=kit_fixture. Regenerate everything,
+> run the full test suite.
 
 - **Run with:** Opus 4.8, default mode (the scale/offset re-derivation is judgment work —
-  the eyeballed version of it is one of the warts being removed; the rest is data + a
-  render pass).
-- **Already done (this session):** the nature kit's 200 prop GLBs + License.txt are in
-  `kit/raw/nature/`, the import cache is built, and README credits it — LK1 starts at the
+  the eyeballed version of it is one of the warts being removed; the rest is data work).
+- **Already done (earlier session):** the nature kit's 200 prop GLBs + License.txt are in
+  `kit/raw/nature/`, the import cache is built, and README credits it — LK1a starts at the
   recipe.
-- **You verify:** open a GridMap in the editor — the palette shows **pictures**; thumbs
-  folder full and sensible; nature prefabs correctly scaled next to the car in gym. Then
-  place one nature tree in kit_demo, re-bake, and check the **web export** still renders
-  its colors — unlike the other kits, nature GLBs carry materials internally (no external
-  Textures/ folder), and raw glbs are excluded from the export, so the baked scene must
-  carry those materials itself. CI green.
+- **You verify:** nature prefabs correctly scaled next to the car in gym; drive the
+  kit_fixture road loop baked (correct lane fit is the point of the re-derivation). Then
+  place one nature tree in kit_fixture, re-bake, and check the **web export** still
+  renders its colors — unlike the other kits, nature GLBs carry materials internally (no
+  external Textures/ folder), and raw glbs are excluded from the export, so the baked
+  scene must carry those materials itself. CI green (baked smoke back on).
+
+### LK1b — Thumbnail pipeline *(plan LK1)*
+
+> Read level_kit_plan.md §4 LK1 (thumbnail bullet). Build the thumbnail pipeline: a
+> game-mode tool scene tools/gen_thumbs.tscn (run windowed, not headless — headless can't
+> render) framing each prefab and palette item in a SubViewport against a neutral backdrop
+> and writing kit/thumbs/<kit>/<name>.png (128px, lossless import). Make gen_kit_assets.gd
+> embed them as MeshLibrary item previews so the built-in GridMap palette shows pictures.
+> Preserve meshlib item ids across regen (keep that test green). Exclude kit/thumbs from
+> the web export and verify by pck byte-scan like P6 did. Regenerate everything, run the
+> full test suite.
+
+- **Run with:** Opus 4.8, default mode (a render pass with a clear spec).
+- **You verify:** open a GridMap in the editor — the palette shows **pictures**; the
+  thumbs folders are full and the images sensible (framed, lit, not black). CI green.
 
 ### LK2 — Palette dock *(plan LK2)*
 
@@ -84,7 +104,10 @@ at the end, update CLAUDE.md at the end of every prompt.
 > on viewport click via ground raycast, with toolbar toggles for random yaw and grid snap;
 > right-click/Escape cancels; placement undoable via EditorUndoRedoManager. Selecting a
 > palette tile selects the matching GridMap + item instead (never reimplement GridMap
-> painting). Handle the no-AuthoringRoot case with a clear error. Keep every editor API
+> painting). The placement ray tests physics first and falls back to the level's
+> HeightmapTerrain height sample (or the Y=0 plane) on a miss — painted GridMap tiles only
+> have edit-time collision if the meshlib items carry shapes, and a click must never
+> dead-drop. Handle the no-AuthoringRoot case with a clear error. Keep every editor API
 > inside addons/carlito_kit (the plan's editor/runtime split). think hard.
 
 - **Run with:** Opus 4.8, `think hard`, **Plan Mode** first (editor plugin APIs have real
@@ -99,11 +122,16 @@ at the end, update CLAUDE.md at the end of every prompt.
 > preset enum (island / rolling hills / plains / dunes), seed, amplitude, feature scale,
 > octaves, and a radial falloff curve for islands; a Generate tool button writes the
 > level's heightmap PNG (lossless import rules unchanged — runtime get_image(),
-> HeightMapShape3D collision, and plan §2 rule 2 stay intact). Add the color-splat ground
+> HeightMapShape3D collision, and plan §2 rule 2 stay intact). Chunk the render mesh
+> (fixed-size tiles, one MeshInstance3D each) so island-scale maps frustum-cull instead
+> of drawing one giant always-on mesh — collision stays a single HeightMapShape3D; this
+> is culling granularity, not LOD. Add the color-splat ground
 > material: `kit/terrain/terrain_splat.gdshader`, 4 albedo colors blended by an RGBA
 > splatmap image, gl_compatibility-safe, plus a one-click auto-splat seeded from slope +
-> height. Generation is destructive-by-button and deterministic from the seed — never
-> per-frame. Unit-test the pure fns (falloff, remap, auto-splat classification) in
+> height. Generation is destructive-by-button, deterministic from the seed, and undoable
+> (one UndoRedo action snapshotting the prior image — a stray click must not destroy
+> hand-sculpted work once LK4 lands) — never per-frame. Unit-test the pure fns (falloff,
+> remap, auto-splat classification) in
 > tests/test_terrain_gen.gd. Demo: generate an island heightmap in a scratch scene and
 > auto-splat it. think hard.
 
@@ -118,10 +146,12 @@ at the end, update CLAUDE.md at the end of every prompt.
 > (design it for reuse — LK6's scatter brush rides the same chassis): while a
 > HeightmapTerrain is selected, _forward_3d_gui_input drives a circular brush cursor with
 > radius/strength/falloff controls. Sculpt modes raise/lower/smooth/flatten-to-height edit
-> the in-memory heightmap Image with region-limited mesh+shape rebuild per stroke; paint
+> the in-memory heightmap Image, rebuilding only the LK3 terrain chunks the stroke touched
+> (plus the shape's region) per stroke; paint
 > mode edits the LK3 splatmap. Strokes undoable (snapshot touched region); PNGs saved on
-> scene save, never reimported per stroke. Editor-only: nothing the baker or runtime reads
-> changes shape. think hard.
+> scene save, never reimported per stroke. Editor-only: brushes change image content only
+> — no new data formats, no new runtime or baker code paths; the heightmap/splat PNGs
+> stay the sole artifact. think hard.
 
 - **Run with:** Opus 4.8, `think hard`. Plan Mode optional; the chassis/undo design is the
   part worth planning.
@@ -131,7 +161,10 @@ at the end, update CLAUDE.md at the end of every prompt.
 
 ### LK5 — Scatter regions *(plan LK5)*
 
-> Read level_kit_plan.md §4 LK5. Implement ScatterRegion (kit/helpers, @tool, placed under
+> Read level_kit_plan.md §4 LK5 and §2 (build vs. adopt). Before designing the API, skim
+> HungryProton's Scatter addon for prior art — design reference only, our stored-transform
+> bake contract is the non-negotiable; plan §7 credit rules apply if any code is adopted.
+> Implement ScatterRegion (kit/helpers, @tool, placed under
 > Authoring): box/polygon footprint, item table (prefab, weight, collision on/off), density,
 > min spacing, seed, yaw/scale jitter, max slope. Placement is a pure static
 > generate_placements(params) with rejection-sampled spacing, unit-tested in
@@ -140,12 +173,18 @@ at the end, update CLAUDE.md at the end of every prompt.
 > placement, ground-snaps each instance by raycast against the live edited scene, and
 > stores the final transforms in the scene as compact packed arrays per item type. The
 > baker and dev-play consume stored transforms only — no raycast, no expansion, no physics
-> in the baker, so editor and bake can never diverge. Editor/dev-play renders one
-> MultiMeshInstance3D per item plus dev collision when unbaked; the baker detects scatter
-> nodes by duck-typed marker and routes each stored instance through the existing prefab
-> merge/harvest path — report instance and shape counts in bake stats. Collision-off items
-> add zero physics. Everything the baker touches must run editor-free (game-mode tool
-> scene, the P6 CLI lesson). Re-bake and keep CI green. ultrathink.
+> in the baker, so editor and bake can never diverge. Each region stores a hash of the
+> heightmap it snapped against and shows an editor configuration warning on mismatch —
+> sculpt-after-scatter must never silently bake floating or buried props. Editor/dev-play
+> renders one MultiMeshInstance3D per item plus dev collision when unbaked; the baker
+> detects scatter nodes by duck-typed marker — items above an instance-count threshold
+> (default ~64, per-item override) bake as one MultiMeshInstance3D per chunk × item type
+> (geometry stored once; an island-scale forest must not duplicate its verts into merged
+> chunk meshes), items below it route through the existing prefab merge path, and
+> collision harvest is identical either way — report instance and shape counts in bake
+> stats. Collision-off items add zero physics. Everything the baker touches must run
+> editor-free (game-mode tool scene, the P6 CLI lesson). Re-bake and keep CI green.
+> ultrathink.
 
 - **Run with:** Fable 5, `ultrathink`, **Plan Mode** first. This phase feeds the baker —
   the same silent-failure class that made P6 a deep-review prompt.
@@ -196,14 +235,19 @@ at the end, update CLAUDE.md at the end of every prompt.
 > tree lines/orchard as ScatterRegions, clutter via the scatter brush, buildings/fences
 > placed from the dock. Build the harbor from scratch: quay + seabed + WaterSurface, boat
 > launches and hulls from the watercraft prefabs, shoreline rock/vegetation scatter.
-> Register and bake both; delete kit_demo (scene, bakes, registry entry) and retarget the
-> CI baked smoke to CARLITO_LEVEL=farm; keep CI green and F3 under the §5.4 budget in the
-> worst view. Rewrite docs/making_a_level.md around the new workflow (generate terrain →
+> Both levels are signal playgrounds (plan §2): the farm must include a field where
+> lowering the hitch and running the PTO along crop rows feels like plowing; the harbor
+> a course — wake ramp off the boat launch, tight buoy turns — that makes pitch/roll
+> perform. Register and bake both; add a second CI baked-smoke run with CARLITO_LEVEL=farm
+> (kit_fixture stays the permanent minimal canary); keep CI green and F3 under the §5.4
+> budget in the worst view. Rewrite docs/making_a_level.md around the new workflow
+> (generate terrain →
 > roads → splat paint → scatter → dress → bake) with the farm as the worked example, and
 > update the CLAUDE.md kit section. If any step still feels like manual labor, stop and
 > report it rather than pushing through — that's a tool defect, not a content problem.
 
 - **Run with:** Sonnet 5, default mode.
 - **You verify:** play both levels start to finish; the farm should finally look *dressed*
-  (not four trees); the doc walkthrough should be followable by a non-designer. This is
-  the acceptance gate before the island (P9).
+  (not four trees); with sloppyCAN open, plow a farm row and run the harbor course — the
+  ISOBUS and pitch/roll signals should visibly perform; the doc walkthrough should be
+  followable by a non-designer. This is the acceptance gate before the island (P9).

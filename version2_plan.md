@@ -259,9 +259,19 @@ Each milestone ends with a verifiable state; don't start the next until verified
   `making_a_level.md` and produces a drivable level; ISOBUS signals visible in sloppyCAN.*
 - **M6 — Boat + harbor.** Water height API, buoyancy boat, water spawns, harbor level. *Verify:
   boat floats/pitches/rolls, telemetry sane; car falls in water and respawns.*
-- **M7 — Island remake + launch.** Island rebuilt with the kit, level select UI, perf pass against
-  budget, docs, retire v1 (redirect). *Verify: all four levels playable in deployed web build; perf
-  budget met; v1 URL redirects.*
+- **M7 — Island remake + launch.** Island rebuilt with the kit — the road deliberately routed to
+  make telemetry perform (a long grade for engine_load, hairpins for slip, a crest for the impact
+  bit, a dark stretch for lights; no missions — the sandbox is the CAN telemetry, and the level's
+  job is to make it visible and fun) — level select UI, perf pass against budget, docs, retire v1
+  (redirect). *Verify: all four levels playable in deployed web build; perf budget met; v1 URL
+  redirects.*
+- **Launch polish — engine audio (deliberately last).** An RPM-driven procedural engine loop per
+  vehicle: the horn already proves the pattern (synthesized AudioStreamWAV, zero assets) and the
+  drivetrain RPM is real (§2 rule 3), so the seam is one audio player on BaseVehicle with pitch
+  from rpm and gain from throttle/load — no architecture change, which is why it can safely wait.
+  Boat wind/engine and tractor PTO whine follow the same pattern. Nothing may depend on this
+  item; it lands after the perf pass. *Verify: engine pitch follows the tacho through the gears;
+  silent in menus.*
 
 ### 5.4 Perf budget (checked from M1, hard-gated at M7)
 
