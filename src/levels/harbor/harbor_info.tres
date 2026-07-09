@@ -4,6 +4,6 @@
 
 [resource]
 script = ExtResource("1_info")
-display_name = "Dev Gym"
-allowed_vehicles = PackedStringArray("car", "truck", "tractor", "boat")
-default_vehicle = "car"
+display_name = "Harbor"
+allowed_vehicles = PackedStringArray("boat", "car", "truck")
+default_vehicle = "boat"

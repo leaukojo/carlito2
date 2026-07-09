@@ -104,8 +104,16 @@ func _build(vehicle_type: String) -> void:
 	cluster.add_theme_constant_override("separation", 24)
 	col.add_child(cluster)
 
-	_speedo = _make_gauge("kmh", "SPEED", 8)
-	cluster.add_child(_speedo)
+	# A gauge is only built when the vehicle declares its signal (contract-driven like
+	# the bars/lamps): the boat has no 'rpm'/'gear', so its cluster is speedo-only —
+	# the gear text lives in the tacho gap and goes with it.
+	var out_names: Array = Contract.data.signals_for_vehicle(vehicle_type, "out") \
+			.map(func(s: RefCounted) -> String: return s.name)
+
+	_speedo = null
+	if out_names.has("kmh"):
+		_speedo = _make_gauge("kmh", "SPEED", 8)
+		cluster.add_child(_speedo)
 
 	var mid := VBoxContainer.new()
 	mid.custom_minimum_size = Vector2(280, 0)
@@ -118,8 +126,10 @@ func _build(vehicle_type: String) -> void:
 	_readout.add_theme_color_override("font_color", READOUT_COLOR)
 	mid.add_child(_readout)
 
-	_tach = _make_gauge("rpm", "RPM", 8)
-	cluster.add_child(_tach)
+	_tach = null
+	if out_names.has("rpm"):
+		_tach = _make_gauge("rpm", "RPM", 8)
+		cluster.add_child(_tach)
 
 
 ## Build the tell-tale row: state chips for the enum inputs, then a lamp per bool

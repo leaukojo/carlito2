@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 
 const T := preload("res://src/vehicles/base/vehicle_telemetry.gd")
 const TractorT := preload("res://src/vehicles/tractor/tractor_telemetry.gd")
+const BoatT := preload("res://src/vehicles/boat/boat_telemetry.gd")
 const ContractScript := preload("res://src/bridge/contract.gd")
 
 
@@ -138,12 +139,13 @@ func test_to_bridge_dict_covers_every_ground_out_signal() -> void:
 	var file := FileAccess.open(ContractScript.CONTRACT_PATH, FileAccess.READ)
 	assert_object(file).is_not_null()
 	var contract := ContractScript.ContractData.parse(file.get_as_text())
-	# The tractor publishes via TractorTelemetry (adds the ISOBUS out fields), so its
-	# coverage must be checked against that subclass, not the base struct.
+	# The tractor/boat publish via their telemetry subclasses (extra out fields), so
+	# their coverage must be checked against those subclasses, not the base struct.
 	var keys_by_vehicle := {
 		"car": T.new().to_bridge_dict().keys(),
 		"truck": T.new().to_bridge_dict().keys(),
 		"tractor": TractorT.new().to_bridge_dict().keys(),
+		"boat": BoatT.new().to_bridge_dict().keys(),
 	}
 	for vehicle in keys_by_vehicle:
 		var keys: Array = keys_by_vehicle[vehicle]

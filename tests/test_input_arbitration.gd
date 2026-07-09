@@ -225,6 +225,26 @@ func test_merge_local_ors_implement_toggle_edges() -> void:
 	assert_bool(none["pto_toggle"]).is_false()
 
 
+# --- boat rudder (contract v5, M6) --------------------------------------------
+
+func test_bridge_rudder_overrides_steer_when_present() -> void:
+	# sloppyCAN driving a boat sends 'rudder' (bridge_source only includes the key
+	# when sent): it becomes the steer channel, whatever 'steer' says.
+	var vals := _bridge(0.0, 0.0, 0.9, 0.0, GEAR_D1)
+	vals["rudder"] = -0.6
+	var out: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(vals)
+	assert_float(out.steer).is_equal_approx(-0.6, 1e-6)
+	# Clamped like steer.
+	vals["rudder"] = -1.7
+	assert_float(RouterScript.arbitrate_bridge(vals).steer).is_equal(-1.0)
+
+
+func test_bridge_steer_unchanged_without_rudder() -> void:
+	# Cars/trucks never send 'rudder' — steer passes through exactly as before.
+	var out: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(0.0, 0.0, 0.9, 0.0, GEAR_D1))
+	assert_float(out.steer).is_equal_approx(0.9, 1e-6)
+
+
 func test_bridge_mirrors_lamp_bits_verbatim() -> void:
 	var vals := _bridge(0.0, 0.0, 0.0, 0.0, GEAR_D1)
 	vals["turnL"] = true

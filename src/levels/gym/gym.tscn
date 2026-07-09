@@ -1,4 +1,4 @@
-[gd_scene load_steps=34 format=3]
+[gd_scene load_steps=35 format=3]
 
 [ext_resource type="Script" path="res://src/levels/base/level.gd" id="1_level"]
 [ext_resource type="Resource" path="res://src/levels/gym/gym_info.tres" id="2_info"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://src/levels/base/vehicle_spawn.gd" id="6_spawn"]
 [ext_resource type="Texture2D" path="res://src/levels/gym/bumps_small.png" id="7_bsmall"]
 [ext_resource type="Texture2D" path="res://src/levels/gym/bumps_mixed.png" id="8_bmixed"]
+[ext_resource type="Script" path="res://src/water/water_surface.gd" id="9_water"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 
@@ -393,15 +394,21 @@ pixel_size = 0.02
 billboard = 1
 font_size = 48
 outline_size = 16
-text = "Empty pool basin - 24x24 m, walls 2.5 m
-(water lands M6)"
+text = "Pool - 24x24 m, water 1.9 m deep
+boat floats, everything else drowns + respawns"
 
 [node name="Spawn" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 20)
 script = ExtResource("6_spawn")
 
 [node name="WaterSpawn" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 1.5, 55)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 2.3, 55)
 script = ExtResource("6_spawn")
 vehicle_types = PackedStringArray("boat")
 is_water = true
+
+[node name="PoolWater" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 2, 55)
+script = ExtResource("9_water")
+size = Vector2(23.5, 23.5)
+depth = 1.9

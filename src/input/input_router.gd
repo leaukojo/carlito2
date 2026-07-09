@@ -216,7 +216,9 @@ static func arbitrate_local(raw: Dictionary, speed: float, gear_byte: int,
 ## pass through. Values arrive already normalized to VehicleInput ranges from bridge_source.
 static func arbitrate_bridge(vals: Dictionary) -> VehicleInput:
 	var out := VehicleInput.new()
-	out.steer = clampf(float(vals.get("steer", 0.0)), -1.0, 1.0)
+	# Boat rudder (contract v5, M6 decision): the rudder IS the steer channel — when
+	# sloppyCAN sends 'rudder' it overrides 'steer'; absent, cars/trucks are untouched.
+	out.steer = clampf(float(vals.get("rudder", vals.get("steer", 0.0))), -1.0, 1.0)
 	out.handbrake = clampf(float(vals.get("handbrake", 0.0)), 0.0, 1.0)
 	out.brake = clampf(float(vals.get("brake", 0.0)), 0.0, 1.0)
 	out.key = int(vals.get("key", KEY_IGNITION))

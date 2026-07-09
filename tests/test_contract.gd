@@ -27,10 +27,10 @@ func _real_contract() -> ContractScript.ContractData:
 	return _parse_file(ContractScript.CONTRACT_PATH)
 
 
-func test_real_contract_is_valid_v4() -> void:
+func test_real_contract_is_valid_v5() -> void:
 	var data := _real_contract()
 	assert_array(data.errors).is_empty()
-	assert_int(data.version).is_equal(4)
+	assert_int(data.version).is_equal(5)
 
 
 func _assert_v1_signals_present(names: PackedStringArray, dir: String) -> void:
@@ -110,14 +110,18 @@ func test_battery_resolves_distinctly_per_dir() -> void:
 	assert_str(volts.type).is_equal("f32")
 
 
-func test_todo_entries_load_and_report_todo() -> void:
+func test_contract_is_fully_implemented() -> void:
 	var data := _real_contract()
 	# Tractor ISOBUS signals landed in P5b (v4): no longer todo, still flavored isobus.
 	assert_bool(data.is_todo("hitch_pos", "in")).is_false()
 	var hitch := data.get_signal_def("hitch_pos", "in")
 	assert_str(hitch.flavor).is_equal("isobus")
-	# Boat signals remain todo (M6).
-	assert_bool(data.is_todo("pitch", "out")).is_true()
+	# Boat signals landed in P8 (M6, v5) — as of v5 NO signal is todo anymore.
+	assert_bool(data.is_todo("pitch", "out")).is_false()
+	for sig in data.signals:
+		assert_bool(sig.todo) \
+			.override_failure_message("signal still marked todo: %s/%s" % [sig.dir, sig.name]) \
+			.is_false()
 
 
 func test_signals_for_vehicle_filters() -> void:

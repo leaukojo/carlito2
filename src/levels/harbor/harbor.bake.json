@@ -1,0 +1,14 @@
+{
+	"baker_version": 1,
+	"chunk_size": 48.0,
+	"input_hash": "4b659fd53cda23345a1f7e8cd68d6a81771c2d55dee2bf1301f65ea799bb39dc",
+	"level": "res://src/levels/harbor/harbor.tscn",
+	"stats": {
+		"bodies": 7,
+		"chunks": 9,
+		"drivable_triangles": 256,
+		"shapes": 10,
+		"surfaces": 9,
+		"vertices": 9644
+	}
+}

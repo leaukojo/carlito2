@@ -7,10 +7,10 @@ Carlito v1 with real vehicle physics (raycast suspension + simplified drivetrain
 shared signal contract (`contract/carlito_contract.json`), and CI-deployed web builds.
 
 - **Plan of record:** [`version2_plan.md`](version2_plan.md) — architecture, milestones, rules.
-- **Status:** M5 + level kit — car/truck/tractor with telemetry dashboard, web CAN bridge,
-  ISOBUS implement signals, and the level-authoring kit (Kenney palettes/prefabs + chunk bake
-  tool with CI stale-bake gate). See [`docs/making_a_level.md`](docs/making_a_level.md) to
-  build a level without design skills.
+- **Status:** M6 — car/truck/tractor/boat with telemetry dashboard, web CAN bridge, ISOBUS
+  implement signals, water + probe buoyancy (gym pool, harbor level), and the level-authoring
+  kit (Kenney palettes/prefabs + chunk bake tool with CI stale-bake gate). See
+  [`docs/making_a_level.md`](docs/making_a_level.md) to build a level without design skills.
 - **Deployed build:** https://leaukojo.github.io/carlito2/
 - **Dev docs:** [`CLAUDE.md`](CLAUDE.md) (how to run, test, export).
 

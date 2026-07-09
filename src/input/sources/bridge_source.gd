@@ -12,7 +12,7 @@ func poll() -> Dictionary:
 	var v := Bridge.get_input_values()
 	if v.is_empty():
 		return {"active": false}
-	return {
+	var out := {
 		"active": true,
 		"accel": clampf(float(v.get("accel", 0.0)) / 100.0, 0.0, 1.0),
 		"brake": clampf(float(v.get("brake", 0.0)) / 100.0, 0.0, 1.0),
@@ -32,3 +32,9 @@ func poll() -> Dictionary:
 		"hitch_pos": clampf(float(v.get("hitch_pos", 100.0)), 0.0, 100.0),
 		"pto": bool(v.get("pto", false)),
 	}
+	# Boat rudder (M6 decision, contract v5): included ONLY when sloppyCAN sends it —
+	# presence is what makes it override 'steer' in arbitrate_bridge. Normalized %→unit
+	# like steer.
+	if v.has("rudder"):
+		out["rudder"] = clampf(float(v.get("rudder", 0.0)) / 100.0, -1.0, 1.0)
+	return out

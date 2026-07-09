@@ -13,8 +13,8 @@ the prompt-per-milestone build playbook — read the current prompt's entry befo
 milestone task.
 
 **`version2_plan.md` (repo root) is the plan of record.** Read the section a task references
-before implementing. Milestones M0–M7 are in §5.3; **M0–M5 plus the level kit (P6) have landed** — remaining:
-water/boat/harbor (M6/P8), island (M7/P9), perf pass + launch (P10).
+before implementing. Milestones M0–M7 are in §5.3; **M0–M6 plus the level kit (P6) have landed** — remaining:
+island (M7/P9), perf pass + launch (P10).
 
 ## v1 is a reference spec, NEVER a code source
 
@@ -76,7 +76,8 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   a level. `src/levels/gym/gym.tscn` is the fully dressed dev gym: flat zone, two ramps, a
   heightmap hill (`hill_heightmap.png`, keep import lossless/no-mipmap so runtime `get_image()`
   works), ice/mud friction strips (PhysicsMaterial-tagged; wheels don't sample surface friction
-  yet), a slalom cone line, and an empty walled pool basin (water lands M6).
+  yet), a slalom cone line, and a walled pool basin holding a `WaterSurface` (the M6 boat/drown
+  regression rig — boat is in the gym roster).
 - Levels are self-contained scenes composed by the shell (plan §2 rule 6); boot instances one
   directly today, level-select UI lands M7.
 
@@ -170,8 +171,8 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   which respawns at a matching `VehicleSpawn` and emits `Level.vehicle_changed(type)` so the shell
   rebinds the dashboard/bridge to the new type. `Dashboard.bind` now reads `GameState.current_vehicle`
   (the spawned type), falling back to `LevelInfo.default_vehicle`. Open with **G** (or the touch
-  GARAGE button). The gym roster is now `car`/`truck`/`tractor`; adding a vehicle = a `VEHICLE_SCENES`
-  entry + the type in a level's `allowed_vehicles`.
+  GARAGE button). The gym roster is now `car`/`truck`/`tractor`/`boat`; adding a vehicle = a
+  `VEHICLE_SCENES` entry + the type in a level's `allowed_vehicles`.
 - **Touch controls** (`src/ui/touch_controls.gd`) are a second **local `InputSource`** registered via
   `InputRouter.set_touch_source()`: a steering joystick (bottom-left, horizontal axis), gas/brake
   pedals (bottom-right), and a right-edge button stack (HORN/LIGHTS/HAND + GARAGE/RESPAWN). It
@@ -183,10 +184,10 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
 
 ## Machinery — tractor + implement + ISOBUS (M5, landed — plan §1, §3, §4.4)
 
-- **Contract is v4.** The six tractor ISOBUS signals are live (no longer `todo`): `hitch_pos`/`pto`
-  in, `hitch_pos_actual`/`pto_state`/`pto_rpm`/`engine_load` out (all `flavor: "isobus"`). Only
-  **boat** signals remain `todo` (M6). Regen the sloppyCAN copy after any contract edit
-  (`node tools/gen_js_contract.mjs`).
+- **Contract is v5.** The six tractor ISOBUS signals are live (no longer `todo`): `hitch_pos`/`pto`
+  in, `hitch_pos_actual`/`pto_state`/`pto_rpm`/`engine_load` out (all `flavor: "isobus"`). The five
+  boat signals landed at M6/v5 — **nothing is `todo` anymore**. Regen the sloppyCAN copy after any
+  contract edit (`node tools/gen_js_contract.mjs`).
 - **`TractorVehicle extends BaseVehicle`** (`src/vehicles/tractor/tractor.gd`) — a real subclass
   because it owns per-tick hitch/PTO state. It never forks `_physics_process`; the base grew **two
   tiny virtual seams**: `_make_telemetry()` (factory, `_ready` builds `telemetry` from it — tractor
@@ -267,6 +268,51 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   `src/levels/dev/kit_demo.tscn` is its worked example — road loop, ramp, prefabs, baked +
   registered). Gym predates the kit and stays hand-built (no AuthoringRoot: check skips it).
 
+## Water & boat — M6 (P8, landed — plan §1, §4.4, §8)
+
+- **`WaterSurface`** (`src/water/water_surface.gd`, `@tool Area3D`, group `"water"`) is one node
+  = three things: the **height API** (`get_height(pos)` returns the node's global Y — **flat**;
+  the vertex waves in `src/water/water.gdshader` are visual-only and must never feed physics,
+  plan §8), the visual plane, and the **non-boat kill/respawn volume** (plan §8): its box top
+  sits `kill_margin` below the surface so a shoreline splash isn't death; `body_entered` →
+  `call_deferred("respawn")` on any non-boat `BaseVehicle` (deferred — physics flush). The
+  region is an **axis-aligned rect** around the node origin (`contains_xz`) — don't rotate it.
+  Water is a direct child of the level (like terrain), **never under `Authoring`** (not bakeable
+  kit content).
+- **`BoatVehicle extends BaseVehicle`** (`src/vehicles/boat/`) follows the tractor template
+  exactly: only the two seams (`_make_telemetry()` → `BoatTelemetry`, `_tick_extras` = buoyancy/
+  drag/thrust/rudder), `respawn()` = `super()` + trim reset. `boat_spec.tres` is a plain
+  VehicleSpec with **empty `wheel_positions`** (BaseVehicle is zero-wheel-safe; the drivetrain
+  still ticks harmlessly — keep its 6 `gear_ratios`, `auto_shift` indexes up to byte 6). Boat
+  node knobs (probes, float_depth, thrust, rudder, drag, prop/keel offsets) are `@export` on
+  BoatVehicle, like the tractor's hitch knobs.
+- **Buoyancy = 4 probes with the RayWheel clamp discipline** (plan §1, 60 Hz locked): per-probe
+  spring k is **derived** (`m*g / (probes * float_depth)` — floats by construction), damper
+  clamped to the one-tick reversal impulse, total clamped `[0, max_probe_force_factor × weight
+  share]`; hull drag/yaw damping use `damped_force` (may at most zero the velocity it opposes in
+  one tick). All pure statics on BoatVehicle, unit-tested in `tests/test_boat.gd`. DO NOT weaken
+  the clamps. Feel comes from the levers: thrust at `prop_offset` below COM = bow-up under
+  throttle; lateral drag at `keel_offset` below COM = heel in turns.
+- **`BoatTelemetry extends VehicleTelemetry`** adds `pitch`/`roll` (straight from the basis:
+  `pitch_deg`/`roll_deg`, + = bow up / starboard down), `rudder_actual` (the slewed `_steer` as
+  %), and `trim` (**modeled honest value** like engine_load: `trim_step` chases forward
+  throttle). `to_bridge_dict()` = `super()` + the four; the boat is in test_telemetry's
+  coverage gate.
+- **Rudder = the steer channel** (M6 decision, recorded in the contract desc): the contract `in`
+  signal `rudder`, when sloppyCAN sends it, **overrides `steer`** in `arbitrate_bridge`
+  (bridge_source includes the key only when present); locally A/D steer the rudder. No new
+  VehicleInput field. The boat reads `input.steer`/`input.throttle` — reverse works through the
+  normal gear-owns-direction / S-at-standstill paths.
+- **Dashboard:** the two gauges are now built only when the vehicle declares their signal
+  (`kmh`/`rpm` in `signals_for_vehicle`) — the boat gets a speedo, no tacho. Its PITCH/ROLL bars
+  are pure contract metadata (`warn` 30/45); `rudder_actual`/`trim` are bridge-only (no honest
+  warn).
+- **Levels:** `boat` is in `Level.VEHICLE_SCENES` and the gym roster; gym's pool holds a
+  `WaterSurface` (drive the car in → drown respawn regression). The **harbor**
+  (`src/levels/harbor/`, registered id `harbor`, default vehicle boat) is quay + seabed +
+  160×140 water, dressed with watercraft prefabs (weld `ramp`/`ramp-wide` boat launches, hull
+  ships/boats, `none` buoys); baked + CI-checked like farm.
+
 ## Running / testing / exporting
 
 Godot binaries (4.6.3-stable): `C:\Users\Ccamy\Desktop\Godot\`. **Use
@@ -321,8 +367,9 @@ startup; tests fail if a v1-era signal goes missing. Signals are unique by **(na
 `battery` exists in both directions (in = warning LED, out = voltage). `warn` (added **v3**) is the
 danger threshold the dashboard highlights (tacho redline, low fuel, coolant overheat); the dash
 infers low- vs high-side from which end of `range` it sits near (`SignalDef.warn_is_low()`). The
-tractor ISOBUS signals landed at **M5 (v4)**; only **boat** entries are still marked
-`"status": "todo"` (until M6). Contract edits bump `version`; both sides warn on mismatch.
+tractor ISOBUS signals landed at **M5 (v4)**, the boat signals (`rudder` in;
+`pitch`/`roll`/`rudder_actual`/`trim` out) at **M6 (v5)** — no entry is `todo` anymore. Contract
+edits bump `version`; both sides warn on mismatch.
 
 **Contract sharing (plan §9.1, decided):** **synced copy**, canonical here. `tools/gen_js_contract.mjs`
 regenerates the sloppyCAN-side copy `../sloppycan/carlito_contract.js` (`window.CARLITO_CONTRACT`,
