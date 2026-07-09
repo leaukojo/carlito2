@@ -21,8 +21,9 @@ Code is MIT (see [LICENSE](LICENSE)); bundled art/audio assets are CC0 (Kenney k
 ### Credits
 
 - [Kenney](https://kenney.nl) (CC0) — the level-kit source models under `kit/raw/`:
-  City Kit (Roads / Suburban / Commercial / Industrial), Racing Kit, and Watercraft Pack.
-  Per-kit `License.txt` files are kept alongside the models.
+  City Kit (Roads / Suburban / Commercial / Industrial), Racing Kit, Watercraft Pack, and
+  Nature Kit (standalone props only). Per-kit `License.txt` files are kept alongside the
+  models.
 - [gdUnit4](https://github.com/MikeSchulze/gdUnit4) (MIT) — vendored test framework at
   `addons/gdUnit4/`.
 - [Dechode/Godot-Advanced-Vehicle](https://github.com/Dechode/Godot-Advanced-Vehicle) (MIT) and
