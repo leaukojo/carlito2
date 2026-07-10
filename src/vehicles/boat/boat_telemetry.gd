@@ -21,8 +21,8 @@ var trim := 0                      ## %, contract 'trim'
 ## Modeled engine trim (honest, plan §2 rule 3 latitude for aux systems): the outdrive
 ## trims up with forward throttle demand and returns to zero off-throttle / in reverse,
 ## slewing at `rate` %/s. Pure -> unit-tested.
-static func trim_step(current: float, throttle: float, rate: float, delta: float) -> float:
-	var target := clampf(throttle, 0.0, 1.0) * 100.0
+static func trim_step(current: float, throttle_demand: float, rate: float, delta: float) -> float:
+	var target := clampf(throttle_demand, 0.0, 1.0) * 100.0
 	return move_toward(current, target, rate * delta)
 
 

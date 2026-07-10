@@ -152,8 +152,8 @@ static func probe_force(depth: float, vert_vel: float, k: float, damp: float,
 
 ## Linear damping force/torque against `vel`, clamped so one tick can at most ZERO the
 ## velocity it opposes, never reverse it (RayWheel's lateral cap — the anti-jitter rule).
-static func damped_force(vel: float, coeff: float, inertia: float, delta: float) -> float:
-	var tick_cap := inertia * absf(vel) / delta
+static func damped_force(vel: float, coeff: float, moment: float, delta: float) -> float:
+	var tick_cap := moment * absf(vel) / delta
 	return clampf(-coeff * vel, -tick_cap, tick_cap)
 
 
@@ -171,8 +171,8 @@ static func rudder_authority(forward_speed: float, throttle: float) -> float:
 
 
 ## Yaw inertia of a box hull footprint (kg*m^2) — the clamp basis for drag_yaw.
-static func yaw_inertia(mass: float, length: float, width: float) -> float:
-	return mass * (length * length + width * width) / 12.0
+static func yaw_inertia(body_mass: float, length: float, width: float) -> float:
+	return body_mass * (length * length + width * width) / 12.0
 
 
 ## Hull pitch in degrees, + = bow up. Read straight from the basis (plan §2 rule 3).
