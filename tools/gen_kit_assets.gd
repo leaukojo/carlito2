@@ -1,26 +1,38 @@
 extends SceneTree
-## Kit asset generator (plan §4.5): turns the CC0 GLBs under kit/raw/ into the two
-## authoring surfaces, driven by the kit/import/*.json recipes:
-##  - GridMap palettes (kit/palettes/<kit>.meshlib): item meshes with the kit's
-##    root_scale and alignment baked into the vertices (mesh_transform stays
-##    identity), materials deduped per kit, plus a trimesh shape per item so
-##    UNBAKED levels are playable in dev (the bake replaces GridMap collision with
-##    the single welded drivable body — palette tiles are all drivable);
-##  - prefab scenes (kit/prefabs/<kit>/<name>.tscn): a KitPiece root carrying the
-##    collision_mode, a scaled instance of the source GLB (ExtResource, so prefab
-##    files stay tiny), and a pre-generated "DevCollision" StaticBody3D whose
-##    shapes the baker later harvests into per-chunk bodies.
+## Kit asset generator (plan §4.5 / level_kit_plan.md §4 LK1): turns the CC0 GLBs under
+## kit/raw/ into the two authoring surfaces, driven by the kit/import/*.json recipes.
+##
+## Recipes are FAMILIES-DRIVEN (single source of truth, LK1): one ordered `families` list
+## classifies every GLB — first matching family wins, so ordering resolves overlaps and
+## patterns stay simple. Each family declares a pipeline:
+##   - "palette"  -> a MeshLibrary tile (kit/palettes/<kit>.meshlib): mesh with the kit's
+##                   scale + alignment baked into the verts, materials deduped per kit, plus
+##                   a trimesh dev shape so UNBAKED levels drive (the bake replaces GridMap
+##                   collision with the single welded drivable body). Road/tile kits only.
+##   - "prefab"   -> kit/prefabs/<kit>/<name>.tscn: a KitPiece root carrying collision_mode,
+##                   a scaled ExtResource instance of the GLB, and a pre-built DevCollision
+##                   StaticBody3D the baker harvests into per-chunk bodies.
+##   - "exclude"  -> not emitted (requires a non-empty reason string).
+##
+## COVERAGE GATE (LK1): every GLB under kit/raw/<kit>/ must match exactly one family, or the
+## generator FAILS listing the unaccounted names — availability can no longer be an accident
+## of pattern-writing. Per-family member counts are printed (catch-all families tagged) so an
+## oversized "box everything else" bucket — v1's actual failure — is visible, not silent.
 ##
 ## Run after --import (needs the GLB import cache):
 ##   godot --headless --path . --script res://tools/gen_kit_assets.gd            # all kits
 ##   godot --headless --path . --script res://tools/gen_kit_assets.gd -- racing  # one kit
 ##
-## Item ids in an existing .meshlib are preserved (painted GridMap cells reference
-## ids), so re-running the generator never re-numbers a palette.
+## Meshlib item ids are preserved across regens (painted GridMaps reference them); see
+## KitRecipe.assign_item_ids. Classification/id/coverage logic is pure + unit-tested in
+## tests/test_kit_gen.gd (kit/helpers/kit_recipe.gd).
 
 const Baker := preload("res://kit/bake/level_baker.gd")
+const Recipe := preload("res://kit/helpers/kit_recipe.gd")
 const KIT_PIECE_SCRIPT := "res://kit/helpers/kit_piece.gd"
 const RECIPE_DIR := "res://kit/import"
+const PREFAB_DIR := "res://kit/prefabs"
+const DEFAULT_PREFAB_ALIGN := "center_floor"
 
 var _exit_code := 0
 
@@ -51,7 +63,14 @@ func _run_recipe(recipe_path: String) -> void:
 	var kit := String(recipe.get("kit", recipe_path.get_file().get_basename()))
 	var source := String(recipe.get("source", ""))
 	var scale := float(recipe.get("scale", 1.0))
-	var excludes: Array = recipe.get("exclude", [])
+	var palette_block: Dictionary = recipe.get("palette", {})
+	var families: Array = recipe.get("families", [])
+
+	var verrs := Recipe.validate_families(families)
+	if not verrs.is_empty():
+		for e in verrs:
+			_error("%s: %s" % [kit, e])
+		return
 
 	var dir := DirAccess.open(source)
 	if dir == null:
@@ -63,79 +82,78 @@ func _run_recipe(recipe_path: String) -> void:
 			names.append(f.get_basename())
 	names.sort()
 
-	var palette: Dictionary = recipe.get("palette", {})
-	var prefabs: Dictionary = recipe.get("prefabs", {})
+	# --- coverage gate ---
+	var c := Recipe.classify(names, families)
+	if not c.unaccounted.is_empty():
+		_error("%s: %d unaccounted GLB(s) — add to a family or an explicit exclude: %s" %
+				[kit, c.unaccounted.size(), ", ".join(c.unaccounted)])
+		return
+
+	# --- route accounted assets by their family's pipeline ---
+	var fam_by_name := {}
+	for fam: Dictionary in families:
+		fam_by_name[String(fam.get("name", ""))] = fam
 	var palette_items: Array[String] = []
-	var prefab_items := {}  # name -> collision_mode
-	var skipped := 0
-	var unmatched: Array[String] = []
-	for name in names:
-		if _matches_any(name, excludes):
-			skipped += 1
-			continue
-		if not palette.is_empty() and _matches_any(name, palette.get("include", [])):
-			palette_items.append(name)
-			continue
-		var mode := _prefab_mode(name, prefabs)
-		if mode != "":
-			prefab_items[name] = mode
-		else:
-			unmatched.append(name)
+	var palette_overrides := {}                 # name -> asset override dict
+	var prefab_items := {}                       # name -> {mode, ov}
+	for name: String in c.assignments:
+		var fam: Dictionary = fam_by_name[String(c.assignments[name])]
+		var pipeline := String(fam.get("pipeline", "prefab"))
+		var asset_ov: Dictionary = (fam.get("assets", {}) as Dictionary).get(name, {})
+		match pipeline:
+			"palette":
+				palette_items.append(name)
+				palette_overrides[name] = asset_ov
+			"prefab":
+				var mode := String(asset_ov.get("collision_mode", fam.get("collision_mode", "box")))
+				prefab_items[name] = {"mode": mode, "ov": asset_ov}
+			"exclude":
+				pass
+	palette_items.sort()
 
 	var mats := {}  # kit-wide material dedup: material_key -> duplicated Material
-	if not palette.is_empty():
-		_build_palette(kit, source, scale, palette, palette_items, mats)
-	if not prefabs.is_empty():
-		_build_prefabs(kit, source, scale, prefabs, prefab_items, mats)
-	print("[%s] palette=%d prefabs=%d excluded=%d unmatched=%d" %
-			[kit, palette_items.size(), prefab_items.size(), skipped, unmatched.size()])
-	if not unmatched.is_empty():
-		_error("%s: unmatched pieces (add to a recipe list or exclude): %s" %
-				[kit, ", ".join(unmatched)])
+	if not palette_block.is_empty() and not palette_items.is_empty():
+		_build_palette(kit, source, scale, palette_block, palette_items, palette_overrides, mats)
+	if not prefab_items.is_empty():
+		_build_prefabs(kit, source, scale, prefab_items, mats)
+	_report(kit, families, c.counts)
 
 
-func _matches_any(name: String, patterns: Array) -> bool:
-	for p in patterns:
-		if name.match(String(p)):
-			return true
-	return false
-
-
-## First matching pattern wins, in recipe order (so "boat-house-*" can precede
-## "boat-*"). Returns "" when nothing matches.
-func _prefab_mode(name: String, prefabs: Dictionary) -> String:
-	var include: Dictionary = prefabs.get("include", {})
-	for pattern: String in include:
-		if name.match(pattern):
-			return String(include[pattern])
-	return ""
+## Per-kit visibility line: family=count, with (catch-all) tagged so an oversized default
+## bucket surfaces (the v1 failure the coverage gate targets).
+func _report(kit: String, families: Array, counts: Dictionary) -> void:
+	var parts := []
+	for fam: Dictionary in families:
+		var name := String(fam.get("name", ""))
+		var tag := " (catch-all)" if Recipe.is_catch_all(fam) else ""
+		parts.append("%s=%d%s" % [name, int(counts.get(name, 0)), tag])
+	print("[%s] %s" % [kit, "  ".join(parts)])
 
 
 # -------------------------------------------------------------------- palette
 
 func _build_palette(kit: String, source: String, scale: float, palette: Dictionary,
-		items: Array[String], mats: Dictionary) -> void:
+		items: Array[String], overrides: Dictionary, mats: Dictionary) -> void:
 	var output := String(palette["output"])
 	var cell: Array = palette.get("cell_size", [1, 1, 1])
 	var ml := load(output) as MeshLibrary if ResourceLoader.exists(output) else MeshLibrary.new()
 	if ml == null:
 		ml = MeshLibrary.new()
-	# preserve existing ids: painted GridMaps store them in cell data
-	var name_to_id := {}
-	var next_id := 0
+	# preserve ids painted GridMaps reference (KitRecipe.assign_item_ids, unit-tested)
+	var existing := {}
 	for id in ml.get_item_list():
-		name_to_id[ml.get_item_name(id)] = id
-		next_id = maxi(next_id, id + 1)
+		existing[ml.get_item_name(id)] = id
+	var ids := Recipe.assign_item_ids(existing, items)
 
 	for name in items:
 		var geo := _load_geometry(source, name)
 		if geo.is_empty():
 			continue
-		var xform := _palette_xform(name, scale, cell, palette, geo.aabb)
+		var ov: Dictionary = overrides.get(name, {})
+		var xform := _palette_xform(scale, cell, palette, ov, geo.aabb)
 		var mesh := _merged_mesh(geo.pairs, xform, mats)
-		var id: int = name_to_id.get(name, next_id)
-		if not name_to_id.has(name):
-			next_id += 1
+		var id: int = ids[name]
+		if not existing.has(name):
 			ml.create_item(id)
 		ml.set_item_name(id, name)
 		ml.set_item_mesh(id, mesh)
@@ -147,12 +165,11 @@ func _build_palette(kit: String, source: String, scale: float, palette: Dictiona
 		_error("%s: failed to save %s (error %d)" % [kit, output, err])
 
 
-func _palette_xform(name: String, scale: float, cell: Array, palette: Dictionary,
+func _palette_xform(scale: float, cell: Array, palette: Dictionary, ov: Dictionary,
 		aabb: AABB) -> Transform3D:
-	var ov: Dictionary = (palette.get("overrides", {}) as Dictionary).get(name, {})
 	var off := Vector3(float(ov.get("x_offset", 0)), float(ov.get("y_offset", 0)),
 			float(ov.get("z_offset", 0)))
-	if String(palette.get("align", "raw")) == "corner":
+	if String(ov.get("align", palette.get("align", "raw"))) == "corner":
 		# Shared +X/+Z corner lands on (+cell/2, +cell/2) — the racing-kit lattice.
 		off.x += float(cell[0]) * 0.5 - aabb.end.x * scale
 		off.z += float(cell[2]) * 0.5 - aabb.end.z * scale
@@ -161,29 +178,29 @@ func _palette_xform(name: String, scale: float, cell: Array, palette: Dictionary
 
 # -------------------------------------------------------------------- prefabs
 
-func _build_prefabs(kit: String, source: String, scale: float, prefabs: Dictionary,
-		items: Dictionary, mats: Dictionary) -> void:
-	var out_dir := String(prefabs["output"])
+func _build_prefabs(kit: String, source: String, scale: float, items: Dictionary,
+		mats: Dictionary) -> void:
+	var out_dir := PREFAB_DIR.path_join(kit)
 	_make_dir_for(out_dir.path_join("x"))
 	var piece_script := load(KIT_PIECE_SCRIPT)
 	for name: String in items:
-		var mode := String(items[name])
+		var mode := String(items[name].mode)
+		var ov: Dictionary = items[name].ov
 		var geo := _load_geometry(source, name)
 		if geo.is_empty():
 			continue
-		var ov: Dictionary = (prefabs.get("overrides", {}) as Dictionary).get(name, {})
-		var align := String(ov.get("align", prefabs.get("align", "center_floor")))
+		var align := String(ov.get("align", DEFAULT_PREFAB_ALIGN))
 		var off := Vector3(float(ov.get("x_offset", 0)), float(ov.get("y_offset", 0)),
 				float(ov.get("z_offset", 0)))
 		if align == "center_floor":
-			var c: Vector3 = geo.aabb.get_center() * scale
-			off += Vector3(-c.x, -geo.aabb.position.y * scale, -c.z)
+			var ctr: Vector3 = geo.aabb.get_center() * scale
+			off += Vector3(-ctr.x, -geo.aabb.position.y * scale, -ctr.z)
 		var xform := Transform3D(Basis.from_scale(Vector3.ONE * scale), off)
 
 		var root := Node3D.new()
 		root.name = name.to_pascal_case()
 		root.set_script(piece_script)
-		root.set("collision_mode", String(ov.get("collision_mode", mode)))
+		root.set("collision_mode", mode)
 
 		var model: Node3D = (geo.scene as PackedScene).instantiate()
 		model.name = "Model"

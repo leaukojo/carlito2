@@ -231,14 +231,26 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
 
 ## Level-authoring kit & bake tool (P6, landed — plan §2 rules 1-2, §4.5)
 
-- **Layout:** `kit/raw/<kit>/` CC0 Kenney GLBs (6 kits; keep `Textures/` beside the glbs — relative
-  refs), `kit/import/<kit>.json` recipes (scale, align, palette include / prefab pattern→collision
-  maps), `kit/palettes/*.meshlib` + `kit/prefabs/<kit>/*.tscn` **generated** by
-  `tools/gen_kit_assets.gd` (`--script` mode; re-run only after recipe/kit edits; meshlib item ids
-  are preserved across regens so painted GridMaps never break). Scales fit the 1.8 m car: roads/
-  suburban/commercial/industrial **8x** (roads cell `(8,2,8)`, `tile-high` = one 2 m y-cell),
-  racing **10x** cell `(10,10,10)` (v1 corner-anchor profile, bridge y-offsets kept as overrides,
-  re-verify at island), watercraft **2x**. All palette GridMaps need `cell_center_y = false`.
+- **Layout:** `kit/raw/<kit>/` CC0 Kenney GLBs (7 kits: racing/roads/suburban/commercial/industrial/
+  watercraft + **nature**; keep `Textures/` beside the glbs — relative refs; nature glbs carry
+  materials internally, no `Textures/`), `kit/import/<kit>.json` recipes, `kit/palettes/*.meshlib` +
+  `kit/prefabs/<kit>/*.tscn` **generated** by `tools/gen_kit_assets.gd` (`--script` mode; re-run only
+  after recipe/kit edits; meshlib item ids preserved across regens so painted GridMaps never break).
+- **Recipe schema is families-driven (LK1, single source of truth):** each recipe has one ordered
+  `families` list — `{name, label, match:[regex], pipeline:"palette"|"prefab"|"exclude",
+  collision_mode?, reason?(exclude), assets:{<name>:{overrides}}}` — that *alone* classifies every
+  GLB (first match wins, ordering resolves overlaps so patterns stay simple prefixes). It drives dock
+  grouping + pipeline + collision in one pass; the pure/tested classify+id logic lives in
+  `kit/helpers/kit_recipe.gd` (`tests/test_kit_gen.gd`). **Coverage gate:** every GLB must match one
+  family or the generator *fails* listing the unaccounted; excludes need a `reason`; per-family
+  member counts print (catch-alls tagged) so an oversized "box everything else" bucket is visible.
+- **Scales re-derived from measurement (LK1, lane-fit):** road-bearing kits target ~12 m two-lane
+  (~6 m/lane vs the 1.8 m car): **roads 12x** cell `(12,3,12)`, **racing 12x** cubic cell
+  `(12,12,12)` (corner-anchor lattice; bridge y-offsets re-measured from AABBs — corners lift 0.393
+  native to the span deck, re-verify at island). suburban/commercial/industrial **8x**, watercraft
+  **2x**, **nature 2.5x** (tree ~4.3 m). suburban is prefab-only (v1 driveway-long palette deleted).
+  All palette GridMaps need `cell_center_y = false`. NB roads `road-curve` is a 2x2 sweeping curve;
+  `road-bend` is the tight 1x1 corner (use the latter for one-cell corners).
 - **Authoring model (hybrid):** GridMap palettes for road/tile kits only; everything else is a
   `KitPiece` prefab (`kit/helpers/kit_piece.gd`) whose `collision_mode`
   (`none|box|hull|multiconvex|weld`) rides the prefab root; its `DevCollision` body makes unbaked
@@ -261,8 +273,12 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
 - **CI gate:** `tools/check_bakes.tscn` recomputes each registered level's input hash (level .tscn
   + transitive `res://kit/**` deps + `.import` sidecars, CRLF-normalized text hashing) vs the
   manifest; ci.yml fails on missing/stale. The baked-level headless smoke
-  (`CARLITO_LEVEL` env picks a registry id) is **suspended for the LK0->LK1 window** — every
-  kit level was deleted in LK0; LK1 reinstates it against the permanent `kit_fixture`.
+  (`CARLITO_LEVEL` env picks a registry id) runs against the permanent **`kit_fixture`**
+  (`src/levels/dev/kit_fixture.tscn`, LK1): a minimal level — road loop from the roads palette, one
+  prefab of each collision mode, a weld ramp, a car spawn — registered with `dev: true` (level-select
+  hides `dev` entries; bake/check/smoke still cover them). Rebuild it with
+  `godot --headless res://tools/build_kit_fixture.tscn` (game-mode tool; hand-authoring GridMap
+  cell/orientation data is fragile), then re-bake.
 - **Gotchas that cost time:** (1) **`--script`-mode tools cannot load level scenes** — autoload
   identifiers (InputRouter via BaseVehicle) don't compile there; bake/check run as **game-mode tool
   scenes** (`godot --headless res://tools/bake_levels.tscn`), and `level.gd` fetches GameState via

@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_4qyfr"]
+[ext_resource type="PackedScene" path="res://kit/raw/nature/stump_roundDetailed.glb" id="2_dgq2w"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_jxnq8"]
+points = PackedVector3Array(0.4456, 0.4145066, 0.0713013, 0.45981425, 0.27235013, 0.07359311, -0.06647053, 0.0062578865, 0.446774, -0.024680328, 0.0047372854, -0.44947624, -0.42926338, 0.006456592, -0.2371529, -0.34066454, 0.51573515, 0.17196706, -0.052986164, 0.5113344, -0.33806923, 0.35492614, 0.004528902, -0.22487922, -0.052986376, 0.5113354, 0.33807048, -0.42926267, 0.0064570094, 0.2371525, 0.3403046, 0.004933242, 0.238591, 0.23869745, 0.50684476, -0.17991588, -0.30584404, 0.33827102, 0.33606204, 0.4456, 0.4145066, -0.0713013, 0.23869745, 0.50684476, 0.17991588, -0.024680369, 0.004736914, 0.4494769, -0.3406644, 0.51573503, -0.17196698, -0.066470645, 0.0062574814, -0.44677472, 0.45981425, 0.27235013, -0.07359311, 0.35492614, 0.004528902, 0.22487922, 0.3403041, 0.0049336297, -0.23859064, -0.27945018, 0.33840114, 0.35010245, -0.024234597, 0.5065778, -0.33172995, -0.024234597, 0.5065778, 0.33172995, -0.3208001, 0.3386433, 0.32407582)
+
+[node name="StumpRoundDetailed" type="Node3D" unique_id=856359588]
+script = ExtResource("1_4qyfr")
+collision_mode = "hull"
+
+[node name="Model" type="Node3D" parent="." unique_id=2016902620 instance=ExtResource("2_dgq2w")]
+transform = Transform3D(2.5, 0, 0, 0, 2.5, 0, 0, 0, 2.5, -0.044124983, 0.125, 0)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=902835614]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=403290062]
+shape = SubResource("ConvexPolygonShape3D_jxnq8")

@@ -2,26 +2,19 @@
 	"kit": "suburban",
 	"source": "res://kit/raw/suburban",
 	"scale": 8.0,
-	"_notes": "City Kit Suburban: authored clean (XZ-centered, Y=0 base). Scale 8 matches the roads kit so houses sit right on 8 m streets (type-a house -> 10.4 x 6.7 m). driveway-long is a uniform 2.88 x 3.2 m drivable slab -> promoted to a GridMap palette tile (the farm's gravel lane; tiles abut with cell_size [2.88,2,3.2]). The smaller/mixed-width paths stay weld prefabs for one-off decoration.",
-	"palette": {
-		"output": "res://kit/palettes/suburban.meshlib",
-		"cell_size": [2.88, 2.0, 3.2],
-		"align": "raw",
-		"include": ["driveway-long"],
-		"overrides": {}
-	},
-	"prefabs": {
-		"output": "res://kit/prefabs/suburban",
-		"align": "center_floor",
-		"include": {
-			"building-*": "box",
-			"fence*": "box",
-			"driveway-*": "weld",
-			"path-*": "weld",
-			"planter": "box",
-			"tree-*": "hull"
-		},
-		"overrides": {}
-	},
-	"exclude": []
+	"_notes": "City Kit Suburban. Prefab-only (LK1): the v1-era driveway-long GridMap palette is DELETED (kit/palettes/suburban.meshlib removed) — driveway/path pieces are weld prefabs like all other decoration; the farm's gravel lane is the LK7 RoadPath, not a driveway lattice. Scale 8 matches the roads/racing 8 m grid so houses sit right on the streets (building-type-a -> 10.4 x 6.7 x 8.2 m, measured). Authored clean (XZ-centered, Y=0 base).",
+	"families": [
+		{ "name": "suburban-buildings", "label": "Houses",
+			"match": ["^building-"], "pipeline": "prefab", "collision_mode": "box" },
+		{ "name": "suburban-fence", "label": "Fences",
+			"match": ["^fence"], "pipeline": "prefab", "collision_mode": "box" },
+		{ "name": "suburban-path", "label": "Driveways & paths",
+			"match": ["^(driveway|path)"], "pipeline": "prefab", "collision_mode": "weld" },
+		{ "name": "suburban-plants", "label": "Planters & trees",
+			"match": ["^(planter|tree)"], "pipeline": "prefab", "collision_mode": "box",
+			"assets": {
+				"tree-large": {"collision_mode": "hull"},
+				"tree-small": {"collision_mode": "hull"}
+			} }
+	]
 }

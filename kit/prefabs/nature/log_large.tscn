@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_dn05a"]
+[ext_resource type="PackedScene" path="res://kit/raw/nature/log_large.glb" id="2_0tav2"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_ori0r"]
+points = PackedVector3Array(-0.5155934, 0.5356405, 0.72203016, -0.277436, 0.45646575, -0.7065413, 1.2695928, 0.8134338, 0.32517368, 1.2695928, 0.059543222, 0.32517368, -1.2695928, -0.01973641, 0.4044611, -1.2695928, 0.8927134, -0.5079732, 1.2695928, 0.8134338, -0.4286858, -1.1505141, -0.01973641, -0.5079732, 1.247038, 0.06765101, -0.42093247, -1.2695928, 0.8927134, 0.4044611, 0.6346721, 1.0515873, 0.08703183, -0.5155934, 0.3374414, 0.72203016, -0.11883011, 0.29769674, -0.7065413, 0.4760662, 1.0515873, -0.07140312, -0.7142236, 0.5356405, 0.72203016, -0.11883011, 0.45646575, -0.7065413, -1.1732969, 0.020892376, -0.46885714, -1.1902899, -0.01973641, 0.4044611, -1.1902899, 0.8927134, -0.5079732, -1.1902899, 0.8927134, 0.4044611, 0.4760662, 1.0515873, 0.08703183, -1.1505141, -0.01973641, 0.3648873)
+
+[node name="LogLarge" type="Node3D" unique_id=1029488872]
+script = ExtResource("1_dn05a")
+collision_mode = "hull"
+
+[node name="Model" type="Node3D" parent="." unique_id=1507759718 instance=ExtResource("2_0tav2")]
+transform = Transform3D(2.5, 0, 0, 0, 2.5, 0, 0, 0, 2.5, 0, 0.125, -0.05487494)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1332570355]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1551592884]
+shape = SubResource("ConvexPolygonShape3D_ori0r")

@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_hgug8"]
+[ext_resource type="PackedScene" path="res://kit/raw/nature/statue_columnDamaged.glb" id="2_ldv1t"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_iswrl"]
+points = PackedVector3Array(-0.13886714, 1.7637148, -0.13886714, -0.375, 0.0178541, -0.375, -0.375, 0.0178541, 0.375, 0.375, 0.0178541, -0.375, 0.3888889, 0.43068606, 0.3888889, -0.2679025, 1.625, 0.2679025, 0.2717888, 1.5, -0.2717888, -0.27344865, 1.75, -0.27344865, 0.2632642, 1.375, 0.2632642, 0.375, 0.0178541, 0.375, -0.3888889, 0.43068606, 0.3888889, 0.3888889, 0.43068606, -0.3888889, -0.3888889, 0.43068606, -0.3888889, -0.13886714, 1.6525276, 0.27773428, 0.27773428, 1.513674, -0.13886714, -0.13886714, 1.7637148, -0.27773428, -0.27773428, 1.7637148, -0.13886714)
+
+[node name="StatueColumnDamaged" type="Node3D" unique_id=1491867001]
+script = ExtResource("1_hgug8")
+collision_mode = "hull"
+
+[node name="Model" type="Node3D" parent="." unique_id=200548493 instance=ExtResource("2_ldv1t")]
+transform = Transform3D(2.5, 0, 0, 0, 2.5, 0, 0, 0, 2.5, 0, 0.125, 0)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1080939448]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1775163867]
+shape = SubResource("ConvexPolygonShape3D_iswrl")

@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/racing/radarEquipment.glb" id="2_esxar"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_dsa7b"]
-size = Vector3(5.889, 5.4309998, 4.1309996)
+size = Vector3(7.0668, 6.5172, 4.9572)
 
-[node name="RadarEquipment" type="Node3D" unique_id=1212624324]
+[node name="RadarEquipment" type="Node3D" unique_id=895973896]
 script = ExtResource("1_e6fvs")
 
 [node name="Model" type="Node3D" parent="." unique_id=1085625394 instance=ExtResource("2_esxar")]
-transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, -1.0554999, 0.099999994, 10.6345)
+transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, -1.2665999, 0.12, 12.7614)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=788493088]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=838990926]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=206398993]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.7154999, -4.7683716e-07)
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=425864052]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.7683716e-07, 3.2586, 4.7683716e-07)
 shape = SubResource("BoxShape3D_dsa7b")

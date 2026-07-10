@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_48ubt"]
+[ext_resource type="PackedScene" path="res://kit/raw/nature/fence_planks.glb" id="2_ya5au"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_aseb1"]
+size = Vector3(2.5, 0.8625, 0.23975003)
+
+[node name="FencePlanks" type="Node3D" unique_id=1108891862]
+script = ExtResource("1_48ubt")
+
+[node name="Model" type="Node3D" parent="." unique_id=1902298071 instance=ExtResource("2_ya5au")]
+transform = Transform3D(2.5, 0, 0, 0, 2.5, 0, 0, 0, 2.5, 0, 0.125, 1.194875)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=207421031]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=163593258]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.43125, 5.9604645e-08)
+shape = SubResource("BoxShape3D_aseb1")

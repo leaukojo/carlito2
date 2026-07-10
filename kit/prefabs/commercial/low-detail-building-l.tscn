@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_s5hvm"]
 [ext_resource type="PackedScene" path="res://kit/raw/commercial/low-detail-building-l.glb" id="2_25yyc"]
 
-[node name="LowDetailBuildingL" type="Node3D" unique_id=1223723124]
+[node name="LowDetailBuildingL" type="Node3D" unique_id=634446650]
 script = ExtResource("1_s5hvm")
 collision_mode = "none"
 

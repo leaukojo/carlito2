@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_51l6q"]
+[ext_resource type="PackedScene" path="res://kit/raw/nature/tree_pineSmallC.glb" id="2_x5g3a"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_wdgbx"]
+points = PackedVector3Array(-0.47838688, 0.38996428, -0.48548687, -0.23748705, -0.022283316, -0.24458703, -0.5050833, 0.42359275, 0.5128499, 0.43075117, 0.33424997, 0.5128499, 0.5199499, 0.8691896, -0.46743342, -0.4160897, 1.4844894, -0.34251863, 0.16335554, 2.8299832, -0.021840962, 0.16335554, -0.022283316, -0.24458703, 0.5199499, 0.8691896, 0.37910196, -0.4160897, 1.4844894, 0.26260507, -0.23748705, -0.022283316, 0.15625556, 0.43075117, 0.4679849, -0.5121833, 0.07425711, 2.7406406, -0.11093939, -0.014740976, 2.5625134, 0.06715713, -0.5050833, 0.4679849, -0.5121833, -0.5050833, 0.33424997, 0.5128499, 0.16335554, -0.022283316, 0.15625556, 0.43075117, 0.42359275, 0.5128499, 0.16335554, 2.5625134, 0.06715713, 0.16335554, 2.7406406, -0.11093939, -0.36641324, 1.5611601, -0.33408165, -0.5050833, 0.4679849, 0.4682004, 0.16335554, 2.7406406, 0.022607915, 0.16335554, 2.8299832, -0.06639017, 0.07425711, 2.7406406, 0.022607915)
+
+[node name="TreePineSmallC" type="Node3D" unique_id=514879956]
+script = ExtResource("1_51l6q")
+collision_mode = "hull"
+
+[node name="Model" type="Node3D" parent="." unique_id=1500990278 instance=ExtResource("2_x5g3a")]
+transform = Transform3D(2.5, 0, 0, 0, 2.5, 0, 0, 0, 2.5, -0.036625005, 0.125, -0.043749996)
+
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=855624016]
+
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1103717275]
+shape = SubResource("ConvexPolygonShape3D_wdgbx")

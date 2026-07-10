@@ -6,14 +6,14 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_wl3ke"]
 size = Vector3(7.0688, 7.144, 8.719999)
 
-[node name="BuildingC" type="Node3D" unique_id=1326287912]
+[node name="BuildingC" type="Node3D" unique_id=428947453]
 script = ExtResource("1_5x8t0")
 
 [node name="Model" type="Node3D" parent="." unique_id=1428701015 instance=ExtResource("2_fmjnj")]
 transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, 0)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1335841272]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=140508639]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1538789300]
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1683102546]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.572, 0)
 shape = SubResource("BoxShape3D_wl3ke")

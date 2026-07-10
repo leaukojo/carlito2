@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_t0eik"]
 [ext_resource type="PackedScene" path="res://kit/raw/commercial/detail-overhang-wide.glb" id="2_snes0"]
 
-[node name="DetailOverhangWide" type="Node3D" unique_id=460471384]
+[node name="DetailOverhangWide" type="Node3D" unique_id=965461129]
 script = ExtResource("1_t0eik")
 collision_mode = "none"
 

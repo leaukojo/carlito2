@@ -3,9 +3,9 @@
 [ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_0f3q0"]
 [ext_resource type="PackedScene" path="res://kit/raw/racing/grass.glb" id="2_fuspm"]
 
-[node name="Grass" type="Node3D" unique_id=1628216664]
+[node name="Grass" type="Node3D" unique_id=487047766]
 script = ExtResource("1_0f3q0")
 collision_mode = "none"
 
 [node name="Model" type="Node3D" parent="." unique_id=1194099675 instance=ExtResource("2_fuspm")]
-transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, -1.5, 0.099999994, 11.5)
+transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, -1.8000001, 0.12, 13.799999)

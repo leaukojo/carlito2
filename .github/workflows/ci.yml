@@ -61,9 +61,20 @@ jobs:
       - name: Stale-bake check
         run: godot --headless res://tools/check_bakes.tscn
 
-      # NOTE: the baked-level smoke (load -> baked-scene swap -> spawn -> play) is
-      # suspended for the LK0->LK1 window — every kit level was deleted in LK0
-      # (level_kit_plan.md §4). LK1 reinstates it against the permanent kit_fixture.
+      # Baked-level smoke (load -> baked-scene swap -> spawn -> play), reinstated by LK1
+      # against the permanent kit_fixture canary (level_kit_plan.md §4). CARLITO_LEVEL
+      # picks the registry id; boot.gd loads it headless. Same error gate as the default
+      # smoke; "still in use"/"leaked at exit" are known-harmless leak-at-exit noise.
+      - name: Baked-level smoke (kit_fixture)
+        shell: bash
+        env:
+          CARLITO_LEVEL: kit_fixture
+        run: |
+          godot --headless --quit-after 120 2>&1 | tee baked.log
+          if grep -E "SCRIPT ERROR|ERROR:" baked.log | grep -vE "still in use at exit|leaked at exit"; then
+            echo "baked smoke failed: errors above"
+            exit 1
+          fi
 
       # Cache-busting: Godot derives every artifact name (.js/.pck/.wasm/.side.wasm,
       # PWA worker + manifest) from the export basename, so exporting as c2-<sha>.html

@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/racing/flagCheckers.glb" id="2_8pk0i"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_r060v"]
-size = Vector3(1.972, 12.5, 0.352)
+size = Vector3(2.3664, 15, 0.4224)
 
-[node name="FlagCheckers" type="Node3D" unique_id=1244893695]
+[node name="FlagCheckers" type="Node3D" unique_id=266890163]
 script = ExtResource("1_b433u")
 
 [node name="Model" type="Node3D" parent="." unique_id=845364319 instance=ExtResource("2_8pk0i")]
-transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 2.514, 0.099999994, 6.6759996)
+transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, 3.0168, 0.12, 8.0112)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=433549959]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=2077509980]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=2058119525]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.9604645e-08, 6.25, -3.5762787e-07)
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=835362240]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1920929e-07, 7.5, 2.3841858e-07)
 shape = SubResource("BoxShape3D_r060v")

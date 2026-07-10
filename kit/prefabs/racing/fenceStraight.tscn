@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/racing/fenceStraight.glb" id="2_kqaqt"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_32g2d"]
-size = Vector3(10, 5, 0.345)
+size = Vector3(12, 6, 0.41399997)
 
-[node name="FenceStraight" type="Node3D" unique_id=1210193297]
+[node name="FenceStraight" type="Node3D" unique_id=1138730736]
 script = ExtResource("1_g1kpr")
 
 [node name="Model" type="Node3D" parent="." unique_id=168882177 instance=ExtResource("2_kqaqt")]
-transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, -1.5, 0.099999994, 6.6724997)
+transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, -1.8000001, 0.12, 8.007)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=764141818]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=414953383]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1072281462]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -3.427267e-07)
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=433620398]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 2.682209e-07)
 shape = SubResource("BoxShape3D_32g2d")

@@ -2,16 +2,11 @@
 	"kit": "industrial",
 	"source": "res://kit/raw/industrial",
 	"scale": 8.0,
-	"_notes": "City Kit Industrial: scale 8 matches the roads kit (building-a -> ~11.8 m warehouse). Chimneys and tanks are rounded solids -> hull.",
-	"prefabs": {
-		"output": "res://kit/prefabs/industrial",
-		"align": "center_floor",
-		"include": {
-			"building-*": "box",
-			"chimney-*": "hull",
-			"detail-*": "hull"
-		},
-		"overrides": {}
-	},
-	"exclude": []
+	"_notes": "City Kit Industrial. Scale 8 matches the roads/racing 8 m grid (building-a ~11.8 m warehouse). Chimneys and the tank are rounded solids -> hull.",
+	"families": [
+		{ "name": "industrial-detail", "label": "Chimneys & tanks",
+			"match": ["^(chimney|detail)"], "pipeline": "prefab", "collision_mode": "hull" },
+		{ "name": "industrial-buildings", "label": "Buildings",
+			"match": ["^building-"], "pipeline": "prefab", "collision_mode": "box" }
+	]
 }

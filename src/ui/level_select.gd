@@ -34,6 +34,8 @@ func _ready() -> void:
 	col.add_child(title)
 
 	for entry in LevelRegistry.LEVELS:
+		if entry.get("dev", false):
+			continue  # dev fixtures (kit_fixture) are CI/bake assets, not shipped content
 		var b := Button.new()
 		b.text = entry["name"]
 		b.custom_minimum_size = Vector2(260, 44)

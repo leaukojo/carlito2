@@ -1,24 +1,25 @@
 {
 	"kit": "roads",
 	"source": "res://kit/raw/roads",
-	"scale": 16.0,
-	"_notes": "City Kit Roads: 1x1 tiles, XZ-centered, Y=0 base (measured). Scale 16 = 16 m tile, wide arcade lanes vs the 1.8 m car. tile-high is 0.25 -> exactly one 4 m vertical cell, so cell_size is [16,4,16]; paint the deck level at y-index 1. GridMaps using this palette need cell_center_y = false.",
+	"scale": 12.0,
+	"_notes": "City Kit Roads. LANE-FIT (LK1): road-straight is a 1x1 unit two-lane tile (measured, XZ-centered, Y=0 base). Forgiving-arcade target = 12 m two-lane tile (~6 m/lane vs the 1.8 m car), so scale = 12.0 (bumped from an initial 8 that drove too tight; was eyeballed 16 in v1). tile-high is 0.25 -> 0.25*12 = 3 m vertical cell, so cell_size [12,3,12]; paint the deck at y-index 1. GridMaps using this palette need cell_center_y = false. NB: road-curve is a 2x2-unit sweeping curve; road-bend is the tight 1x1 corner. Signs/lights/construction/bridge-pillars are props -> prefabs (plan §2: palette is road/tile kits only), not palette tiles as in v1.",
 	"palette": {
 		"output": "res://kit/palettes/roads.meshlib",
-		"cell_size": [16.0, 4.0, 16.0],
-		"align": "raw",
-		"include": ["road-*", "tile-*", "bridge-pillar*"],
-		"overrides": {}
+		"cell_size": [12.0, 3.0, 12.0],
+		"align": "raw"
 	},
-	"prefabs": {
-		"output": "res://kit/prefabs/roads",
-		"align": "center_floor",
-		"include": {
-			"construction-*": "box",
-			"light-*": "multiconvex",
-			"sign-*": "multiconvex"
-		},
-		"overrides": {}
-	},
-	"exclude": []
+	"families": [
+		{ "name": "city-lights", "label": "Street lights",
+			"match": ["^light-"], "pipeline": "prefab", "collision_mode": "multiconvex" },
+		{ "name": "city-signs", "label": "Highway signs",
+			"match": ["^sign-"], "pipeline": "prefab", "collision_mode": "multiconvex" },
+		{ "name": "city-fixtures", "label": "Fixtures (cones/barriers/pillars)",
+			"match": ["^(construction|bridge-pillar)"], "pipeline": "prefab", "collision_mode": "box" },
+		{ "name": "city-roads-barrier", "label": "Roads (barrier)",
+			"match": ["^road-.*barrier"], "pipeline": "palette" },
+		{ "name": "city-roads", "label": "Roads (plain)",
+			"match": ["^road-"], "pipeline": "palette" },
+		{ "name": "city-ground-tiles", "label": "Ground tiles",
+			"match": ["^tile-"], "pipeline": "palette" }
+	]
 }

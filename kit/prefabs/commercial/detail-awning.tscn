@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_yvre6"]
 [ext_resource type="PackedScene" path="res://kit/raw/commercial/detail-awning.glb" id="2_i3blk"]
 
-[node name="DetailAwning" type="Node3D" unique_id=2029383793]
+[node name="DetailAwning" type="Node3D" unique_id=1573164372]
 script = ExtResource("1_yvre6")
 collision_mode = "none"
 

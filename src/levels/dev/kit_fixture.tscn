@@ -1,0 +1,100 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/levels/base/level.gd" id="1_qecq3"]
+[ext_resource type="Resource" path="res://src/levels/dev/kit_fixture_info.tres" id="2_kmhxh"]
+[ext_resource type="Script" path="res://src/vehicles/base/chase_camera.gd" id="3_utxgq"]
+[ext_resource type="Script" path="res://src/levels/base/vehicle_spawn.gd" id="4_5hing"]
+[ext_resource type="Script" path="res://kit/helpers/authoring_root.gd" id="5_f0g3j"]
+[ext_resource type="MeshLibrary" path="res://kit/palettes/roads.meshlib" id="6_rnkou"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/grass.tscn" id="7_urov7"]
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="8_rs7y4"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/building-type-a.tscn" id="9_oj2fb"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/tree_default.tscn" id="10_mkwwu"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/roads/light-square.tscn" id="11_70avu"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/racing/ramp.tscn" id="12_2c0fn"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_8714h"]
+
+[sub_resource type="Sky" id="Sky_trgcb"]
+sky_material = SubResource("ProceduralSkyMaterial_8714h")
+
+[sub_resource type="Environment" id="Environment_xf2xp"]
+background_mode = 2
+sky = SubResource("Sky_trgcb")
+ambient_light_source = 3
+ambient_light_energy = 0.6
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_jqmi5"]
+size = Vector3(80, 2, 80)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ujn67"]
+albedo_color = Color(0.34, 0.42, 0.29, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_pcdca"]
+size = Vector3(80, 2, 80)
+
+[node name="KitFixture" type="Node3D" unique_id=1423768083]
+script = ExtResource("1_qecq3")
+info = ExtResource("2_kmhxh")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2075753561]
+environment = SubResource("Environment_xf2xp")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1244388961]
+transform = Transform3D(0.76604444, -0.49240384, 0.4131759, 0, 0.64278764, 0.76604444, -0.6427876, -0.58682406, 0.4924039, 0, 40, 0)
+shadow_enabled = true
+
+[node name="ChaseCamera" type="Camera3D" parent="." unique_id=2033844063]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 6)
+script = ExtResource("3_utxgq")
+
+[node name="Ground" type="StaticBody3D" parent="." unique_id=1047090149]
+
+[node name="Shape" type="CollisionShape3D" parent="Ground" unique_id=1353727427]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
+shape = SubResource("BoxShape3D_jqmi5")
+
+[node name="Mesh" type="MeshInstance3D" parent="Ground" unique_id=15794099]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
+material_override = SubResource("StandardMaterial3D_ujn67")
+mesh = SubResource("BoxMesh_pcdca")
+
+[node name="Spawn" type="Marker3D" parent="." unique_id=920466012]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 0, 0.8, 12)
+script = ExtResource("4_5hing")
+vehicle_types = PackedStringArray("car")
+
+[node name="Authoring" type="Node3D" parent="." unique_id=2119307002]
+script = ExtResource("5_f0g3j")
+
+[node name="RoadLoop" type="GridMap" parent="Authoring" unique_id=1627784119]
+mesh_library = ExtResource("6_rnkou")
+cell_size = Vector3(12, 3, 12)
+cell_center_y = false
+data = {
+"cells": PackedInt32Array(0, 1, 49, 0, 65535, 49, 1, 0, 1048625, 65535, 0, 1048625, 1, 1, 1048576, 1, 65535, 655360, 65535, 65535, 1441792, 65535, 1, 0)
+}
+
+[node name="Grass" type="Node3D" parent="Authoring" unique_id=1258322688 instance=ExtResource("7_urov7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28, 0, 0)
+script = ExtResource("8_rs7y4")
+collision_mode = "none"
+
+[node name="BuildingTypeA" type="Node3D" parent="Authoring" unique_id=1024246392 instance=ExtResource("9_oj2fb")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -28, 0, 0)
+script = ExtResource("8_rs7y4")
+
+[node name="TreeDefault" type="Node3D" parent="Authoring" unique_id=231221799 instance=ExtResource("10_mkwwu")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, 0, 22)
+script = ExtResource("8_rs7y4")
+collision_mode = "hull"
+
+[node name="LightSquare" type="Node3D" parent="Authoring" unique_id=364681286 instance=ExtResource("11_70avu")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26, 0, 22)
+script = ExtResource("8_rs7y4")
+collision_mode = "multiconvex"
+
+[node name="Ramp" type="Node3D" parent="Authoring" unique_id=947688029 instance=ExtResource("12_2c0fn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 28)
+script = ExtResource("8_rs7y4")
+collision_mode = "weld"

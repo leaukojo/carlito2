@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/racing/pitsGarageCorner.glb" id="2_5xfpq"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_jkfc8"]
-size = Vector3(10.5, 7, 10)
+size = Vector3(12.599999, 8.4, 12)
 
-[node name="PitsGarageCorner" type="Node3D" unique_id=927331328]
+[node name="PitsGarageCorner" type="Node3D" unique_id=1433464807]
 script = ExtResource("1_nk372")
 
 [node name="Model" type="Node3D" parent="." unique_id=1583648995 instance=ExtResource("2_5xfpq")]
-transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, -1.7499998, 0.099999994, 11.5)
+transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, -2.1, 0.12, 13.799999)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1259130774]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1141388873]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=663993886]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, 0)
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=2095983613]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.2, -4.7683716e-07)
 shape = SubResource("BoxShape3D_jkfc8")

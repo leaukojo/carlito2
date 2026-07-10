@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/roads/light-curved-double.glb" id="2_r3kx7"]
 
 [sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_e4x33"]
-points = PackedVector3Array(-0.19999999, 0.24958001, -0.1931493, 0.23109245, 5.422689, 1.6445379, -0.22268906, 5.422689, 1.6445379, 0.23109245, 5.422689, -1.622689, 0.23109245, -0.022688866, 0.23767307, -0.22268906, 5.422689, -1.622689, -0.22268906, -0.022688866, 0.23767307, 0.23109245, -0.022688866, -0.21582416, -0.22268906, 5.1956205, -1.622689, -0.22268906, 5.1956205, 1.6445379, 0.23109245, 5.1956205, -1.622689, 0.23109245, 5.1956205, 1.6445379)
+points = PackedVector3Array(-0.3346153, -0.034615517, -0.35687912, 0.35769224, 8.134615, 2.4115381, -0.3346153, 8.134615, 2.4115381, 0.35769224, 8.134615, -2.4346151, 0.35769224, -0.034615517, 0.33427647, -0.3346153, 8.134615, -2.4346151, 0.35769224, -0.034615517, -0.35687912, -0.29999998, 0.3738452, 0.29969504, -0.3346153, 7.7883663, 2.4115381, 0.35769224, 7.7883663, -2.4346151, -0.3346153, 7.7883663, -2.4346151, 0.35769224, 7.7883663, 2.4115381)
 
-[node name="LightCurvedDouble" type="Node3D" unique_id=673582696]
+[node name="LightCurvedDouble" type="Node3D" unique_id=540060018]
 script = ExtResource("1_0wdji")
 collision_mode = "multiconvex"
 
 [node name="Model" type="Node3D" parent="." unique_id=769968018 instance=ExtResource("2_r3kx7")]
-transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, 0)
+transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 0)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1632622767]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=487512048]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1823331670]
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=962143966]
 shape = SubResource("ConvexPolygonShape3D_e4x33")

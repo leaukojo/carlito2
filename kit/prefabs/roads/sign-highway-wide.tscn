@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/roads/sign-highway-wide.glb" id="2_anbhq"]
 
 [sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_u1ch7"]
-points = PackedVector3Array(0.42279452, 5.7777777, 3.3013885, 0.041954033, -0.06292057, -4.0634923, 0.041954033, 1.079949, -4.0634923, -0.5927801, 3.8722327, 3.3013885, 0.52959996, 0.04060614, 3.919441, 0.5498532, 4.8881803, -3.9362097, -0.5927801, 3.8722327, -3.3013885, 0.52959996, 0.04060614, -3.919441, -0.08488094, 5.7777777, -3.3013885, 0.041954033, -0.06292057, 4.0634923, 0.5498532, 4.8881803, 3.9362097, -0.08488094, 5.7777777, 3.3013885, 0.42279452, 5.7777777, -3.3013885, 0.16890086, 4.8881803, 3.9362097, 0.5498532, 1.079949, -4.0634923, 0.16890086, 4.8881803, -3.9362097, 0.5498532, 1.079949, 4.0634923, 0.041954033, 1.079949, 4.0634923)
+points = PackedVector3Array(0.63432235, 8.666667, 4.951113, 0.062949665, -0.09523773, -6.094045, 0.062949665, 1.6192343, -6.094045, -0.88933814, 5.8089275, 4.951113, 0.7944, 0.060895137, 5.876859, 0.8249477, 7.3329983, -5.9031587, -0.88933814, 5.8089275, -4.951113, 0.7944, 0.060895137, -5.876859, -0.12717229, 8.666667, -4.951113, 0.062949665, -0.09523773, 6.094045, 0.8249477, 7.3329983, 5.9031587, -0.12717229, 8.666667, 4.951113, 0.63432235, 8.666667, -4.951113, 0.25323942, 7.3329983, 5.9031587, 0.8249477, 1.6192343, -6.094045, 0.25323942, 7.3329983, -5.9031587, 0.8249477, 1.6192343, 6.094045, 0.062949665, 1.6192343, 6.094045)
 
-[node name="SignHighwayWide" type="Node3D" unique_id=1779021015]
+[node name="SignHighwayWide" type="Node3D" unique_id=1976006427]
 script = ExtResource("1_cgib5")
 collision_mode = "multiconvex"
 
 [node name="Model" type="Node3D" parent="." unique_id=582419064 instance=ExtResource("2_anbhq")]
-transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 0.32959998, 0, 0)
+transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, 0.49439996, 0, 0)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1920769792]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1417128593]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1301398028]
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=2049653511]
 shape = SubResource("ConvexPolygonShape3D_u1ch7")

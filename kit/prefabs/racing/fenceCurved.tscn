@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/racing/fenceCurved.glb" id="2_75tlr"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_jp2iw"]
-size = Vector3(10, 8.2, 3.2)
+size = Vector3(12, 9.84, 3.8400002)
 
-[node name="FenceCurved" type="Node3D" unique_id=91427064]
+[node name="FenceCurved" type="Node3D" unique_id=105480888]
 script = ExtResource("1_kp252")
 
 [node name="Model" type="Node3D" parent="." unique_id=561700752 instance=ExtResource("2_75tlr")]
-transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, -1.5, 0.099999994, 7.2599993)
+transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, -1.8000001, 0.12, 8.712)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1003207510]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1040754633]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=881696451]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.1, -8.34465e-07)
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=2101689963]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.92, 2.3841858e-07)
 shape = SubResource("BoxShape3D_jp2iw")

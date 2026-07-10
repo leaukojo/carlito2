@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/racing/billboard.glb" id="2_3raxg"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_lh761"]
-size = Vector3(10, 10, 4.762)
+size = Vector3(12, 12, 5.7144)
 
-[node name="Billboard" type="Node3D" unique_id=127842524]
+[node name="Billboard" type="Node3D" unique_id=809539598]
 script = ExtResource("1_1jqlt")
 
 [node name="Model" type="Node3D" parent="." unique_id=1238020239 instance=ExtResource("2_3raxg")]
-transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, -0.862, 0.099999994, 8.480999)
+transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, -1.0344, 0.12, 10.177199)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=233104647]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1586204351]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1830351171]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -9.536743e-07)
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1860266904]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -2.3841858e-07)
 shape = SubResource("BoxShape3D_lh761")
