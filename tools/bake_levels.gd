@@ -6,7 +6,7 @@ extends Node
 ## registered. Run after --import:
 ##   godot --headless --path . res://tools/bake_levels.tscn
 ##       bakes every LevelRegistry level that has an AuthoringRoot
-##   godot --headless --path . res://tools/bake_levels.tscn -- src/levels/dev/kit_demo.tscn
+##   godot --headless --path . res://tools/bake_levels.tscn -- src/levels/<level>.tscn
 ##       bakes exactly the given level(s); missing AuthoringRoot is an error here
 
 const Baker := preload("res://kit/bake/level_baker.gd")

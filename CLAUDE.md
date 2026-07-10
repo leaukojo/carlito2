@@ -35,7 +35,7 @@ src/shell/    game shell: boot, level select, garage menu (+ GameState autoload)
 src/bridge/   Contract + Bridge autoloads (contract loader; CAN bridge lands in P3)
 src/input/    InputRouter autoload + input sources; ALL input arbitration lives here
 src/vehicles/ base/ (BaseVehicle, VehicleSpec, wheels, drivetrain) + car/ truck/ tractor/ boat/
-src/levels/   base/ (Level scene, LevelInfo, markers) + gym/ island/ farm/ harbor/
+src/levels/   base/ (Level scene, LevelInfo, markers) + gym/ (farm/harbor deleted in LK0, rebuilt LK8; island lands P9)
 src/ui/       dashboard, touch controls, menus
 src/water/    water surface + height sampling API
 kit/          level-authoring kit: meshlibs, prefabs, @tool helpers, bake tool
@@ -260,8 +260,9 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   — baked materials reference them). Verified by byte-scanning the pck.
 - **CI gate:** `tools/check_bakes.tscn` recomputes each registered level's input hash (level .tscn
   + transitive `res://kit/**` deps + `.import` sidecars, CRLF-normalized text hashing) vs the
-  manifest; ci.yml fails on missing/stale, plus a second headless smoke boots baked `kit_demo`
-  (`CARLITO_LEVEL` env picks the registry id headless).
+  manifest; ci.yml fails on missing/stale. The baked-level headless smoke
+  (`CARLITO_LEVEL` env picks a registry id) is **suspended for the LK0->LK1 window** — every
+  kit level was deleted in LK0; LK1 reinstates it against the permanent `kit_fixture`.
 - **Gotchas that cost time:** (1) **`--script`-mode tools cannot load level scenes** — autoload
   identifiers (InputRouter via BaseVehicle) don't compile there; bake/check run as **game-mode tool
   scenes** (`godot --headless res://tools/bake_levels.tscn`), and `level.gd` fetches GameState via
@@ -269,9 +270,9 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   read results before `free()`. (3) 4.6 renamed the decomposition helper to
   `create_multiple_convex_collisions` (plural). (4) SurfaceTool.append_from leaves scaled normals
   unnormalized — the baker's SurfaceAccumulator merges at array level instead.
-- **Docs:** `docs/making_a_level.md` is the non-designer walkthrough (kit_demo
-  `src/levels/dev/kit_demo.tscn` is its worked example — road loop, ramp, prefabs, baked +
-  registered). Gym predates the kit and stays hand-built (no AuthoringRoot: check skips it).
+- **Docs:** `docs/making_a_level.md` is the non-designer walkthrough — **stale after LK0**
+  (its worked example, kit_demo, was deleted); it is rewritten around the new tools in LK8.
+  Gym predates the kit and stays hand-built (no AuthoringRoot: check skips it).
 
 ## Water & boat — M6 (P8, landed — plan §1, §4.4, §8)
 
@@ -313,10 +314,9 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   are pure contract metadata (`warn` 30/45); `rudder_actual`/`trim` are bridge-only (no honest
   warn).
 - **Levels:** `boat` is in `Level.VEHICLE_SCENES` and the gym roster; gym's pool holds a
-  `WaterSurface` (drive the car in → drown respawn regression). The **harbor**
-  (`src/levels/harbor/`, registered id `harbor`, default vehicle boat) is quay + seabed +
-  160×140 water, dressed with watercraft prefabs (weld `ramp`/`ramp-wide` boat launches, hull
-  ships/boats, `none` buoys); baked + CI-checked like farm.
+  `WaterSurface` (drive the car in → drown respawn regression). The **harbor** (a P8 quay +
+  seabed + 160×140 water level dressed with watercraft prefabs) was **deleted in LK0** with
+  the rest of the old-lattice kit levels; it is rebuilt from scratch with the new tools in LK8.
 
 ## Running / testing / exporting
 

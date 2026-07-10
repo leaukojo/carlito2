@@ -25,7 +25,7 @@ func _ready() -> void:
 	# The headless CI smoke can't click the menu, so boot straight into the first level
 	# there — this keeps the smoke exercising the full load -> spawn -> play path.
 	# CARLITO_LEVEL picks a different registry id, so CI can also smoke a baked level
-	# (kit_demo) without reordering the registry.
+	# without reordering the registry (used again once LK1 lands kit_fixture).
 	if DisplayServer.get_name() == "headless":
 		var wanted := OS.get_environment("CARLITO_LEVEL")
 		var scene := String(LevelRegistry.LEVELS[0]["scene"])

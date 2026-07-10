@@ -80,7 +80,8 @@ single level-wide collision body — the v1 lesson that kills chunk-seam ghost c
 are input-hash-stamped; CI fails on stale bakes. At runtime `Level` loads `<level>.baked.scn` and
 drops the authoring subtree; an export plugin guarantees authoring content never ships.
 
-`docs/making_a_level.md` is the step-by-step walkthrough (`kit_demo` is its worked example).
+`docs/making_a_level.md` is the step-by-step walkthrough — stale after LK0 (its `kit_demo`
+worked example was deleted); rewritten around the new authoring tools in LK8.
 
 ## Testing & CI
 

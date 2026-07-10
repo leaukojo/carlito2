@@ -61,18 +61,9 @@ jobs:
       - name: Stale-bake check
         run: godot --headless res://tools/check_bakes.tscn
 
-      # Second smoke on the baked demo level: exercises load -> baked-scene swap ->
-      # spawn -> play (the gym smoke above covers the unbaked path).
-      - name: Headless smoke (baked kit_demo)
-        shell: bash
-        env:
-          CARLITO_LEVEL: kit_demo
-        run: |
-          godot --headless --quit-after 120 2>&1 | tee smoke_kit_demo.log
-          if grep -E "SCRIPT ERROR|ERROR:" smoke_kit_demo.log | grep -vE "still in use at exit|leaked at exit"; then
-            echo "kit_demo smoke failed: errors above"
-            exit 1
-          fi
+      # NOTE: the baked-level smoke (load -> baked-scene swap -> spawn -> play) is
+      # suspended for the LK0->LK1 window — every kit level was deleted in LK0
+      # (level_kit_plan.md §4). LK1 reinstates it against the permanent kit_fixture.
 
       # Cache-busting: Godot derives every artifact name (.js/.pck/.wasm/.side.wasm,
       # PWA worker + manifest) from the export basename, so exporting as c2-<sha>.html

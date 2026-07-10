@@ -8,9 +8,11 @@ shared signal contract (`contract/carlito_contract.json`), and CI-deployed web b
 
 - **Plan of record:** [`version2_plan.md`](version2_plan.md) — architecture, milestones, rules.
 - **Status:** M6 — car/truck/tractor/boat with telemetry dashboard, web CAN bridge, ISOBUS
-  implement signals, water + probe buoyancy (gym pool, harbor level), and the level-authoring
-  kit (Kenney palettes/prefabs + chunk bake tool with CI stale-bake gate). See
-  [`docs/making_a_level.md`](docs/making_a_level.md) to build a level without design skills.
+  implement signals, water + probe buoyancy (gym pool), and the level-authoring kit (Kenney
+  palettes/prefabs + chunk bake tool with CI stale-bake gate). The kit levels (farm, harbor,
+  kit_demo) were deleted in the LK0 authoring rework and are rebuilt with the new tools in LK8.
+  [`docs/making_a_level.md`](docs/making_a_level.md) is the level walkthrough (stale pending
+  the LK8 rewrite).
 - **Deployed build:** https://leaukojo.github.io/carlito2/
 - **Dev docs:** [`CLAUDE.md`](CLAUDE.md) (how to run, test, export).
 

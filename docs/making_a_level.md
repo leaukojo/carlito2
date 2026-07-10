@@ -1,5 +1,11 @@
 # Making a level
 
+> **STALE — pending LK8 rewrite.** This walkthrough describes the P6 authoring workflow. The
+> LK0 clean slate (`level_kit_plan.md` §4) deleted its worked example (`kit_demo`) along with
+> the farm and harbor levels, and the authoring layer is being reworked (palette dock,
+> terrain generation, scatter, spline roads — LK1–LK7). LK8 rewrites this doc around the new
+> tools. Treat the steps below as historical until then.
+
 A step-by-step walkthrough for building a drivable Carlito level with **no game-design
 experience**. You will duplicate a template, paint roads, drop buildings, place a spawn
 point, press one Bake button, and register the level in the menu. The worked example this

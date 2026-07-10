@@ -7,7 +7,4 @@ extends Object
 
 const LEVELS: Array[Dictionary] = [
 	{ "id": "gym", "name": "Dev Gym", "scene": "res://src/levels/gym/gym.tscn" },
-	{ "id": "kit_demo", "name": "Kit Demo", "scene": "res://src/levels/dev/kit_demo.tscn" },
-	{ "id": "farm", "name": "Farm", "scene": "res://src/levels/farm/farm.tscn" },
-	{ "id": "harbor", "name": "Harbor", "scene": "res://src/levels/harbor/harbor.tscn" },
 ]
