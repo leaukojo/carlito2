@@ -43,13 +43,64 @@ func _rebuild_if_ready() -> void:
 ## (Re)generate the mesh + collision from the current heightmap. Safe to call in the
 ## editor or at runtime; a null heightmap flattens to a plane at y=0.
 func rebuild() -> void:
-	var cols := maxi(2, int(terrain_size.x) + 1)   # vertices along X
-	var rows := maxi(2, int(terrain_size.y) + 1)   # vertices along Z
+	var dims := _grid_dims()
+	var cols := dims.x   # vertices along X
+	var rows := dims.y   # vertices along Z
 	var img := _read_image()
 	var heights := _sample_heights(img, cols, rows)
 
 	_apply_mesh(cols, rows, heights)
 	_apply_collision(cols, rows, heights)
+
+
+## Vertex grid dimensions: one cell = one world unit, so verts = extent + 1 (min 2).
+## Shared by rebuild() and height_at() so the world<->grid mapping lives in one place.
+func _grid_dims() -> Vector2i:
+	return Vector2i(maxi(2, int(terrain_size.x) + 1), maxi(2, int(terrain_size.y) + 1))
+
+
+## World-space surface height under `world_pos`'s XZ, bilinearly sampled from the
+## heightmap (the §2-rule-2 ground query — used by the LK2 placement fallback and, later,
+## LK5 scatter ground-snap). Assumes the terrain is axis-aligned (unrotated/unscaled, as
+## all authored HeightmapTerrains are); a null heightmap is flat at the node's Y.
+func height_at(world_pos: Vector3) -> float:
+	var img := _read_image()
+	if img == null:
+		return global_position.y
+	var dims := _grid_dims()
+	var span_x := float(dims.x - 1)
+	var span_z := float(dims.y - 1)
+	# grid X spans [-span_x/2, +span_x/2] in local space (see _apply_mesh's x0/z0).
+	var lx := world_pos.x - global_position.x
+	var lz := world_pos.z - global_position.z
+	var u := clampf((lx + span_x * 0.5) / span_x, 0.0, 1.0)
+	var v := clampf((lz + span_z * 0.5) / span_z, 0.0, 1.0)
+	return global_position.y + _sample_red_bilinear(img, u, v) * height
+
+
+## Whether `world_pos`'s XZ lies within this terrain's extent (axis-aligned rect).
+func contains_xz(world_pos: Vector3) -> bool:
+	var lx := world_pos.x - global_position.x
+	var lz := world_pos.z - global_position.z
+	return absf(lx) <= terrain_size.x * 0.5 and absf(lz) <= terrain_size.y * 0.5
+
+
+## Bilinear red-channel lookup at normalized (u, v) in [0,1]. Smoother than the mesh's
+## nearest sampling, so a placed prop sits on the interpolated surface, not a vertex step.
+func _sample_red_bilinear(img: Image, u: float, v: float) -> float:
+	var iw := img.get_width()
+	var ih := img.get_height()
+	var fx := u * float(iw - 1)
+	var fy := v * float(ih - 1)
+	var x0 := int(floor(fx))
+	var y0 := int(floor(fy))
+	var x1 := mini(x0 + 1, iw - 1)
+	var y1 := mini(y0 + 1, ih - 1)
+	var tx := fx - float(x0)
+	var ty := fy - float(y0)
+	var top := lerpf(img.get_pixel(x0, y0).r, img.get_pixel(x1, y0).r, tx)
+	var bot := lerpf(img.get_pixel(x0, y1).r, img.get_pixel(x1, y1).r, tx)
+	return lerpf(top, bot, ty)
 
 
 ## Decoded, uncompressed copy of the heightmap image, or null when unset.

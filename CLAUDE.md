@@ -298,6 +298,42 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   (its worked example, kit_demo, was deleted); it is rewritten around the new tools in LK8.
   Gym predates the kit and stays hand-built (no AuthoringRoot: check skips it).
 
+## Palette dock & click-to-place (LK2, landed — level_kit_plan.md §4 LK2)
+
+- **All editor UX lives in `addons/carlito_kit/`** (plan's editor/runtime split): the P6 plugin
+  grew a **bottom-panel dock** + a viewport placement tool. `plugin.gd` still registers the
+  export stripper, and now also adds the dock, wires it to the tool, and calls
+  `set_input_event_forwarding_always_enabled()` so `_forward_3d_gui_input` receives every
+  viewport event (placement is selection-independent). Nothing here ships — the addon is
+  editor-only.
+- **`palette_dock.gd`** (`@tool VBoxContainer`, UI only — no viewport/editor logic): reads all
+  `kit/import/*.json` recipes, gathers each kit's emitted prefab basenames (`kit/prefabs/<kit>/
+  *.tscn`) + palette meshlib item names, buckets them by **family via `KitRecipe.classify`**
+  (the LK1 taxonomy — `label` per section, `exclude` families skipped), and shows kit tabs →
+  family sections → thumbnail grid from `kit/thumbs/<kit>/<name>.png` (basename is 1:1 across
+  prefab/tile/thumb/GLB). **Search is global across all kits** (non-empty query flattens the
+  tabs into one result flow, each tile badged `<kit>/<name>`). Toolbar: **Random yaw** / **Snap**
+  toggles + snap-step SpinBox → `settings_changed`; prefab click → `prefab_armed`, tile click →
+  `tile_selected`.
+- **`placement_tool.gd`** (`RefCounted`, holds all editor API): `arm(kit,name)` instances the
+  prefab as a **non-saved ghost** (unowned, its collision bodies zeroed to `collision_layer=0`
+  and excluded from the ray) that follows the ground-snapped cursor; left-click **commits** a
+  real owned copy under the level's `AuthoringRoot` via `EditorUndoRedoManager`
+  (add_child + set_owner + local transform, undoable); **sticky** (stays armed); right-click /
+  Escape disarms. Refuses to arm with a clear warning when the scene has **no AuthoringRoot**
+  (found by the `is_carlito_authoring()` duck-type walk).
+- **Ground raycast fallback chain** (a click never dead-drops): edited-scene physics
+  `intersect_ray` first → miss → the level's **`HeightmapTerrain.height_at(world_pos)`** sample
+  (new bilinear world-space query on `heightmap_terrain.gd`, plus `contains_xz`; runtime-safe,
+  reused by LK5 scatter — unit-tested in `tests/test_heightmap_terrain.gd`) → miss → the `Y=0`
+  plane. Editor physics isn't always populated, so the terrain/plane branches carry the feature.
+- **Palette tiles route to the built-in GridMap workflow** (never reimplemented): `select_tile`
+  finds — or creates (undoable, `cell_size` + `cell_center_y=false` from the recipe) — the
+  AuthoringRoot GridMap using that kit's meshlib and selects/edits it so the built-in palette
+  (LK1b thumbnails) opens. `GridMapEditorPlugin.set_selected_palette_item` has no public handle
+  to the built-in instance, so the exact paint item is a **best-effort** print of the item id —
+  the author clicks the (thumbnailed) tile in the built-in palette.
+
 ## Water & boat — M6 (P8, landed — plan §1, §4.4, §8)
 
 - **`WaterSurface`** (`src/water/water_surface.gd`, `@tool Area3D`, group `"water"`) is one node
