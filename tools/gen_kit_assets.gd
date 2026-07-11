@@ -26,12 +26,19 @@ extends SceneTree
 ## Meshlib item ids are preserved across regens (painted GridMaps reference them); see
 ## KitRecipe.assign_item_ids. Classification/id/coverage logic is pure + unit-tested in
 ## tests/test_kit_gen.gd (kit/helpers/kit_recipe.gd).
+##
+## Palette items get a MeshLibrary preview from kit/thumbs/<kit>/<name>.png when present, so
+## the built-in GridMap palette shows pictures. Full thumb workflow (LK1b), run locally:
+##   godot --path . res://tools/gen_thumbs.tscn        # windowed render -> kit/thumbs PNGs
+##   godot --headless --path . --import                # import the new PNGs
+##   godot --headless --path . --script res://tools/gen_kit_assets.gd   # embed the previews
 
 const Baker := preload("res://kit/bake/level_baker.gd")
 const Recipe := preload("res://kit/helpers/kit_recipe.gd")
 const KIT_PIECE_SCRIPT := "res://kit/helpers/kit_piece.gd"
 const RECIPE_DIR := "res://kit/import"
 const PREFAB_DIR := "res://kit/prefabs"
+const THUMB_DIR := "res://kit/thumbs"
 const DEFAULT_PREFAB_ALIGN := "center_floor"
 
 var _exit_code := 0
@@ -106,7 +113,10 @@ func _run_recipe(recipe_path: String) -> void:
 				palette_overrides[name] = asset_ov
 			"prefab":
 				var mode := String(asset_ov.get("collision_mode", fam.get("collision_mode", "box")))
-				prefab_items[name] = {"mode": mode, "ov": asset_ov}
+				# per-family scale_mul (default 1.0) multiplies the kit scale — e.g. the
+				# distant-skyline low-detail buildings are authored huge for the horizon.
+				var eff_scale := scale * float(fam.get("scale_mul", 1.0))
+				prefab_items[name] = {"mode": mode, "ov": asset_ov, "scale": eff_scale}
 			"exclude":
 				pass
 	palette_items.sort()
@@ -159,6 +169,11 @@ func _build_palette(kit: String, source: String, scale: float, palette: Dictiona
 		ml.set_item_mesh(id, mesh)
 		ml.set_item_mesh_transform(id, Transform3D.IDENTITY)
 		ml.set_item_shapes(id, [mesh.create_trimesh_shape(), Transform3D.IDENTITY])
+		# built-in GridMap palette shows pictures when a thumb exists (gen_thumbs.tscn,
+		# then --import). Best-effort: an un-generated/-imported thumb just leaves it blank.
+		var thumb := "%s/%s/%s.png" % [THUMB_DIR, kit, name]
+		if ResourceLoader.exists(thumb):
+			ml.set_item_preview(id, load(thumb))
 	_make_dir_for(output)
 	var err := ResourceSaver.save(ml, output)
 	if err != OK:
@@ -186,6 +201,7 @@ func _build_prefabs(kit: String, source: String, scale: float, items: Dictionary
 	for name: String in items:
 		var mode := String(items[name].mode)
 		var ov: Dictionary = items[name].ov
+		var pscale := float(items[name].get("scale", scale))  # per-family scale_mul applied
 		var geo := _load_geometry(source, name)
 		if geo.is_empty():
 			continue
@@ -193,9 +209,9 @@ func _build_prefabs(kit: String, source: String, scale: float, items: Dictionary
 		var off := Vector3(float(ov.get("x_offset", 0)), float(ov.get("y_offset", 0)),
 				float(ov.get("z_offset", 0)))
 		if align == "center_floor":
-			var ctr: Vector3 = geo.aabb.get_center() * scale
-			off += Vector3(-ctr.x, -geo.aabb.position.y * scale, -ctr.z)
-		var xform := Transform3D(Basis.from_scale(Vector3.ONE * scale), off)
+			var ctr: Vector3 = geo.aabb.get_center() * pscale
+			off += Vector3(-ctr.x, -geo.aabb.position.y * pscale, -ctr.z)
+		var xform := Transform3D(Basis.from_scale(Vector3.ONE * pscale), off)
 
 		var root := Node3D.new()
 		root.name = name.to_pascal_case()

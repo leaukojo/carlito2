@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/commercial/building-skyscraper-e.glb" id="2_4bc4r"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_lhai5"]
-size = Vector3(10.360001, 32.64, 9.936)
+size = Vector3(15.539999, 48.96, 14.903999)
 
-[node name="BuildingSkyscraperE" type="Node3D" unique_id=62679069]
+[node name="BuildingSkyscraperE" type="Node3D" unique_id=1417889773]
 script = ExtResource("1_gg2cg")
 
 [node name="Model" type="Node3D" parent="." unique_id=1365678210 instance=ExtResource("2_4bc4r")]
-transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, -4.7683716e-07, 0, 0)
+transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, -7.1525574e-07, 0, 0)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=144397031]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1847961148]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=62145098]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 16.32, 0)
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1723179149]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.536743e-07, 24.48, 0)
 shape = SubResource("BoxShape3D_lhai5")

@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/suburban/fence-3x2.glb" id="2_sosii"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_hsyb8"]
-size = Vector3(7, 2.1599998, 9.9)
+size = Vector3(10.5, 3.2399998, 14.849999)
 
-[node name="Fence3x2" type="Node3D" unique_id=1183275464]
+[node name="Fence3x2" type="Node3D" unique_id=463194480]
 script = ExtResource("1_o25bs")
 
 [node name="Model" type="Node3D" parent="." unique_id=1919508481 instance=ExtResource("2_sosii")]
-transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, -0.1500001)
+transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, -0.22500014)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=27581258]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1962969130]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1414900524]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0799999, 0)
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=2005441994]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6199999, -4.7683716e-07)
 shape = SubResource("BoxShape3D_hsyb8")

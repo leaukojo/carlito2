@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/commercial/building-g.glb" id="2_2nv7l"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_u65u7"]
-size = Vector3(7.7599998, 13.544, 7.3759995)
+size = Vector3(11.639999, 20.316, 11.064)
 
-[node name="BuildingG" type="Node3D" unique_id=231160489]
+[node name="BuildingG" type="Node3D" unique_id=1547534101]
 script = ExtResource("1_rotrq")
 
 [node name="Model" type="Node3D" parent="." unique_id=952180904 instance=ExtResource("2_2nv7l")]
-transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, 2.3841858e-07)
+transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 3.5762787e-07)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=40678115]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1045693272]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=36171296]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.772, 0)
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=669764056]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10.158, 4.7683716e-07)
 shape = SubResource("BoxShape3D_u65u7")

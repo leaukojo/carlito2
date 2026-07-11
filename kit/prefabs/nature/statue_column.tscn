@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/nature/statue_column.glb" id="2_pq6q4"]
 
 [sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_45jv6"]
-points = PackedVector3Array(0.30651578, 2.4684842, 0.30651578, -0.375, 0.04341476, -0.375, -0.37103176, 0.05611561, 0.375, 0.375, 0.05611561, -0.37103176, -0.375, 2.3809965, -0.375, 0.375, 0.05611561, 0.375, -0.37103176, 2.3690913, 0.375, 0.375, 2.3690913, -0.37103176, 0.375, 2.3690913, 0.375, -0.303341, 2.471659, -0.303341, 0.30651578, 2.4684842, -0.30254754, -0.30254754, 2.4684842, 0.30651578)
+points = PackedVector3Array(0.61303157, 4.9369683, 0.61303157, -0.75, 0.08682952, -0.75, -0.7420635, 0.11223122, 0.75, 0.75, 0.11223122, -0.7420635, -0.75, 4.761993, -0.75, 0.75, 0.11223122, 0.75, -0.7420635, 4.7381825, 0.75, 0.75, 4.7381825, -0.7420635, 0.75, 4.7381825, 0.75, -0.606682, 4.943318, -0.606682, 0.61303157, 4.9369683, -0.6050951, -0.6050951, 4.9369683, 0.61303157)
 
-[node name="StatueColumn" type="Node3D" unique_id=2078985391]
+[node name="StatueColumn" type="Node3D" unique_id=34727832]
 script = ExtResource("1_yl64w")
 collision_mode = "hull"
 
 [node name="Model" type="Node3D" parent="." unique_id=1805155848 instance=ExtResource("2_pq6q4")]
-transform = Transform3D(2.5, 0, 0, 0, 2.5, 0, 0, 0, 2.5, 0, 0.125, 0)
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0.25, 0)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1880339976]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1657568080]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=2090736693]
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1787602171]
 shape = SubResource("ConvexPolygonShape3D_45jv6")

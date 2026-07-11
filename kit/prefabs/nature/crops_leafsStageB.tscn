@@ -3,9 +3,9 @@
 [ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_f3mr3"]
 [ext_resource type="PackedScene" path="res://kit/raw/nature/crops_leafsStageB.glb" id="2_panve"]
 
-[node name="CropsLeafsStageB" type="Node3D" unique_id=896345948]
+[node name="CropsLeafsStageB" type="Node3D" unique_id=1696819348]
 script = ExtResource("1_f3mr3")
 collision_mode = "none"
 
 [node name="Model" type="Node3D" parent="." unique_id=1626777606 instance=ExtResource("2_panve")]
-transform = Transform3D(2.5, 0, 0, 0, 2.5, 0, 0, 0, 2.5, 0, 0.125, -3.7252903e-08)
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0.25, -7.4505806e-08)

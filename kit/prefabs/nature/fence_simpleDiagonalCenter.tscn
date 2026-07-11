@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/nature/fence_simpleDiagonalCenter.glb" id="2_2ydi3"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_8dto7"]
-size = Vector3(2.5, 0.8625, 2.5)
+size = Vector3(5, 1.725, 5)
 
-[node name="FenceSimpleDiagonalCenter" type="Node3D" unique_id=375631735]
+[node name="FenceSimpleDiagonalCenter" type="Node3D" unique_id=1768269222]
 script = ExtResource("1_hmd5u")
 
 [node name="Model" type="Node3D" parent="." unique_id=1933973320 instance=ExtResource("2_2ydi3")]
-transform = Transform3D(2.5, 0, 0, 0, 2.5, 0, 0, 0, 2.5, 0, 0.125, 0)
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0.25, 0)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=15203313]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1679575846]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=112938710]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.43125, 0)
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=876960589]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8625, 0)
 shape = SubResource("BoxShape3D_8dto7")

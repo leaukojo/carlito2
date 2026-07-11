@@ -3,9 +3,9 @@
 [ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_s5hvm"]
 [ext_resource type="PackedScene" path="res://kit/raw/commercial/low-detail-building-l.glb" id="2_25yyc"]
 
-[node name="LowDetailBuildingL" type="Node3D" unique_id=634446650]
+[node name="LowDetailBuildingL" type="Node3D" unique_id=1717421550]
 script = ExtResource("1_s5hvm")
 collision_mode = "none"
 
 [node name="Model" type="Node3D" parent="." unique_id=1492225647 instance=ExtResource("2_25yyc")]
-transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, 0)
+transform = Transform3D(120, 0, 0, 0, 120, 0, 0, 0, 120, 0, 0, 0)

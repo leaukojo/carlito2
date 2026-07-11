@@ -1,8 +1,10 @@
 extends Node
 ## One-shot builder for the permanent CI bake fixture src/levels/dev/kit_fixture.tscn
-## (level_kit_plan.md §4 LK1): a minimal level on the re-derived lattice — a small road
-## loop from the roads palette (scale-verification), one prefab of each collision mode, a
-## weld ramp, and a car spawn — all under an AuthoringRoot so the baker/CI cover it.
+## (level_kit_plan.md §4 LK1): a level on the re-derived lattice — a small road loop from
+## the roads palette (scale-verification), one prefab of each collision mode + a weld ramp
+## (the bake canary), a per-kit ASSET SHOWCASE (evenly-sampled prefabs in labelled rows so
+## every kit's scale can be eyeballed against the car), and a car spawn — all the kit content
+## under an AuthoringRoot so the baker/CI cover it.
 ##
 ## Built programmatically because hand-authoring GridMap cell+orientation data in a .tscn
 ## is fragile; re-run if the roads palette rescales (item ids are stable across regen).
@@ -29,6 +31,15 @@ const PREFABS := {
 	"weld": "res://kit/prefabs/racing/ramp.tscn",
 }
 
+# Asset showcase: one labelled row per kit, SHOWCASE_N prefabs sampled evenly across the
+# kit's sorted prefab list (a representative spread, robust to prefab renames). Rows march
+# north (+Z) beyond the loop; drive among them to judge each kit's scale against the car.
+const SHOWCASE_KITS := ["suburban", "commercial", "industrial", "nature", "watercraft", "racing"]
+const SHOWCASE_N := 6         # prefabs per kit row
+const SHOWCASE_DX := 16.0     # X spacing between items in a row
+const SHOWCASE_Z0 := 44.0     # Z of the first row
+const SHOWCASE_DZ := 16.0     # Z spacing between kit rows
+
 
 func _ready() -> void:
 	var root := Node3D.new()
@@ -48,6 +59,7 @@ func _ready() -> void:
 	_add(root, root, authoring)
 	_add(root, authoring, _make_road_loop())
 	_add_prefabs(root, authoring)
+	_add_showcase(root, authoring)
 
 	var packed := PackedScene.new()
 	if packed.pack(root) != OK:
@@ -108,13 +120,16 @@ func _add_ground(root: Node) -> void:
 	var body := StaticBody3D.new()
 	body.name = "Ground"
 	_add(root, root, body)
-	var size := Vector3(80, 2, 80)
+	# Big enough to hold the loop, the canary props, and all showcase rows (which run to
+	# ~Z SHOWCASE_Z0 + 5*SHOWCASE_DZ). Centred north of the origin to frame that content.
+	var size := Vector3(120, 2, 190)
+	var center := Vector3(0, -1, 55)
 	var shape := BoxShape3D.new()
 	shape.size = size
 	var cs := CollisionShape3D.new()
 	cs.name = "Shape"
 	cs.shape = shape
-	cs.position = Vector3(0, -1, 0)
+	cs.position = center
 	_add(root, body, cs)
 	var mesh := BoxMesh.new()
 	mesh.size = size
@@ -124,7 +139,7 @@ func _add_ground(root: Node) -> void:
 	mi.name = "Mesh"
 	mi.mesh = mesh
 	mi.material_override = mat
-	mi.position = Vector3(0, -1, 0)
+	mi.position = center
 	_add(root, body, mi)
 
 
@@ -149,7 +164,9 @@ func _make_spawn() -> Marker3D:
 const STRAIGHT_EW_DEG := 0     # horizontal edges (road runs east-west / along X)
 const STRAIGHT_NS_DEG := 90    # vertical edges (road runs north-south / along Z)
 const BEND_DEG := {            # per corner cell (x,z) -> Y-rotation of the bend
-	Vector2i(1, 1): 90, Vector2i(1, -1): 180, Vector2i(-1, -1): 270, Vector2i(-1, 1): 0,
+	# +180 from the first cut: the bend tile's painted road faces the opposite way, so
+	# every corner was mirrored (hand-fixed in-editor, folded back in here).
+	Vector2i(1, 1): 270, Vector2i(1, -1): 0, Vector2i(-1, -1): 90, Vector2i(-1, 1): 180,
 }
 
 func _make_road_loop() -> GridMap:
@@ -188,3 +205,55 @@ func _add_prefabs(owner: Node, parent: Node) -> void:
 		inst.position = poses[mode]
 		parent.add_child(inst)
 		inst.owner = owner
+
+
+## One labelled row per kit of evenly-sampled prefabs, for eyeballing scale. The prefabs go
+## under Authoring (baked/CI-covered); the Label3D signposts go under a sibling node so they
+## survive the bake (which frees the authoring subtree) and still show in play.
+func _add_showcase(owner: Node, authoring: Node) -> void:
+	var labels := Node3D.new()
+	labels.name = "ShowcaseLabels"
+	_add(owner, owner, labels)
+
+	for row in SHOWCASE_KITS.size():
+		var kit: String = SHOWCASE_KITS[row]
+		var z := SHOWCASE_Z0 + row * SHOWCASE_DZ
+		var names := _sample_prefabs(kit, SHOWCASE_N)
+		var x0 := -0.5 * (names.size() - 1) * SHOWCASE_DX
+		for i in names.size():
+			var inst := (load(names[i]) as PackedScene).instantiate()
+			inst.position = Vector3(x0 + i * SHOWCASE_DX, 0, z)
+			authoring.add_child(inst)
+			inst.owner = owner
+
+		var label := Label3D.new()
+		label.name = "Label_" + kit
+		label.text = kit.to_upper()
+		label.position = Vector3(x0 - SHOWCASE_DX, 4, z)
+		label.pixel_size = 0.08
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		label.modulate = Color(1, 0.95, 0.6)
+		_add(owner, labels, label)
+
+
+## Evenly-spaced sample of a kit's sorted prefab .tscn paths (indices 0 .. n-1 spread across
+## the list), so a row shows the kit's variety rather than the alphabetical head.
+func _sample_prefabs(kit: String, k: int) -> Array[String]:
+	var dir := "res://kit/prefabs/" + kit
+	var files: Array[String] = []
+	var da := DirAccess.open(dir)
+	if da != null:
+		for f in da.get_files():
+			# low-detail-* are the horizon-scale skyline set (scale_mul 10 -> ~120): far too
+			# big for this small gallery, they belong on the island's horizon, so skip them.
+			if f.ends_with(".tscn") and not f.begins_with("low-detail-"):
+				files.append(dir.path_join(f))
+	files.sort()
+	var out: Array[String] = []
+	var n := files.size()
+	if n == 0:
+		return out
+	for i in mini(k, n):
+		var idx := 0 if k <= 1 else int(round(float(i) * (n - 1) / (k - 1)))
+		out.append(files[idx])
+	return out

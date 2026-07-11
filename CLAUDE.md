@@ -236,6 +236,13 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   materials internally, no `Textures/`), `kit/import/<kit>.json` recipes, `kit/palettes/*.meshlib` +
   `kit/prefabs/<kit>/*.tscn` **generated** by `tools/gen_kit_assets.gd` (`--script` mode; re-run only
   after recipe/kit edits; meshlib item ids preserved across regens so painted GridMaps never break).
+- **Thumbnails (LK1b):** `tools/gen_thumbs.tscn` (game-mode tool, run **windowed** — headless can't
+  render) frames every non-excluded prefab/palette GLB in a SubViewport on a neutral backdrop and
+  writes `kit/thumbs/<kit>/<name>.png` (128², imported lossless). `gen_kit_assets.gd` then embeds each
+  palette tile's thumb as a MeshLibrary item **preview** (built-in GridMap palette shows pictures; the
+  LK2 dock reads the PNGs). Full local flow: `gen_thumbs.tscn` -> `--import` -> `gen_kit_assets.gd`.
+  Never CI. `kit/thumbs/*` is export-excluded (only the ~4KB reference table lands in the meshlib, not
+  image data); embedding a new thumb re-stales dependent bakes (re-bake after regen).
 - **Recipe schema is families-driven (LK1, single source of truth):** each recipe has one ordered
   `families` list — `{name, label, match:[regex], pipeline:"palette"|"prefab"|"exclude",
   collision_mode?, reason?(exclude), assets:{<name>:{overrides}}}` — that *alone* classifies every
@@ -268,8 +275,9 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   duck-typed marker methods (`is_carlito_authoring` / `is_carlito_kit_piece`), never class_name.
 - **Export never ships authoring:** `addons/carlito_kit/` (enabled EditorPlugin) registers an
   EditorExportPlugin whose `_customize_scene` strips AuthoringRoot from exported scenes;
-  `export_presets.cfg` excludes kit glbs/palettes/prefabs/tools (colormap + racing banner PNGs ship
-  — baked materials reference them). Verified by byte-scanning the pck.
+  `export_presets.cfg` excludes kit glbs/palettes/prefabs/thumbs/tools (colormap + racing banner PNGs
+  ship — baked materials reference them). Verified by byte-scanning the pck (an excluded imported
+  texture leaves only a benign uid-cache path string, never its `.ctex` data).
 - **CI gate:** `tools/check_bakes.tscn` recomputes each registered level's input hash (level .tscn
   + transitive `res://kit/**` deps + `.import` sidecars, CRLF-normalized text hashing) vs the
   manifest; ci.yml fails on missing/stale. The baked-level headless smoke
@@ -355,6 +363,9 @@ $env:GODOT_BIN = $GODOT; .\addons\gdUnit4\runtest.cmd -a tests
 & $GODOT --headless --path . --quit-after 120
 
 # level kit: regenerate palettes/prefabs (after kit/import recipe edits only)
+& $GODOT --headless --path . --script res://tools/gen_kit_assets.gd
+# kit thumbnails (WINDOWED — no --headless; then re-import + regen to embed palette previews)
+& $GODOT --path . res://tools/gen_thumbs.tscn ; & $GODOT --headless --path . --import
 & $GODOT --headless --path . --script res://tools/gen_kit_assets.gd
 # bake all registered levels / CI stale-bake check (game-mode tool scenes — see kit section)
 & $GODOT --headless --path . res://tools/bake_levels.tscn
