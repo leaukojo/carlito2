@@ -53,6 +53,10 @@ func _ready() -> void:
 	_add(root, root, _make_camera())
 	_add_ground(root)
 	_add(root, root, _make_spawn())
+	# Temporary boat-test rig (removed later): a small water body west of the ground
+	# plane plus a boat spawn over it, so the garage can spawn/float a boat here.
+	_add(root, root, _make_water())
+	_add(root, root, _make_boat_spawn())
 
 	var authoring := Node3D.new()
 	authoring.name = "Authoring"
@@ -153,6 +157,32 @@ func _make_spawn() -> Marker3D:
 	# On the loop's south straight (0,0,1) -> world (0, .8, 8), facing +X along the road.
 	spawn.transform = Transform3D(Basis.from_euler(Vector3(0, deg_to_rad(-90), 0)),
 			Vector3(0, 0.8, CELL))
+	return spawn
+
+
+const WATER_POS := Vector3(-90, 0.5, 0)
+
+
+## Temporary boat-test water body, west of the 120-wide ground plane so it never
+## overlaps the road loop / props / scatter. A direct child of the level (never under
+## Authoring — water is not bakeable kit content).
+func _make_water() -> Area3D:
+	var water := Area3D.new()
+	water.name = "Water"
+	water.set_script(load("res://src/water/water_surface.gd"))
+	water.position = WATER_POS
+	water.set("size", Vector2(40, 40))
+	water.set("depth", 3.0)
+	return water
+
+
+func _make_boat_spawn() -> Marker3D:
+	var spawn := Marker3D.new()
+	spawn.name = "BoatSpawn"
+	spawn.set_script(load("res://src/levels/base/vehicle_spawn.gd"))
+	spawn.set("vehicle_types", PackedStringArray(["boat"]))
+	spawn.set("is_water", true)
+	spawn.transform = Transform3D(Basis.IDENTITY, WATER_POS + Vector3(0, 1.0, 0))
 	return spawn
 
 

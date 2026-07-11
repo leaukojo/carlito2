@@ -5,5 +5,5 @@
 [resource]
 script = ExtResource("1_info")
 display_name = "Kit Fixture (dev)"
-allowed_vehicles = PackedStringArray("car")
+allowed_vehicles = PackedStringArray("car", "boat")
 default_vehicle = "car"
