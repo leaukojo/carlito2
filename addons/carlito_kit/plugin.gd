@@ -11,17 +11,22 @@ const PaletteDock := preload("res://addons/carlito_kit/palette_dock.gd")
 const PlacementTool := preload("res://addons/carlito_kit/placement_tool.gd")
 const TerrainBrush := preload("res://addons/carlito_kit/terrain_brush.gd")
 const BrushPanel := preload("res://addons/carlito_kit/brush_panel.gd")
+const ScatterGizmo := preload("res://addons/carlito_kit/scatter_gizmo.gd")
 
 var _strip: EditorExportPlugin
 var _dock: Control
 var _tool  # PlacementTool (RefCounted)
 var _brush  # TerrainBrush (RefCounted)
 var _panel: Control
+var _scatter_gizmo: EditorNode3DGizmoPlugin
 
 
 func _enter_tree() -> void:
 	_strip = StripExport.new()
 	add_export_plugin(_strip)
+
+	_scatter_gizmo = ScatterGizmo.new()
+	add_node_3d_gizmo_plugin(_scatter_gizmo)
 
 	_tool = PlacementTool.new(get_undo_redo())
 	_dock = PaletteDock.new()
@@ -51,6 +56,9 @@ func _enter_tree() -> void:
 func _exit_tree() -> void:
 	remove_export_plugin(_strip)
 	_strip = null
+
+	remove_node_3d_gizmo_plugin(_scatter_gizmo)
+	_scatter_gizmo = null
 
 	EditorInterface.get_selection().selection_changed.disconnect(_on_selection_changed)
 

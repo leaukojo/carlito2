@@ -1,0 +1,16 @@
+{
+	"baker_version": 2,
+	"chunk_size": 48.0,
+	"input_hash": "1acfe51a2ab133819dc3a4e1ac41cd35d7b80367b4b593b0dbc1e3752dcedffb",
+	"level": "res://src/levels/dev/terrain_demo.tscn",
+	"stats": {
+		"bodies": 0,
+		"chunks": 0,
+		"drivable_triangles": 0,
+		"scatter_instances": 84,
+		"scatter_multimeshes": 4,
+		"shapes": 0,
+		"surfaces": 0,
+		"vertices": 284
+	}
+}

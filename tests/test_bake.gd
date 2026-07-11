@@ -242,3 +242,173 @@ func test_accumulator_generates_sequential_indices_for_unindexed() -> void:
 	var acc := Baker.SurfaceAccumulator.new()
 	acc.append(arrays, Transform3D.IDENTITY)
 	assert_that(acc.indices).is_equal(PackedInt32Array([0, 1, 2]))
+
+
+# ------------------------------------------------------------ scatter bake paths
+
+const ScatterRegionScript := preload("res://kit/helpers/scatter_region.gd")
+const ScatterItemScript := preload("res://kit/helpers/scatter_item.gd")
+
+
+## Minimal in-code kit prefab: KitPiece root + one BoxMesh + one box DevCollision
+## shape — enough to exercise both scatter render paths and the collision harvest.
+func _scatter_prefab(mode: String) -> PackedScene:
+	var root := Node3D.new()
+	root.name = "Piece"
+	root.set_script(preload("res://kit/helpers/kit_piece.gd"))
+	root.set("collision_mode", mode)
+	var mi := MeshInstance3D.new()
+	mi.name = "Mesh"
+	mi.mesh = BoxMesh.new()
+	root.add_child(mi)
+	mi.owner = root
+	var body := StaticBody3D.new()
+	body.name = "DevCollision"
+	root.add_child(body)
+	body.owner = root
+	var cs := CollisionShape3D.new()
+	cs.name = "Shape"
+	cs.shape = BoxShape3D.new()
+	body.add_child(cs)
+	cs.owner = root
+	var packed := PackedScene.new()
+	packed.pack(root)
+	root.free()
+	return packed
+
+
+## Bakeable level skeleton (never enters the tree, so no _ready side effects):
+## root + car-friendly spawn + AuthoringRoot + one ScatterRegion with hand-set
+## stored transforms — the baker must consume the STORED data, nothing else.
+func _scatter_level(prefab: PackedScene, positions: Array, collision: bool,
+		threshold_override: int) -> Dictionary:
+	var root := Node3D.new()
+	root.name = "L"
+	var spawn := Marker3D.new()
+	spawn.name = "Spawn"
+	spawn.set_script(load("res://src/levels/base/vehicle_spawn.gd"))
+	root.add_child(spawn)
+	var authoring := Node3D.new()
+	authoring.name = "Authoring"
+	authoring.set_script(preload("res://kit/helpers/authoring_root.gd"))
+	root.add_child(authoring)
+
+	var item: Resource = ScatterItemScript.new()
+	item.set("prefab", prefab)
+	item.set("collision", collision)
+	item.set("bake_threshold_override", threshold_override)
+	var region := Node3D.new()
+	region.name = "Region"
+	region.set_script(ScatterRegionScript)
+	authoring.add_child(region)
+	var items: Array[ScatterItem] = [item]
+	region.set("items", items)
+	var flat := PackedFloat32Array()
+	for pos: Vector3 in positions:
+		flat.append_array(PackedFloat32Array([pos.x, pos.y, pos.z, 0.0, 1.0]))
+	var stored: Array[PackedFloat32Array] = [flat]
+	region.set("stored_transforms", stored)
+	return {"root": root, "region": region}
+
+
+func test_scatter_above_threshold_bakes_multimesh_per_chunk() -> void:
+	# threshold 2 with 3 instances across two 48 m chunks -> the MultiMesh path.
+	var level: Dictionary = _scatter_level(_scatter_prefab("hull"),
+			[Vector3(0, 0, 0), Vector3(1, 0, 1), Vector3(60, 0, 0)], true, 2)
+	var result: Dictionary = Baker.bake(level.root)
+	assert_bool(result.ok).is_true()
+	var baked: Node3D = result.root
+
+	var scatter := baked.get_node("Scatter")
+	assert_int(scatter.get_child_count()).is_equal(2)   # one MMI per touched chunk
+	var counts := []
+	var total := 0
+	for mmi: MultiMeshInstance3D in scatter.get_children():
+		counts.append(mmi.multimesh.instance_count)
+		total += mmi.multimesh.instance_count
+	assert_int(total).is_equal(3)
+	assert_bool(counts.has(2) and counts.has(1)).is_true()
+	# instance transforms are chunk-local: the (60,0,0) instance sits at x=12 in
+	# the chunk-(1,0) MMI positioned at x=48
+	var far: MultiMeshInstance3D = scatter.get_node("scatter_0_1_0")
+	assert_that(far.position).is_equal(Vector3(48, 0, 0))
+	assert_that(far.multimesh.get_instance_transform(0).origin).is_equal(Vector3(12, 0, 0))
+	# geometry stored once: no verts merged into chunk meshes
+	assert_int(baked.get_node("Chunks").get_child_count()).is_equal(0)
+	# collision harvest identical to the prefab path: 2 + 1 shapes in chunk bodies
+	var bodies := baked.get_node("Bodies")
+	assert_int(bodies.get_node("body_0_0").get_child_count()).is_equal(2)
+	assert_int(bodies.get_node("body_1_0").get_child_count()).is_equal(1)
+	var stats: Dictionary = result.stats
+	assert_int(int(stats.scatter_instances)).is_equal(3)
+	assert_int(int(stats.scatter_multimeshes)).is_equal(2)
+	assert_int(int(stats.shapes)).is_equal(3)
+	baked.free()
+	level.root.free()
+
+
+func test_scatter_below_threshold_merges_like_prefabs() -> void:
+	var level: Dictionary = _scatter_level(_scatter_prefab("hull"),
+			[Vector3(0, 0, 0), Vector3(2, 0, 0), Vector3(4, 0, 0)], true, -1)
+	var result: Dictionary = Baker.bake(level.root)
+	assert_bool(result.ok).is_true()
+	var baked: Node3D = result.root
+	assert_object(baked.get_node_or_null("Scatter")).is_null()
+	assert_int(baked.get_node("Chunks").get_child_count()).is_equal(1)   # merged verts
+	assert_int(baked.get_node("Bodies").get_node("body_0_0").get_child_count()).is_equal(3)
+	assert_int(int((result.stats as Dictionary).scatter_instances)).is_equal(3)
+	assert_int(int((result.stats as Dictionary).scatter_multimeshes)).is_equal(0)
+	baked.free()
+	level.root.free()
+
+
+func test_scatter_collision_off_adds_zero_physics_both_paths() -> void:
+	for threshold in [2, -1]:   # MultiMesh path, then the merge path
+		var level: Dictionary = _scatter_level(_scatter_prefab("hull"),
+				[Vector3(0, 0, 0), Vector3(2, 0, 0), Vector3(4, 0, 0)], false, threshold)
+		var result: Dictionary = Baker.bake(level.root)
+		assert_bool(result.ok).is_true()
+		var baked: Node3D = result.root
+		assert_object(baked.get_node_or_null("Bodies")).is_null()
+		assert_int(int((result.stats as Dictionary).shapes)).is_equal(0)
+		baked.free()
+		level.root.free()
+
+
+func test_scatter_weld_prefab_is_a_bake_error() -> void:
+	var level: Dictionary = _scatter_level(_scatter_prefab("weld"),
+			[Vector3(0, 0, 0)], true, -1)
+	var result: Dictionary = Baker.bake(level.root)
+	assert_bool(result.ok).is_false()
+	assert_bool("\n".join(result.errors as PackedStringArray).contains("weld")).is_true()
+	level.root.free()
+
+
+func test_scatter_ground_hash_gate() -> void:
+	var level: Dictionary = _scatter_level(_scatter_prefab("hull"),
+			[Vector3(0, 0, 0)], true, -1)
+	var root: Node3D = level.root
+	var terrain := StaticBody3D.new()
+	terrain.name = "Terrain"
+	terrain.set_script(load("res://src/levels/base/heightmap_terrain.gd"))
+	var img := Image.create(8, 8, false, Image.FORMAT_L8)
+	img.fill(Color(0.5, 0.5, 0.5))
+	terrain.set("heightmap", ImageTexture.create_from_image(img))
+	root.add_child(terrain)
+
+	# default stored_ground_hash "" no longer matches a level WITH terrain
+	var errors: PackedStringArray = Baker.scatter_ground_errors(root)
+	assert_int(errors.size()).is_equal(1)
+	assert_bool(errors[0].contains("Regenerate")).is_true()
+	assert_bool((Baker.bake(root) as Dictionary).ok).is_false()
+
+	# storing the current hash (what Regenerate does) clears the gate
+	level.region.set("stored_ground_hash", ScatterRegionScript.ground_hash(root))
+	assert_array(Baker.scatter_ground_errors(root)).is_empty()
+
+	# a region with no stored instances never gates (nothing bakes from it)
+	var empty_stored: Array[PackedFloat32Array] = [PackedFloat32Array()]
+	level.region.set("stored_transforms", empty_stored)
+	level.region.set("stored_ground_hash", "whatever")
+	assert_array(Baker.scatter_ground_errors(root)).is_empty()
+	root.free()

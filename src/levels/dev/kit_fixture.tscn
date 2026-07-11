@@ -1,282 +1,372 @@
-[gd_scene format=3 uid="uid://bubpqbi3o05ci"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://dfqaw0jscyvlx" path="res://src/levels/base/level.gd" id="1_nalb0"]
-[ext_resource type="Resource" path="res://src/levels/dev/kit_fixture_info.tres" id="2_xpy5n"]
-[ext_resource type="Script" uid="uid://ckxshtqj7odax" path="res://src/vehicles/base/chase_camera.gd" id="3_7j62h"]
-[ext_resource type="Script" uid="uid://5y8krjlda43v" path="res://src/levels/base/vehicle_spawn.gd" id="4_3jx30"]
-[ext_resource type="Script" uid="uid://t88htpmwukbg" path="res://kit/helpers/authoring_root.gd" id="5_ejqm7"]
-[ext_resource type="MeshLibrary" path="res://kit/palettes/roads.meshlib" id="6_nkges"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/nature/grass.tscn" id="7_jm8ie"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/building-type-a.tscn" id="9_8hbdd"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/nature/tree_default.tscn" id="10_n281j"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/roads/light-square.tscn" id="11_d184b"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/racing/ramp.tscn" id="12_ibfup"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/building-type-i.tscn" id="13_j40k1"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/building-type-q.tscn" id="14_50r16"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/fence-1x2.tscn" id="15_qmjqo"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/fence.tscn" id="16_kahsh"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/tree-small.tscn" id="17_7al81"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/building-a.tscn" id="18_qpmkh"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/building-f.tscn" id="19_eq7na"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/building-k.tscn" id="20_muqit"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/building-skyscraper-a.tscn" id="21_c8h5w"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/detail-awning-wide.tscn" id="22_tp48g"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/detail-parasol-b.tscn" id="23_572cb"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/industrial/building-a.tscn" id="24_8rhxd"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/industrial/building-f.tscn" id="25_ajw1m"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/industrial/building-k.tscn" id="26_vxovx"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/industrial/building-o.tscn" id="27_xcon5"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/industrial/building-t.tscn" id="28_nhpu0"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/industrial/detail-tank.tscn" id="29_twal3"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/nature/cactus_short.tscn" id="30_hqfvi"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/nature/flower_redC.tscn" id="31_72po1"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/nature/rock_smallFlatC.tscn" id="32_npqul"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/nature/stone_smallI.tscn" id="33_gwj21"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/nature/tree_palmDetailedShort.tscn" id="34_pmy26"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/nature/tree_thin_fall.tscn" id="35_fj1mw"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/arrow-standing.tscn" id="36_okm4t"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/boat-row-small.tscn" id="37_c7qvl"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/boat-speed-g.tscn" id="38_cr8w4"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/buoy-flag.tscn" id="39_v5wfh"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/ramp-wide.tscn" id="40_scojy"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/ship-small.tscn" id="41_mb8uq"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/racing/bannerTowerGreen.tscn" id="42_rt0ov"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/racing/fenceCurved.tscn" id="43_4j5jr"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/racing/grandStandCoveredRound.tscn" id="44_ref2k"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/racing/overheadRound.tscn" id="45_iifwg"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/racing/rail.tscn" id="46_ygi8h"]
-[ext_resource type="PackedScene" path="res://kit/prefabs/racing/treeSmall.tscn" id="47_mb67b"]
-[ext_resource type="MeshLibrary" path="res://kit/palettes/racing.meshlib" id="47_nalb0"]
+[ext_resource type="Script" path="res://src/levels/base/level.gd" id="1_7j62h"]
+[ext_resource type="Resource" path="res://src/levels/dev/kit_fixture_info.tres" id="2_3jx30"]
+[ext_resource type="Script" path="res://src/vehicles/base/chase_camera.gd" id="3_ejqm7"]
+[ext_resource type="Script" path="res://src/levels/base/vehicle_spawn.gd" id="4_nkges"]
+[ext_resource type="Script" path="res://kit/helpers/authoring_root.gd" id="5_jm8ie"]
+[ext_resource type="MeshLibrary" path="res://kit/palettes/roads.meshlib" id="6_3x6cf"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/grass.tscn" id="7_8hbdd"]
+[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="8_n281j"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/building-type-a.tscn" id="9_d184b"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/tree_default.tscn" id="10_ibfup"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/roads/light-square.tscn" id="11_j40k1"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/racing/ramp.tscn" id="12_50r16"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/building-type-i.tscn" id="13_qmjqo"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/building-type-q.tscn" id="14_kahsh"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/fence-1x2.tscn" id="15_7al81"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/fence.tscn" id="16_qpmkh"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/tree-small.tscn" id="17_eq7na"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/building-a.tscn" id="18_muqit"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/building-f.tscn" id="19_c8h5w"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/building-k.tscn" id="20_tp48g"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/building-skyscraper-a.tscn" id="21_572cb"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/detail-awning-wide.tscn" id="22_8rhxd"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/detail-parasol-b.tscn" id="23_ajw1m"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/industrial/building-a.tscn" id="24_vxovx"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/industrial/building-f.tscn" id="25_xcon5"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/industrial/building-k.tscn" id="26_nhpu0"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/industrial/building-o.tscn" id="27_twal3"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/industrial/building-t.tscn" id="28_hqfvi"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/industrial/detail-tank.tscn" id="29_72po1"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/cactus_short.tscn" id="30_npqul"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/flower_redC.tscn" id="31_gwj21"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/rock_smallFlatC.tscn" id="32_pmy26"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/stone_smallI.tscn" id="33_fj1mw"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/tree_palmDetailedShort.tscn" id="34_okm4t"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/tree_thin_fall.tscn" id="35_c7qvl"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/arrow-standing.tscn" id="36_cr8w4"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/boat-row-small.tscn" id="37_v5wfh"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/boat-speed-g.tscn" id="38_scojy"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/buoy-flag.tscn" id="39_mb8uq"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/ramp-wide.tscn" id="40_rt0ov"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/ship-small.tscn" id="41_4j5jr"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/racing/bannerTowerGreen.tscn" id="42_ref2k"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/racing/fenceCurved.tscn" id="43_iifwg"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/racing/grandStandCoveredRound.tscn" id="44_ygi8h"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/racing/overheadRound.tscn" id="45_mb67b"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/racing/rail.tscn" id="46_3cm10"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/racing/treeSmall.tscn" id="47_y6du1"]
+[ext_resource type="Script" path="res://kit/helpers/scatter_region.gd" id="48_lkcey"]
+[ext_resource type="Script" path="res://kit/helpers/scatter_item.gd" id="49_bohb0"]
 
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_3cm10"]
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_mrcbo"]
 
-[sub_resource type="Sky" id="Sky_y6du1"]
-sky_material = SubResource("ProceduralSkyMaterial_3cm10")
+[sub_resource type="Sky" id="Sky_nl6j8"]
+sky_material = SubResource("ProceduralSkyMaterial_mrcbo")
 
-[sub_resource type="Environment" id="Environment_lkcey"]
+[sub_resource type="Environment" id="Environment_qbgke"]
 background_mode = 2
-sky = SubResource("Sky_y6du1")
+sky = SubResource("Sky_nl6j8")
 ambient_light_source = 3
 ambient_light_energy = 0.6
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_bohb0"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_23ujc"]
 size = Vector3(120, 2, 190)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mrcbo"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_o1wca"]
 albedo_color = Color(0.34, 0.42, 0.29, 1)
 
-[sub_resource type="BoxMesh" id="BoxMesh_nl6j8"]
+[sub_resource type="BoxMesh" id="BoxMesh_4mmy1"]
 size = Vector3(120, 2, 190)
 
-[node name="KitFixture" type="Node3D" unique_id=2107265557]
-script = ExtResource("1_nalb0")
-info = ExtResource("2_xpy5n")
+[sub_resource type="Resource" id="Resource_7iofg"]
+script = ExtResource("49_bohb0")
+prefab = ExtResource("10_ibfup")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=818310794]
-environment = SubResource("Environment_lkcey")
+[sub_resource type="Resource" id="Resource_0e8c1"]
+script = ExtResource("49_bohb0")
+prefab = ExtResource("7_8hbdd")
+collision = false
 
-[node name="Sun" type="DirectionalLight3D" parent="." unique_id=990631098]
+[node name="KitFixture" type="Node3D" unique_id=1050149997]
+script = ExtResource("1_7j62h")
+info = ExtResource("2_3jx30")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1642558782]
+environment = SubResource("Environment_qbgke")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=411732866]
 transform = Transform3D(0.76604444, -0.49240384, 0.4131759, 0, 0.64278764, 0.76604444, -0.6427876, -0.58682406, 0.4924039, 0, 40, 0)
 shadow_enabled = true
 
-[node name="ChaseCamera" type="Camera3D" parent="." unique_id=758812919]
+[node name="ChaseCamera" type="Camera3D" parent="." unique_id=739520041]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 6)
-script = ExtResource("3_7j62h")
+script = ExtResource("3_ejqm7")
 
-[node name="Ground" type="StaticBody3D" parent="." unique_id=906692556]
+[node name="Ground" type="StaticBody3D" parent="." unique_id=340215603]
 
-[node name="Shape" type="CollisionShape3D" parent="Ground" unique_id=1650387853]
+[node name="Shape" type="CollisionShape3D" parent="Ground" unique_id=640574881]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 55)
-shape = SubResource("BoxShape3D_bohb0")
+shape = SubResource("BoxShape3D_23ujc")
 
-[node name="Mesh" type="MeshInstance3D" parent="Ground" unique_id=710317422]
+[node name="Mesh" type="MeshInstance3D" parent="Ground" unique_id=1079382084]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 55)
-material_override = SubResource("StandardMaterial3D_mrcbo")
-mesh = SubResource("BoxMesh_nl6j8")
+material_override = SubResource("StandardMaterial3D_o1wca")
+mesh = SubResource("BoxMesh_4mmy1")
 
-[node name="Spawn" type="Marker3D" parent="." unique_id=651147236]
+[node name="Spawn" type="Marker3D" parent="." unique_id=280922310]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 0, 0.8, 12)
-script = ExtResource("4_3jx30")
+script = ExtResource("4_nkges")
 vehicle_types = PackedStringArray("car")
 
-[node name="Authoring" type="Node3D" parent="." unique_id=278045799]
-script = ExtResource("5_ejqm7")
+[node name="Authoring" type="Node3D" parent="." unique_id=759826909]
+script = ExtResource("5_jm8ie")
 
-[node name="RoadLoop" type="GridMap" parent="Authoring" unique_id=20371523]
-mesh_library = ExtResource("6_nkges")
+[node name="RoadLoop" type="GridMap" parent="Authoring" unique_id=1113470727]
+mesh_library = ExtResource("6_3x6cf")
 cell_size = Vector3(12, 3, 12)
 cell_center_y = false
 data = {
 "cells": PackedInt32Array(0, 1, 49, 0, 65535, 49, 1, 0, 1048625, 65535, 0, 1048625, 1, 1, 1441792, 1, 65535, 0, 65535, 65535, 1048576, 65535, 1, 655360)
 }
-metadata/_editor_floor_ = Vector3(0, -1, 0)
 
-[node name="Grass" parent="Authoring" unique_id=457950076 instance=ExtResource("7_jm8ie")]
+[node name="Grass" type="Node3D" parent="Authoring" unique_id=457950076 instance=ExtResource("7_8hbdd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28, 0, 0)
+script = ExtResource("8_n281j")
+collision_mode = "none"
 
-[node name="BuildingTypeA" parent="Authoring" unique_id=716599060 instance=ExtResource("9_8hbdd")]
+[node name="BuildingTypeA" type="Node3D" parent="Authoring" unique_id=716599060 instance=ExtResource("9_d184b")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -28, 0, 0)
+script = ExtResource("8_n281j")
 
-[node name="TreeDefault" parent="Authoring" unique_id=800337657 instance=ExtResource("10_n281j")]
+[node name="TreeDefault" type="Node3D" parent="Authoring" unique_id=800337657 instance=ExtResource("10_ibfup")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, 0, 22)
+script = ExtResource("8_n281j")
+collision_mode = "hull"
 
-[node name="LightSquare" parent="Authoring" unique_id=364681286 instance=ExtResource("11_d184b")]
+[node name="LightSquare" type="Node3D" parent="Authoring" unique_id=364681286 instance=ExtResource("11_j40k1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26, 0, 22)
+script = ExtResource("8_n281j")
+collision_mode = "multiconvex"
 
-[node name="Ramp" parent="Authoring" unique_id=947688029 instance=ExtResource("12_ibfup")]
+[node name="Ramp" type="Node3D" parent="Authoring" unique_id=947688029 instance=ExtResource("12_50r16")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 28)
+script = ExtResource("8_n281j")
+collision_mode = "weld"
 
-[node name="@Node3D@2" parent="Authoring" unique_id=1233327200 instance=ExtResource("9_8hbdd")]
+[node name="@Node3D@2" type="Node3D" parent="Authoring" unique_id=291377468 instance=ExtResource("9_d184b")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 44)
+script = ExtResource("8_n281j")
 
-[node name="BuildingTypeI" parent="Authoring" unique_id=1185952768 instance=ExtResource("13_j40k1")]
+[node name="BuildingTypeI" type="Node3D" parent="Authoring" unique_id=1185952768 instance=ExtResource("13_qmjqo")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 44)
+script = ExtResource("8_n281j")
 
-[node name="BuildingTypeQ" parent="Authoring" unique_id=2051786092 instance=ExtResource("14_50r16")]
+[node name="BuildingTypeQ" type="Node3D" parent="Authoring" unique_id=2051786092 instance=ExtResource("14_kahsh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 44)
+script = ExtResource("8_n281j")
 
-[node name="Fence1x2" parent="Authoring" unique_id=419360044 instance=ExtResource("15_qmjqo")]
+[node name="Fence1x2" type="Node3D" parent="Authoring" unique_id=419360044 instance=ExtResource("15_7al81")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 44)
+script = ExtResource("8_n281j")
 
-[node name="Fence" parent="Authoring" unique_id=1337597532 instance=ExtResource("16_kahsh")]
+[node name="Fence" type="Node3D" parent="Authoring" unique_id=1337597532 instance=ExtResource("16_qpmkh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 44)
+script = ExtResource("8_n281j")
 
-[node name="TreeSmall" parent="Authoring" unique_id=1817383096 instance=ExtResource("17_7al81")]
+[node name="TreeSmall" type="Node3D" parent="Authoring" unique_id=1817383096 instance=ExtResource("17_eq7na")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 44)
+script = ExtResource("8_n281j")
+collision_mode = "hull"
 
-[node name="BuildingA" parent="Authoring" unique_id=2055185933 instance=ExtResource("18_qpmkh")]
+[node name="BuildingA" type="Node3D" parent="Authoring" unique_id=2055185933 instance=ExtResource("18_muqit")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 60)
+script = ExtResource("8_n281j")
 
-[node name="BuildingF" parent="Authoring" unique_id=1295884003 instance=ExtResource("19_eq7na")]
+[node name="BuildingF" type="Node3D" parent="Authoring" unique_id=1295884003 instance=ExtResource("19_c8h5w")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 60)
+script = ExtResource("8_n281j")
 
-[node name="BuildingK" parent="Authoring" unique_id=1277456100 instance=ExtResource("20_muqit")]
+[node name="BuildingK" type="Node3D" parent="Authoring" unique_id=1277456100 instance=ExtResource("20_tp48g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 60)
+script = ExtResource("8_n281j")
 
-[node name="BuildingSkyscraperA" parent="Authoring" unique_id=451818815 instance=ExtResource("21_c8h5w")]
+[node name="BuildingSkyscraperA" type="Node3D" parent="Authoring" unique_id=451818815 instance=ExtResource("21_572cb")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 60)
+script = ExtResource("8_n281j")
 
-[node name="DetailAwningWide" parent="Authoring" unique_id=1761813470 instance=ExtResource("22_tp48g")]
+[node name="DetailAwningWide" type="Node3D" parent="Authoring" unique_id=1761813470 instance=ExtResource("22_8rhxd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 60)
+script = ExtResource("8_n281j")
+collision_mode = "none"
 
-[node name="DetailParasolB" parent="Authoring" unique_id=1779605059 instance=ExtResource("23_572cb")]
+[node name="DetailParasolB" type="Node3D" parent="Authoring" unique_id=1779605059 instance=ExtResource("23_ajw1m")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 60)
+script = ExtResource("8_n281j")
+collision_mode = "none"
 
-[node name="@Node3D@3" parent="Authoring" unique_id=373412317 instance=ExtResource("24_8rhxd")]
+[node name="@Node3D@3" type="Node3D" parent="Authoring" unique_id=373412317 instance=ExtResource("24_vxovx")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 76)
+script = ExtResource("8_n281j")
 
-[node name="@Node3D@4" parent="Authoring" unique_id=518945746 instance=ExtResource("25_ajw1m")]
+[node name="@Node3D@4" type="Node3D" parent="Authoring" unique_id=518945746 instance=ExtResource("25_xcon5")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 76)
+script = ExtResource("8_n281j")
 
-[node name="@Node3D@5" parent="Authoring" unique_id=2006486420 instance=ExtResource("26_vxovx")]
+[node name="@Node3D@5" type="Node3D" parent="Authoring" unique_id=2006486420 instance=ExtResource("26_nhpu0")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 76)
+script = ExtResource("8_n281j")
 
-[node name="BuildingO" parent="Authoring" unique_id=442262034 instance=ExtResource("27_xcon5")]
+[node name="BuildingO" type="Node3D" parent="Authoring" unique_id=442262034 instance=ExtResource("27_twal3")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 76)
+script = ExtResource("8_n281j")
 
-[node name="BuildingT" parent="Authoring" unique_id=648271235 instance=ExtResource("28_nhpu0")]
+[node name="BuildingT" type="Node3D" parent="Authoring" unique_id=648271235 instance=ExtResource("28_hqfvi")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 76)
+script = ExtResource("8_n281j")
 
-[node name="DetailTank" parent="Authoring" unique_id=402852021 instance=ExtResource("29_twal3")]
+[node name="DetailTank" type="Node3D" parent="Authoring" unique_id=402852021 instance=ExtResource("29_72po1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 76)
+script = ExtResource("8_n281j")
+collision_mode = "hull"
 
-[node name="CactusShort" parent="Authoring" unique_id=162812300 instance=ExtResource("30_hqfvi")]
+[node name="CactusShort" type="Node3D" parent="Authoring" unique_id=162812300 instance=ExtResource("30_npqul")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 92)
+script = ExtResource("8_n281j")
+collision_mode = "hull"
 
-[node name="FlowerRedC" parent="Authoring" unique_id=1388682188 instance=ExtResource("31_72po1")]
+[node name="FlowerRedC" type="Node3D" parent="Authoring" unique_id=1388682188 instance=ExtResource("31_gwj21")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 92)
+script = ExtResource("8_n281j")
+collision_mode = "none"
 
-[node name="RockSmallFlatC" parent="Authoring" unique_id=891711905 instance=ExtResource("32_npqul")]
+[node name="RockSmallFlatC" type="Node3D" parent="Authoring" unique_id=891711905 instance=ExtResource("32_pmy26")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 92)
+script = ExtResource("8_n281j")
+collision_mode = "hull"
 
-[node name="StoneSmallI" parent="Authoring" unique_id=76192285 instance=ExtResource("33_gwj21")]
+[node name="StoneSmallI" type="Node3D" parent="Authoring" unique_id=76192285 instance=ExtResource("33_fj1mw")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 92)
+script = ExtResource("8_n281j")
+collision_mode = "hull"
 
-[node name="TreePalmDetailedShort" parent="Authoring" unique_id=201286526 instance=ExtResource("34_pmy26")]
+[node name="TreePalmDetailedShort" type="Node3D" parent="Authoring" unique_id=201286526 instance=ExtResource("34_okm4t")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 92)
+script = ExtResource("8_n281j")
+collision_mode = "hull"
 
-[node name="TreeThinFall" parent="Authoring" unique_id=1134537689 instance=ExtResource("35_fj1mw")]
+[node name="TreeThinFall" type="Node3D" parent="Authoring" unique_id=1134537689 instance=ExtResource("35_c7qvl")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 92)
+script = ExtResource("8_n281j")
+collision_mode = "hull"
 
-[node name="ArrowStanding" parent="Authoring" unique_id=598436597 instance=ExtResource("36_okm4t")]
+[node name="ArrowStanding" type="Node3D" parent="Authoring" unique_id=598436597 instance=ExtResource("36_cr8w4")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 108)
+script = ExtResource("8_n281j")
+collision_mode = "none"
 
-[node name="BoatRowSmall" parent="Authoring" unique_id=1223430284 instance=ExtResource("37_c7qvl")]
+[node name="BoatRowSmall" type="Node3D" parent="Authoring" unique_id=1223430284 instance=ExtResource("37_v5wfh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 108)
+script = ExtResource("8_n281j")
+collision_mode = "hull"
 
-[node name="BoatSpeedG" parent="Authoring" unique_id=139339224 instance=ExtResource("38_cr8w4")]
+[node name="BoatSpeedG" type="Node3D" parent="Authoring" unique_id=139339224 instance=ExtResource("38_scojy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 108)
+script = ExtResource("8_n281j")
+collision_mode = "hull"
 
-[node name="BuoyFlag" parent="Authoring" unique_id=882002766 instance=ExtResource("39_v5wfh")]
+[node name="BuoyFlag" type="Node3D" parent="Authoring" unique_id=882002766 instance=ExtResource("39_mb8uq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 108)
+script = ExtResource("8_n281j")
+collision_mode = "none"
 
-[node name="RampWide" parent="Authoring" unique_id=892537525 instance=ExtResource("40_scojy")]
+[node name="RampWide" type="Node3D" parent="Authoring" unique_id=892537525 instance=ExtResource("40_rt0ov")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 108)
+script = ExtResource("8_n281j")
+collision_mode = "weld"
 
-[node name="ShipSmall" parent="Authoring" unique_id=1451156008 instance=ExtResource("41_mb8uq")]
+[node name="ShipSmall" type="Node3D" parent="Authoring" unique_id=1451156008 instance=ExtResource("41_4j5jr")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 108)
+script = ExtResource("8_n281j")
+collision_mode = "hull"
 
-[node name="BannerTowerGreen" parent="Authoring" unique_id=975744264 instance=ExtResource("42_rt0ov")]
+[node name="BannerTowerGreen" type="Node3D" parent="Authoring" unique_id=975744264 instance=ExtResource("42_ref2k")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 124)
+script = ExtResource("8_n281j")
 
-[node name="FenceCurved" parent="Authoring" unique_id=105480888 instance=ExtResource("43_4j5jr")]
+[node name="FenceCurved" type="Node3D" parent="Authoring" unique_id=105480888 instance=ExtResource("43_iifwg")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 124)
+script = ExtResource("8_n281j")
 
-[node name="GrandStandCoveredRound" parent="Authoring" unique_id=695583868 instance=ExtResource("44_ref2k")]
+[node name="GrandStandCoveredRound" type="Node3D" parent="Authoring" unique_id=695583868 instance=ExtResource("44_ygi8h")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 124)
+script = ExtResource("8_n281j")
+collision_mode = "multiconvex"
 
-[node name="OverheadRound" parent="Authoring" unique_id=479630414 instance=ExtResource("45_iifwg")]
+[node name="OverheadRound" type="Node3D" parent="Authoring" unique_id=479630414 instance=ExtResource("45_mb67b")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 124)
+script = ExtResource("8_n281j")
+collision_mode = "multiconvex"
 
-[node name="Rail" parent="Authoring" unique_id=2135762678 instance=ExtResource("46_ygi8h")]
+[node name="Rail" type="Node3D" parent="Authoring" unique_id=2135762678 instance=ExtResource("46_3cm10")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 124)
+script = ExtResource("8_n281j")
 
-[node name="@Node3D@6" parent="Authoring" unique_id=1642066795 instance=ExtResource("47_mb67b")]
+[node name="@Node3D@6" type="Node3D" parent="Authoring" unique_id=1642066795 instance=ExtResource("47_y6du1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 124)
+script = ExtResource("8_n281j")
+collision_mode = "hull"
 
-[node name="RacingTiles" type="GridMap" parent="Authoring" unique_id=193114331]
-mesh_library = ExtResource("47_nalb0")
-cell_size = Vector3(12, 12, 12)
-cell_center_y = false
+[node name="TreeScatter" type="Node3D" parent="Authoring" unique_id=505048663]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0, 45)
+script = ExtResource("48_lkcey")
+box_size = Vector2(16, 100)
+polygon = PackedVector2Array()
+min_spacing = 2.5
+placement_seed = 20260711
+items = Array[ExtResource("49_bohb0")]([SubResource("Resource_7iofg")])
+stored_transforms = Array[PackedFloat32Array]([PackedFloat32Array(2.5533524, 0, -43.412395, -0.7350258, 0.9337493, -7.714194, 0, -35.27732, 2.3172855, 0.86946976, -6.6242566, 0, -28.709984, -2.1013918, 0.9326718, -7.7697964, 0, 47.045708, 3.0085497, 0.9382659, -3.8624878, 0, -32.515175, 0.5790306, 1.097426, -5.7673693, 0, -20.327627, -2.5095837, 0.9838499, 0.13390732, 0, -1.6571388, -1.8353076, 0.98060876, 1.3396826, 0, -17.366543, 1.307765, 0.94741285, -5.1427984, 0, 47.83613, -1.1172484, 0.9869364, 7.683071, 0, 18.95427, -1.6219585, 1.0624458, -5.507047, 0, -8.49807, 3.1079826, 1.1115537, -1.9254379, 0, 20.827026, 2.8112843, 1.1440835, -6.0116, 0, -41.591362, -1.8126522, 0.9109916, -2.7986803, 0, -38.089363, -1.8395208, 0.9462434, 5.3366976, 0, -3.184208, 1.2102809, 1.0842724, 0.7386837, 0, -38.081684, -1.8878123, 1.0369327, -1.5362124, 0, 2.0691261, -1.9264437, 1.0792528, -7.5090218, 0, 3.5992699, -2.6265173, 0.98379153, 0.85044956, 0, 26.905563, -1.6688454, 1.1162506, 4.466323, 0, 38.489357, 0.34984574, 1.0183867, 6.035428, 0, 25.97554, 0.7671222, 1.0382013, 6.937441, 0, -42.9847, -0.63852453, 1.148634, 1.2522974, 0, -28.080835, -2.9657495, 0.8949233, 0.50580597, 0, 32.441483, -1.860379, 1.0679635, 3.2403326, 0, 49.389725, -0.91828316, 1.1193614, 4.702861, 0, 13.725067, -0.011658404, 1.1478573, -6.548195, 0, 24.21196, 1.0634359, 1.0650871, 1.1916943, 0, -46.677776, 0.72269934, 0.91202897, -2.8734713, 0, -10.487267, -0.13234517, 1.0167673, -5.9165664, 0, 0.924675, -0.47401804, 0.8849402, 2.6173916, 0, 43.38421, -1.7613754, 1.1096598, -6.699524, 0, 29.309288, -0.73747754, 1.0462345, -2.2534647, 0, 7.580902, 2.002844, 1.034014, -2.659945, 0, -3.137886, 2.2925084, 1.0707827, 1.2107487, 0, 11.421238, 1.1657389, 1.0787878, -7.7255645, 0, -22.757673, 1.4698843, 1.0667355, 3.7241192, 0, -16.018028, 2.8386707, 1.0443441, 0.26465702, 0, 40.255722, -0.7158, 1.0634252, 7.3754044, 0, -9.951954, 2.276056, 0.8651485, -3.4356918, 0, 26.547089, -1.3565991, 1.1415422, -3.8304353, 0, -18.011316, -1.9795816, 0.91974, 2.8394194, 0, -19.68841, 0.8040505, 1.0336472, -0.8755932, 0, 48.97113, 2.2466786, 1.0234128, 0.775959, 0, -40.800755, 0.8458713, 0.95319206, -5.216727, 0, 14.185631, -0.17952256, 0.8509299, -6.816593, 0, 19.727066, 0.37444112, 0.99124116, -0.08439016, 0, -13.473423, -2.5287883, 0.8984835, -5.874258, 0, 36.640167, -1.5544504, 0.8874116, -5.809716, 0, -5.3851433, -1.7711501, 1.1007351, -6.2285147, 0, 43.556282, -1.3337791, 1.1011422, 7.186887, 0, 12.836754, -0.9128523, 1.1025621, -5.4744473, 0, -25.288578, -0.74098986, 1.0434427, 5.464176, 0, -26.00264, -0.5918896, 0.8679189, -4.825248, 0, 9.936691, 0.1497485, 1.029393, 2.6309967, 0, 0.24845123, 1.5632174, 0.91962934, 7.3903666, 0, 5.535877, 0.041177798, 1.0474294, 7.9932165, 0, 23.84188, 1.9819754, 0.93891436, 6.6388454, 0, -18.084988, -0.77301455, 1.1287255, 0.24177837, 0, -31.416311, 1.0445592, 0.8573173, -2.7887187, 0, 31.075195, 0.25365135, 0.86699134, 2.6317396, 0, 22.174385, 0.19612147, 1.0637103, 3.445281, 0, -32.972244, -1.2484949, 0.9976308, 4.9445143, 0, 2.54916, 1.1876719, 1.0467333, -1.4382644, 0, 13.462227, 1.3503664, 0.9594095, -4.229454, 0, 3.2463837, 2.507951, 0.8856666, -7.1591635, 0, 16.352715, -2.393347, 1.1460866, 7.761958, 0, 48.268387, 0.18598318, 1.0717623, 5.466284, 0, 35.312187, -0.64854205, 0.9933005, 1.6925259, 0, 17.481155, 1.110926, 1.0566119, -1.3358836, 0, -20.291094, -1.6798513, 1.0931219, 6.3339186, 0, -33.89608, -1.8163655, 0.8745448, 2.4020605, 0, -6.157921, -0.20828077, 1.1343498, -6.4581795, 0, -32.086784, 0.9951086, 1.0513939, 1.4528751, 0, -25.003279, 1.8451879, 0.93152934, 5.4204416, 0, -40.67116, 2.73877, 1.021153, -3.4930134, 0, -15.387489, 0.08862035, 0.9431918, 4.3949194, 0, -9.235733, -0.6875148, 1.0227163, 3.1769009, 0, -35.764416, 0.9139256, 0.9826232, -3.353477, 0, -44.876274, 1.5333307, 0.99793726, -3.2648706, 0, -41.397293, -1.9600198, 0.88694984)])
 
-[node name="ShowcaseLabels" type="Node3D" parent="." unique_id=1372480440]
+[node name="GrassScatter" type="Node3D" parent="Authoring" unique_id=292297059]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0, -20)
+script = ExtResource("48_lkcey")
+box_size = Vector2(10, 20)
+polygon = PackedVector2Array()
+density = 0.1
+min_spacing = 1.0
+placement_seed = 20260711
+items = Array[ExtResource("49_bohb0")]([SubResource("Resource_0e8c1")])
+stored_transforms = Array[PackedFloat32Array]([PackedFloat32Array(1.5958452, 0, -8.682479, -0.7350258, 0.9337493, -4.821371, 0, -7.055464, 2.3172855, 0.86946976, -4.1401606, 0, -5.741997, -2.1013918, 0.9326718, -4.856123, 0, 9.409142, 3.0085497, 0.9382659, -2.4140549, 0, -6.503035, 0.5790306, 1.097426, -3.604606, 0, -4.0655255, -2.5095837, 0.9838499, 0.083692074, 0, -0.33142757, -1.8353076, 0.98060876, 0.83730173, 0, -3.4733086, 1.307765, 0.94741285, -3.2142491, 0, 9.5672245, -1.1172484, 0.9869364, 4.80192, 0, 3.7908545, -1.6219585, 1.0624458, -3.4419045, 0, -1.6996136, 3.1079826, 1.1115537, -1.2033987, 0, 4.1654053, 2.8112843, 1.1440835, -3.7572498, 0, -8.318273, -1.8126522, 0.9109916, -1.7491751, 0, -7.6178727, -1.8395208, 0.9462434, 3.3354359, 0, -0.6368418, 1.2102809, 1.0842724, 0.46167755, 0, -7.616337, -1.8878123, 1.0369327, -0.9601326, 0, 0.413826, -1.9264437, 1.0792528, -4.6931386, 0, 0.7198534, -2.6265173, 0.98379153, 0.53153086, 0, 5.381112, -1.6688454, 1.1162506, 2.791452, 0, 7.6978703, 0.34984574, 1.0183867)])
 
-[node name="Label_suburban" type="Label3D" parent="ShowcaseLabels" unique_id=1980964981]
+[node name="ShowcaseLabels" type="Node3D" parent="." unique_id=878587295]
+
+[node name="Label_suburban" type="Label3D" parent="ShowcaseLabels" unique_id=2031800624]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -56, 4, 44)
 pixel_size = 0.08
 billboard = 1
 modulate = Color(1, 0.95, 0.6, 1)
 text = "SUBURBAN"
 
-[node name="Label_commercial" type="Label3D" parent="ShowcaseLabels" unique_id=625071212]
+[node name="Label_commercial" type="Label3D" parent="ShowcaseLabels" unique_id=1747671468]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -56, 4, 60)
 pixel_size = 0.08
 billboard = 1
 modulate = Color(1, 0.95, 0.6, 1)
 text = "COMMERCIAL"
 
-[node name="Label_industrial" type="Label3D" parent="ShowcaseLabels" unique_id=1015446423]
+[node name="Label_industrial" type="Label3D" parent="ShowcaseLabels" unique_id=331085890]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -56, 4, 76)
 pixel_size = 0.08
 billboard = 1
 modulate = Color(1, 0.95, 0.6, 1)
 text = "INDUSTRIAL"
 
-[node name="Label_nature" type="Label3D" parent="ShowcaseLabels" unique_id=1034907330]
+[node name="Label_nature" type="Label3D" parent="ShowcaseLabels" unique_id=362849133]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -56, 4, 92)
 pixel_size = 0.08
 billboard = 1
 modulate = Color(1, 0.95, 0.6, 1)
 text = "NATURE"
 
-[node name="Label_watercraft" type="Label3D" parent="ShowcaseLabels" unique_id=1653207055]
+[node name="Label_watercraft" type="Label3D" parent="ShowcaseLabels" unique_id=1538999022]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -56, 4, 108)
 pixel_size = 0.08
 billboard = 1
 modulate = Color(1, 0.95, 0.6, 1)
 text = "WATERCRAFT"
 
-[node name="Label_racing" type="Label3D" parent="ShowcaseLabels" unique_id=1426916183]
+[node name="Label_racing" type="Label3D" parent="ShowcaseLabels" unique_id=854287411]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -56, 4, 124)
 pixel_size = 0.08
 billboard = 1

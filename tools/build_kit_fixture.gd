@@ -3,8 +3,9 @@ extends Node
 ## (level_kit_plan.md §4 LK1): a level on the re-derived lattice — a small road loop from
 ## the roads palette (scale-verification), one prefab of each collision mode + a weld ramp
 ## (the bake canary), a per-kit ASSET SHOWCASE (evenly-sampled prefabs in labelled rows so
-## every kit's scale can be eyeballed against the car), and a car spawn — all the kit content
-## under an AuthoringRoot so the baker/CI cover it.
+## every kit's scale can be eyeballed against the car), two LK5 scatter regions (MultiMesh
+## and merge bake paths), and a car spawn — all the kit content under an AuthoringRoot so
+## the baker/CI cover it.
 ##
 ## Built programmatically because hand-authoring GridMap cell+orientation data in a .tscn
 ## is fragile; re-run if the roads palette rescales (item ids are stable across regen).
@@ -60,6 +61,7 @@ func _ready() -> void:
 	_add(root, authoring, _make_road_loop())
 	_add_prefabs(root, authoring)
 	_add_showcase(root, authoring)
+	_add_scatter(root, authoring)
 
 	var packed := PackedScene.new()
 	if packed.pack(root) != OK:
@@ -234,6 +236,58 @@ func _add_showcase(owner: Node, authoring: Node) -> void:
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		label.modulate = Color(1, 0.95, 0.6)
 		_add(owner, labels, label)
+
+
+const SCATTER_SEED := 20260711
+
+## Two scatter regions on the east strip (LK5's permanent bake canary): trees above
+## the MultiMesh threshold with collision, grass below it collision-off — so CI's
+## baked smoke covers both scatter bake paths forever. The builder is the fixture's
+## "Regenerate": it runs the pure placement and snaps to the known flat ground at
+## y=0 (no editor, no physics), then stores the transforms — the baker only ever
+## consumes stored data. No terrain in the fixture, so the default
+## stored_ground_hash "" already matches.
+func _add_scatter(owner: Node, authoring: Node) -> void:
+	# 16x100 m at density 0.05 -> ~80 trees (>= the 64 MultiMesh threshold)
+	_add(owner, authoring, _make_region("TreeScatter",
+			"res://kit/prefabs/nature/tree_default.tscn", true,
+			Vector3(50, 0, 45), Vector2(16, 100), 0.05, 2.5))
+	# 10x20 m at density 0.1 -> ~20 grass tufts (merge path, zero physics)
+	_add(owner, authoring, _make_region("GrassScatter",
+			"res://kit/prefabs/nature/grass.tscn", false,
+			Vector3(50, 0, -20), Vector2(10, 20), 0.1, 1.0))
+
+
+func _make_region(region_name: String, prefab_path: String, collision: bool,
+		pos: Vector3, size: Vector2, density: float, spacing: float) -> Node3D:
+	var region := Node3D.new()
+	region.name = region_name
+	region.set_script(load("res://kit/helpers/scatter_region.gd"))
+	region.position = pos
+	region.set("box_size", size)
+	region.set("density", density)
+	region.set("min_spacing", spacing)
+	region.set("placement_seed", SCATTER_SEED)
+	var item: Resource = (load("res://kit/helpers/scatter_item.gd") as GDScript).new()
+	item.set("prefab", load(prefab_path))
+	item.set("collision", collision)
+	var items: Array[ScatterItem] = [item]
+	region.set("items", items)
+
+	var placements: Array[PackedFloat32Array] = \
+			ScatterRegion.generate_placements(region.call("build_params"))
+	var stored: Array[PackedFloat32Array] = []
+	var total := 0
+	for flat in placements:
+		var s := PackedFloat32Array()
+		for j in flat.size() / 4:
+			s.append_array(PackedFloat32Array([
+					flat[j * 4], 0.0, flat[j * 4 + 1], flat[j * 4 + 2], flat[j * 4 + 3]]))
+		stored.append(s)
+		total += s.size() / 5
+	region.set("stored_transforms", stored)
+	print("scatter %s: %d instances" % [region_name, total])
+	return region
 
 
 ## Evenly-spaced sample of a kit's sorted prefab .tscn paths (indices 0 .. n-1 spread across

@@ -32,8 +32,9 @@ func _ready() -> void:
 		var result: Dictionary = Baker.bake_level_file(path)
 		if result.ok:
 			var s: Dictionary = result.stats
-			print("[bake] %s: OK — %d chunks, %d surfaces (est. draw calls, budget <500 §5.4), %d verts, %d body shapes, %d drivable tris" %
-					[path, s.chunks, s.surfaces, s.vertices, s.shapes, s.drivable_triangles])
+			print("[bake] %s: OK — %d chunks, %d surfaces + %d scatter multimeshes (est. draw calls, budget <500 §5.4), %d verts, %d body shapes, %d drivable tris, %d scatter instances" %
+					[path, s.chunks, s.surfaces, s.scatter_multimeshes, s.vertices,
+					s.shapes, s.drivable_triangles, s.scatter_instances])
 		else:
 			code = 1
 			for e in result.errors:

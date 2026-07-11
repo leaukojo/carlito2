@@ -410,6 +410,51 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   **no AuthoringRoot** for brushing (unlike prop placement) — sculpt the `terrain_demo`/island
   `HeightmapTerrain` directly.
 
+## Scatter regions (LK5, landed — level_kit_plan.md §4 LK5)
+
+- **Stored-transform contract (the LK5 non-negotiable):** expansion happens exactly once, in
+  `ScatterRegion`'s editor **Regenerate** button — pure seeded placement → ground-snap by
+  raycast against the live edited scene (physics ray → `HeightmapTerrain.height_at` fallback;
+  no Y=0 fallback — un-snappable points are *dropped*) → slope filter → **region-local
+  transforms stored in the level .tscn** (`stored_transforms`, one packed array per item,
+  stride 5: x,y,z,yaw,scale — `@export_storage`, one undoable action). The baker and dev-play
+  only ever consume stored transforms — no expansion, no raycast, no physics outside the
+  editor path — so editor and bake can never diverge and CI hashing is just the .tscn.
+  Prior art: HungryProton's ProtonScatter was skimmed (plan §2 build-vs-adopt) — its
+  non-destructive runtime modifier stack is the model we reject; **no code adopted**.
+- **Nodes:** `ScatterRegion` (`kit/helpers/scatter_region.gd`, `@tool`, under `Authoring`,
+  duck marker `is_carlito_scatter()`): box/polygon footprint (box unifies into the polygon
+  sampling path), density / min_spacing / placement_seed / yaw+scale jitter / max_slope
+  knobs, `items: Array[ScatterItem]` (`kit/helpers/scatter_item.gd`: prefab **PackedScene**
+  — so `gather_bake_inputs` tracks it — weight, collision on/off, per-item threshold
+  override). Pure statics (`generate_placements` — rejection sampling with a spatial-hash
+  spacing guarantee, deterministic per seed — `polygon_area`, `ground_hash`,
+  `stored_transform`, `build_item_mesh`, `shape_entries`) are unit-tested in
+  `tests/test_scatter.gd`; the baker duck-calls them through the region node so the stored
+  layout has one owner.
+- **Preview/dev-play:** unowned children rebuilt from stored data (never serialized, the
+  HeightmapTerrain `Chunks` discipline): one MultiMeshInstance3D per item; **dev collision
+  bodies only outside the editor** (unbaked play is drivable; editor raycasts never hit our
+  own instances).
+- **Bake (BAKER_VERSION 2):** items with ≥ `SCATTER_MULTIMESH_THRESHOLD` (64, per-item
+  override) instances bake as one MultiMeshInstance3D per chunk × item under `Scatter/` —
+  merged item mesh stored ONCE, materials deduped like chunk merges; below it every
+  instance routes through the existing `_collect_piece_content` merge path. Collision
+  harvest is identical either way (prefab shapes per instance into chunk bodies);
+  collision-off items add zero physics; **weld-mode prefabs are a bake error**. Stats/
+  `bake_levels` report `scatter_instances` + `scatter_multimeshes`.
+- **Stale-scatter guard (decided: warning + bake gate + CI):** Regenerate stores
+  `ground_hash` (sha256 of every terrain heightmap image + name/position/size/height).
+  On mismatch the node shows a configuration warning (3 s editor poll), **`bake()` fails**
+  (like spawn validation), and **`check_level_file` reports stale** — the terrain PNGs live
+  beside the level scene, outside the res://kit/ input-hash net, so without this a
+  sculpt-after-scatter would ship floating/buried props CI-green. Only Regenerate (which
+  re-snaps) clears it; regions with zero stored instances never gate.
+- **kit_fixture** carries the permanent canary: `TreeScatter` (80 tree_default, MultiMesh
+  path, collision) + `GrassScatter` (20 grass, merge path, collision-off), expanded
+  programmatically by `build_kit_fixture.gd` (flat ground y=0, no editor; no terrain so
+  hash "" matches) — CI's baked smoke covers both paths every run.
+
 ## Water & boat — M6 (P8, landed — plan §1, §4.4, §8)
 
 - **`WaterSurface`** (`src/water/water_surface.gd`, `@tool Area3D`, group `"water"`) is one node

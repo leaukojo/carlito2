@@ -1,7 +1,8 @@
 class_name LevelBaker
 extends RefCounted
 ## The level bake tool (plan §2 rule 1, §4.5). Reads a level's AuthoringRoot subtree
-## (GridMap road palettes + KitPiece prefabs), and produces the shipping form:
+## (GridMap road palettes + KitPiece prefabs + ScatterRegion stored transforms), and
+## produces the shipping form:
 ##  - render: static meshes merged per chunk (tunable chunk_size), one MeshInstance3D
 ##    per chunk with one surface per distinct material (batching), verts chunk-local;
 ##  - collision: one StaticBody3D per chunk holding the prefab-authored box/hull
@@ -19,7 +20,13 @@ extends RefCounted
 
 ## Bump when bake semantics change: stale-bake checks treat old-version manifests
 ## as stale, forcing a re-bake after tool upgrades.
-const BAKER_VERSION := 1
+const BAKER_VERSION := 2
+
+## LK5 scatter: items with at least this many stored instances bake as one
+## MultiMeshInstance3D per chunk x item (geometry stored once) instead of merging
+## their verts into the chunk meshes. ScatterItem.bake_threshold_override overrides
+## per item.
+const SCATTER_MULTIMESH_THRESHOLD := 64
 
 ## Weld snap distance (1 mm): vertices this close become bit-identical, so shared
 ## tile/ramp edges read as internal edges to Jolt instead of body seams.
@@ -252,6 +259,37 @@ static func collect_spawn_descriptors(root: Node) -> Array:
 	return out
 
 
+## Stale-scatter guard (LK5, shared by the bake gate and check_level_file): a region
+## with stored instances whose stored_ground_hash no longer matches the level's
+## terrain heightmaps was snapped against ground that has since been sculpted — the
+## author must Regenerate in the editor (only that re-snaps), then re-bake. The
+## terrain PNGs live beside the level scene, outside gather_bake_inputs' res://kit/
+## net, so without this check a sculpt would ship floating/buried props CI-green.
+static func scatter_ground_errors(level_root: Node) -> PackedStringArray:
+	var errors := PackedStringArray()
+	var regions: Array[Node] = []
+	_find_scatter_nodes(level_root, regions)
+	if regions.is_empty():
+		return errors
+	var current := String(regions[0].call("ground_hash", level_root))
+	for region in regions:
+		var total := 0
+		for flat in (region.get("stored_transforms") as Array):
+			total += int(region.call("stored_count", flat))
+		if total == 0:
+			continue
+		if String(region.get("stored_ground_hash")) != current:
+			errors.append("scatter region '%s': terrain changed since it was scattered — Regenerate in the editor, then re-bake" % region.name)
+	return errors
+
+
+static func _find_scatter_nodes(node: Node, out: Array[Node]) -> void:
+	if node.has_method("is_carlito_scatter"):
+		out.append(node)
+	for child in node.get_children():
+		_find_scatter_nodes(child, out)
+
+
 # ----------------------------------------------------------------- bake proper
 
 ## Bake the level rooted at `level_root` (an instantiated level scene; it does NOT
@@ -273,6 +311,9 @@ static func bake(level_root: Node) -> Dictionary:
 	var allowed: PackedStringArray = info.get("allowed_vehicles") if info != null else PackedStringArray()
 	var default_vehicle := String(info.get("default_vehicle")) if info != null else "car"
 	errors.append_array(validate_spawns(allowed, default_vehicle, collect_spawn_descriptors(level_root)))
+	# Stale-scatter is a bake gate too (LK5): sculpt-after-scatter must never
+	# silently bake floating or buried props.
+	errors.append_array(scatter_ground_errors(level_root))
 
 	var ctx := BakeContext.new()
 	ctx.chunk_size = chunk_size
@@ -312,6 +353,8 @@ static func _collect(node: Node, xform: Transform3D, ctx: BakeContext,
 			_collect_gridmap(child as GridMap, cxform, ctx, errors)
 		elif child.has_method("is_carlito_kit_piece"):
 			_collect_piece(child, cxform, ctx, errors)
+		elif child.has_method("is_carlito_scatter"):
+			_collect_scatter(child, cxform, ctx, errors)
 		else:
 			_collect(child, cxform, ctx, errors)
 
@@ -363,6 +406,72 @@ static func _collect_piece_content(node: Node, xform: Transform3D, key: Vector2i
 		_collect_piece_content(child, cxform, key, mode, ctx, errors)
 
 
+## LK5 scatter (plan §4 LK5): consume the region's STORED transforms only — no
+## expansion, no raycast, no physics here, so editor and bake can never diverge.
+## Per item: at or above the MultiMesh threshold the render side becomes chunked
+## MultiMeshes over ONE merged item mesh (an island forest never duplicates its
+## verts into chunk meshes); below it every instance routes through the existing
+## prefab merge path. Collision harvest is identical either way: the prefab's
+## shapes per instance into the per-chunk bodies (collision-off items add zero
+## physics). All prefab-shaped logic is duck-called on the region's script
+## (stored_transform / build_item_mesh / shape_entries) so the stored layout has
+## one owner.
+static func _collect_scatter(region: Node, xform: Transform3D, ctx: BakeContext,
+		errors: PackedStringArray) -> void:
+	var items: Array = region.get("items")
+	var stored: Array = region.get("stored_transforms")
+	for i in items.size():
+		var item: Resource = items[i]
+		if item == null or item.get("prefab") == null or i >= stored.size():
+			continue
+		var flat: PackedFloat32Array = stored[i]
+		var count := int(region.call("stored_count", flat))
+		if count == 0:
+			continue
+		var template: Node = (item.get("prefab") as PackedScene).instantiate()
+		var mode := "none"
+		if template.has_method("is_carlito_kit_piece"):
+			mode = String(template.get("collision_mode"))
+		if mode == "weld":
+			errors.append("scatter region '%s' item %d: weld-mode prefabs cannot be scattered (drivable structures are placed, never scattered)" % [region.name, i])
+			template.free()
+			continue
+		var use_collision: bool = bool(item.get("collision")) and mode != "none"
+		var threshold := int(item.get("bake_threshold_override"))
+		if threshold < 0:
+			threshold = SCATTER_MULTIMESH_THRESHOLD
+
+		var xforms: Array[Transform3D] = []
+		for j in count:
+			xforms.append(xform * (region.call("stored_transform", flat, j) as Transform3D))
+		ctx.scatter_instances += count
+
+		if count >= threshold:
+			var mesh: ArrayMesh = region.call("build_item_mesh", template)
+			# Swap the prefab's materials for the bake's deduplicated copies, so the
+			# baked scene never references kit resources (same rule as chunk merges).
+			for si in mesh.get_surface_count():
+				var mat := mesh.surface_get_material(si)
+				var mk := material_key(mat)
+				if not ctx.materials.has(mk):
+					ctx.materials[mk] = mat.duplicate() if mat != null else null
+				mesh.surface_set_material(si, ctx.materials[mk])
+				ctx.total_vertices += (mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
+						as PackedVector3Array).size()
+			var mesh_index := ctx.add_scatter_mesh(mesh)
+			var entries: Array = region.call("shape_entries", template) if use_collision else []
+			for t in xforms:
+				var key := chunk_key(t.origin, ctx.chunk_size)
+				ctx.add_multimesh(key, mesh_index, t)
+				for entry: Array in entries:
+					ctx.add_body_shape(key, entry[0], t * (entry[1] as Transform3D))
+		else:
+			for t in xforms:
+				_collect_piece_content(template, t, chunk_key(t.origin, ctx.chunk_size),
+						mode if use_collision else "none", ctx, errors)
+		template.free()
+
+
 ## Assemble the Baked scene: Chunks/ (merged render meshes), Bodies/ (one
 ## StaticBody3D per chunk with the harvested shapes), Drivable (the single welded
 ## body). Everything the scene stores is duplicated so the bake has zero
@@ -405,6 +514,31 @@ static func _assemble(ctx: BakeContext) -> Node3D:
 				cs.shape = (entry[0] as Shape3D).duplicate()
 				cs.transform = entry[1]
 				body.add_child(cs)
+
+	if not ctx.multimesh.is_empty():
+		var scatter := Node3D.new()
+		scatter.name = "Scatter"
+		root.add_child(scatter)
+		var mm_keys := ctx.multimesh.keys()
+		mm_keys.sort()
+		for key: Vector2i in mm_keys:
+			var groups: Dictionary = ctx.multimesh[key]
+			var mesh_ids := groups.keys()
+			mesh_ids.sort()
+			for mid: int in mesh_ids:
+				var list: Array = groups[mid]
+				var mm := MultiMesh.new()
+				mm.transform_format = MultiMesh.TRANSFORM_3D
+				mm.mesh = ctx.scatter_meshes[mid]
+				mm.instance_count = list.size()
+				var to_local := Transform3D(Basis.IDENTITY, -chunk_origin(key, ctx.chunk_size))
+				for j in list.size():
+					mm.set_instance_transform(j, to_local * (list[j] as Transform3D))
+				var mmi := MultiMeshInstance3D.new()
+				mmi.name = "scatter_%d_%d_%d" % [mid, key.x, key.y]
+				mmi.multimesh = mm
+				mmi.position = chunk_origin(key, ctx.chunk_size)
+				scatter.add_child(mmi)
 
 	if not ctx.weld_pool.is_empty():
 		var drivable := StaticBody3D.new()
@@ -483,6 +617,7 @@ static func check_level_file(level_path: String) -> Dictionary:
 	# read everything BEFORE freeing the tree: a freed node compares equal to null
 	var has_authoring := authoring != null
 	var chunk_size := float(authoring.get("chunk_size")) if has_authoring else 0.0
+	var scatter_errors := scatter_ground_errors(level_root)
 	level_root.free()
 	if not has_authoring:
 		return {"status": "no_authoring", "detail": ""}
@@ -496,6 +631,10 @@ static func check_level_file(level_path: String) -> Dictionary:
 	var current := hash_inputs(gather_bake_inputs(level_path), hash_extra(chunk_size))
 	if String(manifest.get("input_hash", "")) != current:
 		return {"status": "stale", "detail": "authoring inputs changed since last bake"}
+	# Terrain PNGs sit outside the input hash's res://kit/ net, so stale scatter needs
+	# its own check (and Regenerate — not just a re-bake — clears it).
+	if not scatter_errors.is_empty():
+		return {"status": "stale", "detail": scatter_errors[0]}
 	return {"status": "fresh", "detail": ""}
 
 
@@ -513,6 +652,11 @@ class BakeContext:
 	## world-space triangle soup for the single welded drivable body
 	var weld_pool := PackedVector3Array()
 	var total_vertices := 0
+	## LK5 scatter: merged item meshes, geometry stored ONCE (shared across chunks)
+	var scatter_meshes: Array[ArrayMesh] = []
+	## Vector2i chunk key -> { mesh index -> Array of world Transform3D }
+	var multimesh := {}
+	var scatter_instances := 0
 
 	func add_render_mesh(key: Vector2i, mesh: Mesh, world_xform: Transform3D) -> void:
 		var local := Transform3D(Basis.IDENTITY, -LevelBaker.chunk_origin(key, chunk_size)) * world_xform
@@ -539,6 +683,18 @@ class BakeContext:
 			body_shapes[key] = []
 		(body_shapes[key] as Array).append([shape, world_xform])
 
+	func add_scatter_mesh(mesh: ArrayMesh) -> int:
+		scatter_meshes.append(mesh)
+		return scatter_meshes.size() - 1
+
+	func add_multimesh(key: Vector2i, mesh_index: int, world_xform: Transform3D) -> void:
+		if not multimesh.has(key):
+			multimesh[key] = {}
+		var groups: Dictionary = multimesh[key]
+		if not groups.has(mesh_index):
+			groups[mesh_index] = []
+		(groups[mesh_index] as Array).append(world_xform)
+
 	func stats() -> Dictionary:
 		var surfaces := 0
 		for key: Vector2i in render:
@@ -546,6 +702,9 @@ class BakeContext:
 		var shape_count := 0
 		for key: Vector2i in body_shapes:
 			shape_count += (body_shapes[key] as Array).size()
+		var multimesh_count := 0
+		for key: Vector2i in multimesh:
+			multimesh_count += (multimesh[key] as Dictionary).size()
 		return {
 			"chunks": render.size(),
 			"surfaces": surfaces,
@@ -553,6 +712,8 @@ class BakeContext:
 			"bodies": body_shapes.size(),
 			"shapes": shape_count,
 			"drivable_triangles": weld_pool.size() / 3,
+			"scatter_instances": scatter_instances,
+			"scatter_multimeshes": multimesh_count,
 		}
 
 
