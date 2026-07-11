@@ -329,10 +329,15 @@ func test_scatter_above_threshold_bakes_multimesh_per_chunk() -> void:
 	assert_int(total).is_equal(3)
 	assert_bool(counts.has(2) and counts.has(1)).is_true()
 	# instance transforms are chunk-local: the (60,0,0) instance sits at x=12 in
-	# the chunk-(1,0) MMI positioned at x=48
+	# the chunk-(1,0) MMI positioned at x=48. MultiMesh instance data does not read
+	# back through the headless RenderingServer (CI), so verify the MMI node's own
+	# transform + count, and the pure conversion the baker applies to place instances.
 	var far: MultiMeshInstance3D = scatter.get_node("scatter_0_1_0")
 	assert_that(far.position).is_equal(Vector3(48, 0, 0))
-	assert_that(far.multimesh.get_instance_transform(0).origin).is_equal(Vector3(12, 0, 0))
+	assert_int(far.multimesh.instance_count).is_equal(1)
+	var locals := Baker.chunk_local_multimesh_transforms(
+			[Transform3D(Basis.IDENTITY, Vector3(60, 0, 0))], Vector2i(1, 0), 48.0)
+	assert_that(locals[0].origin).is_equal(Vector3(12, 0, 0))
 	# geometry stored once: no verts merged into chunk meshes
 	assert_int(baked.get_node("Chunks").get_child_count()).is_equal(0)
 	# collision harvest identical to the prefab path: 2 + 1 shapes in chunk bodies

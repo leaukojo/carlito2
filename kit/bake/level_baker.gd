@@ -51,6 +51,20 @@ static func chunk_origin(key: Vector2i, chunk_size: float) -> Vector3:
 	return Vector3(key.x * chunk_size, 0.0, key.y * chunk_size)
 
 
+## World scatter transforms -> chunk-local (their MultiMeshInstance3D sits at the
+## chunk origin, so instance transforms drop the chunk offset — same convention as
+## chunk render meshes). Extracted as a pure fn because MultiMesh instance data does
+## not read back through the headless RenderingServer, so this is the only way the
+## bake's chunk-local placement can be unit-tested (tests/test_bake.gd).
+static func chunk_local_multimesh_transforms(world_xforms: Array, key: Vector2i,
+		chunk_size: float) -> Array[Transform3D]:
+	var to_local := Transform3D(Basis.IDENTITY, -chunk_origin(key, chunk_size))
+	var out: Array[Transform3D] = []
+	for t in world_xforms:
+		out.append(to_local * (t as Transform3D))
+	return out
+
+
 ## Weld a triangle soup: snap every vertex to a WELD_EPSILON grid so coincident
 ## verts become bit-identical, and drop triangles that degenerate. The result is
 ## what the Drivable body's ConcavePolygonShape3D gets (§2 rule 2: welded, no
@@ -527,13 +541,13 @@ static func _assemble(ctx: BakeContext) -> Node3D:
 			mesh_ids.sort()
 			for mid: int in mesh_ids:
 				var list: Array = groups[mid]
+				var locals := chunk_local_multimesh_transforms(list, key, ctx.chunk_size)
 				var mm := MultiMesh.new()
 				mm.transform_format = MultiMesh.TRANSFORM_3D
 				mm.mesh = ctx.scatter_meshes[mid]
-				mm.instance_count = list.size()
-				var to_local := Transform3D(Basis.IDENTITY, -chunk_origin(key, ctx.chunk_size))
-				for j in list.size():
-					mm.set_instance_transform(j, to_local * (list[j] as Transform3D))
+				mm.instance_count = locals.size()
+				for j in locals.size():
+					mm.set_instance_transform(j, locals[j])
 				var mmi := MultiMeshInstance3D.new()
 				mmi.name = "scatter_%d_%d_%d" % [mid, key.x, key.y]
 				mmi.multimesh = mm
