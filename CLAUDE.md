@@ -334,6 +334,45 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   to the built-in instance, so the exact paint item is a **best-effort** print of the item id —
   the author clicks the (thumbnailed) tile in the built-in palette.
 
+## Terrain generation & splat ground (LK3, landed — level_kit_plan.md §4 LK3)
+
+- **`HeightmapTerrain`'s render mesh is chunked**: one MeshInstance3D per `chunk_cells` tile
+  (default 64) under an unowned `Chunks` node — the frustum-cull unit for island-scale maps
+  (culling granularity, **not** LOD). Collision stays **one** `HeightMapShape3D` (§2 rule 2).
+  Normals are analytic from the height grid (`TerrainGen.grid_normal`) because per-chunk
+  `generate_normals()` seams chunk borders; UVs stay global 0..1 so the splat never seams.
+  LK4 strokes rebuild only touched tiles via `_build_chunk`.
+- **Generator**: `TerrainGen` (`kit/terrain/terrain_gen.gd`, static pure fns, tested in
+  `tests/test_terrain_gen.gd`). Preset = character (fractal type, relative amplitude, island
+  radial falloff); knobs = `gen_seed` / `feature_scale` (m per feature) / `gen_octaves` /
+  falloff band / **terrace plateaus** (`terrace_steps`+`terrace_flat`, applied last so island
+  coasts step into concentric rings — the buildable flats villages/farms need; band centres
+  are preserved so relief is unchanged). **World amplitude is the existing `height` export** —
+  generated pixels stay normalized [0,1] (8-bit greyscale PNG, pipeline unchanged). Two
+  buttons: **Generate** (editor-only, destructive-by-button, never per-frame) writes the
+  current texture's source PNG, else `<scene>_<node>_height.png` beside the scene;
+  **Generate random** rolls a fresh seed into `gen_seed` (still reproducible). Both are one
+  `EditorUndoRedoManager` action snapshotting the prior image + any property change (seed,
+  material swap) — a stray click must not destroy LK4 sculpt work.
+- **Splat ground**: `kit/terrain/terrain_splat.gdshader` (ships — `kit/terrain/` is not
+  export-excluded): 4 albedo colors blended by an RGBA splatmap, **R=grass G=dirt B=sand
+  A=rock**, sampled raw (no `source_color` — sRGB would bend weights), gl_compatibility-safe.
+  `blend_sharpness` pow-sharpens + renormalizes the weights (default 8 — crisp low-poly
+  borders, not soft fades). The Auto-splat button classifies from slope + height
+  (`sand_height`, `dirt_slope_deg`, `rock_slope_deg`), swapping in a splat ShaderMaterial when
+  needed (same undo action); the node pushes `splatmap` into the material param on rebuild.
+  The below-sea ring splats sand out to the square map edge by design — a level's
+  `WaterSurface` at sea level is what makes the beach read as a circular coast.
+- **Generated-PNG import gotcha**: `TerrainGen.ensure_import_settings` writes/patches the
+  `.import` sidecar — lossless, no mipmaps, **`detect_3d/compress_to=0`** (the splatmap is
+  sampled by a 3D shader; the default detect_3d would silently reimport it VRAM-compressed and
+  break `get_image()`) and **`process/fix_alpha_border=false`** (it rewrites RGB wherever
+  alpha == 0, corrupting grass/dirt/sand weights where rock == 0).
+- Demo: `src/levels/dev/terrain_demo.tscn` (a real Level, **unregistered** — run it with F6):
+  a generated 256 m terraced island (seed 567998) with its auto-splat, a car spawn on the central
+  plateau, a boat spawn in the surrounding `WaterSurface` sea (G swaps), drown-respawn included.
+  Regenerating from the recorded knobs reproduces the committed PNGs.
+
 ## Water & boat — M6 (P8, landed — plan §1, §4.4, §8)
 
 - **`WaterSurface`** (`src/water/water_surface.gd`, `@tool Area3D`, group `"water"`) is one node

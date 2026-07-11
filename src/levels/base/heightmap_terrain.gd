@@ -8,6 +8,21 @@ extends StaticBody3D
 ##
 ## @tool so authors see the terrain in the editor; call rebuild() after changing the
 ## image or size. Cells sample the red channel as normalized height [0,1] * height.
+##
+## LK3 additions (level_kit_plan.md §4):
+##  - The render mesh is CHUNKED (one MeshInstance3D per chunk_cells tile) so island-
+##    scale maps frustum-cull instead of drawing one giant always-on mesh. Culling
+##    granularity only, not LOD. Collision stays ONE HeightMapShape3D (§2-2 untouched).
+##  - A FastNoiseLite GENERATOR (preset/seed/feature scale/octaves + island falloff +
+##    terrace plateaus) behind Generate / Generate-random tool buttons ("random" just
+##    rolls a fresh seed into gen_seed): destructive-by-button, deterministic from the seed,
+##    one undoable action, writes the level's heightmap PNG (pipeline unchanged). The
+##    world amplitude is the existing `height` export — generated pixels stay [0,1].
+##  - An AUTO-SPLAT button seeding the RGBA splatmap (kit/terrain/terrain_splat.gdshader
+##    colors: R=grass G=dirt B=sand A=rock) from slope + height, same undo discipline.
+##    Pure math lives in TerrainGen (kit/terrain/terrain_gen.gd), unit-tested.
+
+const SPLAT_SHADER_PATH := "res://kit/terrain/terrain_splat.gdshader"
 
 @export var heightmap: Texture2D:
 	set(value):
@@ -18,7 +33,8 @@ extends StaticBody3D
 	set(value):
 		terrain_size = value
 		_rebuild_if_ready()
-## World-unit Y of a fully white pixel (black = 0). The hill's peak height.
+## World-unit Y of a fully white pixel (black = 0). The hill's peak height — and
+## therefore the generator's amplitude knob (presets peak at a fraction of it).
 @export var height := 8.0:
 	set(value):
 		height = value
@@ -27,8 +43,48 @@ extends StaticBody3D
 	set(value):
 		material = value
 		_rebuild_if_ready()
+## Render-mesh tile size in cells (one MeshInstance3D per tile — the frustum-cull unit).
+@export var chunk_cells := 64:
+	set(value):
+		chunk_cells = maxi(1, value)
+		_rebuild_if_ready()
 @warning_ignore("unused_private_class_variable")
 @export_tool_button("Rebuild terrain") var _rebuild_action := rebuild
+
+@export_group("Generation")
+@export var preset: TerrainGen.Preset = TerrainGen.Preset.ISLAND
+@export var gen_seed := 0
+## Meters per noise feature (grid cells are 1 m).
+@export var feature_scale := 60.0
+@export_range(1, 8) var gen_octaves := 4
+## Island preset only: fraction of the radius where the descent to sea level starts/ends.
+@export_range(0.0, 1.0) var falloff_start := 0.55
+@export_range(0.0, 1.0) var falloff_end := 0.95
+## Plateau bands (buildable flats for villages/farms). < 2 disables terracing.
+@export_range(0, 12) var terrace_steps := 4
+## Portion of each terrace band that stays dead flat; the rest ramps between plateaus.
+@export_range(0.0, 0.9) var terrace_flat := 0.6
+@warning_ignore("unused_private_class_variable")
+@export_tool_button("Generate heightmap") var _generate_action := _generate
+## Same generator, fresh random seed (written back to gen_seed, so the result stays
+## reproducible — and undo restores the old seed with the old image).
+@warning_ignore("unused_private_class_variable")
+@export_tool_button("Generate random") var _generate_random_action := _generate_random
+
+@export_group("Splat")
+@export var splatmap: Texture2D:
+	set(value):
+		splatmap = value
+		_push_splat_param()
+## Below this world height the flat ground splats as sand (the beach band fades out
+## over another half of it); above, grass.
+@export var sand_height := 2.0
+## Slope (degrees) where dirt fully takes over from flat ground.
+@export var dirt_slope_deg := 22.0
+## Slope (degrees) where rock fully takes over from dirt.
+@export var rock_slope_deg := 38.0
+@warning_ignore("unused_private_class_variable")
+@export_tool_button("Auto-splat") var _auto_splat_action := _auto_splat
 
 
 func _ready() -> void:
@@ -49,8 +105,9 @@ func rebuild() -> void:
 	var img := _read_image()
 	var heights := _sample_heights(img, cols, rows)
 
-	_apply_mesh(cols, rows, heights)
+	_apply_chunks(cols, rows, heights)
 	_apply_collision(cols, rows, heights)
+	_push_splat_param()
 
 
 ## Vertex grid dimensions: one cell = one world unit, so verts = extent + 1 (min 2).
@@ -70,7 +127,7 @@ func height_at(world_pos: Vector3) -> float:
 	var dims := _grid_dims()
 	var span_x := float(dims.x - 1)
 	var span_z := float(dims.y - 1)
-	# grid X spans [-span_x/2, +span_x/2] in local space (see _apply_mesh's x0/z0).
+	# grid X spans [-span_x/2, +span_x/2] in local space (see _apply_chunks's x0/z0).
 	var lx := world_pos.x - global_position.x
 	var lz := world_pos.z - global_position.z
 	var u := clampf((lx + span_x * 0.5) / span_x, 0.0, 1.0)
@@ -134,34 +191,58 @@ func _sample_heights(img: Image, cols: int, rows: int) -> PackedFloat32Array:
 	return data
 
 
-func _apply_mesh(cols: int, rows: int, heights: PackedFloat32Array) -> void:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var x0 := -float(cols - 1) * 0.5
-	var z0 := -float(rows - 1) * 0.5
-	for z in rows:
-		for x in cols:
-			st.set_uv(Vector2(float(x) / float(cols - 1), float(z) / float(rows - 1)))
-			st.add_vertex(Vector3(x0 + x, heights[z * cols + x], z0 + z))
-	for z in rows - 1:
-		for x in cols - 1:
-			var i := z * cols + x
-			# two triangles per quad, wound CW (Godot's front-face order) so the
-			# generated normals point up and the top surface renders / lights.
-			st.add_index(i); st.add_index(i + 1); st.add_index(i + cols)
-			st.add_index(i + 1); st.add_index(i + cols + 1); st.add_index(i + cols)
-	st.generate_normals()
-	var mi := get_node_or_null(^"Mesh") as MeshInstance3D
-	if mi == null:
+## Rebuild every render chunk (one MeshInstance3D per chunk_cells tile). Full rebuild is
+## button/load-time only; LK4 strokes will call _build_chunk for just the touched tiles.
+func _apply_chunks(cols: int, rows: int, heights: PackedFloat32Array) -> void:
+	var container := get_node_or_null(^"Chunks") as Node3D
+	if container == null:
+		var legacy := get_node_or_null(^"Mesh")   # pre-LK3 single-mesh child (hot reload)
+		if legacy != null:
+			legacy.free()
 		# Left unowned on purpose: the mesh is regenerated from the heightmap on
 		# every load, so it must never be serialized into the level scene (an
 		# editor save would otherwise bake stale geometry — plan §2 rule 1). It
 		# still renders in the editor viewport as a preview.
-		mi = MeshInstance3D.new()
-		mi.name = "Mesh"
-		add_child(mi)
+		container = Node3D.new()
+		container.name = "Chunks"
+		add_child(container)
+	for child in container.get_children():
+		child.free()
+	for rect in TerrainGen.chunk_ranges(cols, rows, chunk_cells):
+		container.add_child(_build_chunk(rect, cols, rows, heights))
+
+
+## One chunk tile: verts chunk-local (the MeshInstance3D carries the offset, so its AABB
+## is tile-sized and frustum-culls), UVs global 0..1 across the whole terrain (splat
+## continuity), normals analytic from the full grid (chunk borders never seam).
+func _build_chunk(rect: Rect2i, cols: int, rows: int,
+		heights: PackedFloat32Array) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var w := rect.size.x   # cells; verts = cells + 1 (border shared with the neighbor)
+	var h := rect.size.y
+	for z in h + 1:
+		for x in w + 1:
+			var gx := rect.position.x + x
+			var gz := rect.position.y + z
+			st.set_uv(Vector2(float(gx) / float(cols - 1), float(gz) / float(rows - 1)))
+			st.set_normal(TerrainGen.grid_normal(heights, cols, rows, gx, gz))
+			st.add_vertex(Vector3(x, heights[gz * cols + gx], z))
+	for z in h:
+		for x in w:
+			var i := z * (w + 1) + x
+			# two triangles per quad, wound CW (Godot's front-face order) so the
+			# top surface renders / lights.
+			st.add_index(i); st.add_index(i + 1); st.add_index(i + w + 1)
+			st.add_index(i + 1); st.add_index(i + w + 2); st.add_index(i + w + 1)
+	var mi := MeshInstance3D.new()
+	mi.name = "Chunk_%d_%d" % [rect.position.x, rect.position.y]
+	mi.position = Vector3(
+			-float(cols - 1) * 0.5 + float(rect.position.x), 0.0,
+			-float(rows - 1) * 0.5 + float(rect.position.y))
 	mi.mesh = st.commit()
 	mi.material_override = material
+	return mi
 
 
 func _apply_collision(cols: int, rows: int, heights: PackedFloat32Array) -> void:
@@ -171,8 +252,129 @@ func _apply_collision(cols: int, rows: int, heights: PackedFloat32Array) -> void
 	shape.map_data = heights
 	var cs := get_node_or_null(^"Collision") as CollisionShape3D
 	if cs == null:
-		# Unowned like the mesh (see _apply_mesh): regenerated per load, never saved.
+		# Unowned like the chunks (see _apply_chunks): regenerated per load, never saved.
 		cs = CollisionShape3D.new()
 		cs.name = "Collision"
 		add_child(cs)
 	cs.shape = shape
+
+
+## Feed the splatmap to the splat ShaderMaterial (no-op on other material types).
+func _push_splat_param() -> void:
+	if material is ShaderMaterial:
+		(material as ShaderMaterial).set_shader_parameter(&"splatmap", splatmap)
+
+
+# --- LK3 generation (editor-only: destructive-by-button, undoable, never per-frame) ---
+
+
+func _generate() -> void:
+	_generate_with_seed(gen_seed)
+
+
+func _generate_random() -> void:
+	_generate_with_seed(randi_range(0, 999_999))
+
+
+func _generate_with_seed(seed_value: int) -> void:
+	if not Engine.is_editor_hint():
+		return
+	var path := _target_png_path(heightmap, "height")
+	if path.is_empty():
+		return
+	var dims := _grid_dims()
+	var img := TerrainGen.generate_heights(preset, seed_value, feature_scale, gen_octaves,
+			falloff_start, falloff_end, dims.x, dims.y, terrace_steps, terrace_flat)
+	var props := {}
+	if seed_value != gen_seed:
+		props[&"gen_seed"] = [gen_seed, seed_value]
+	_commit_generated("Generate terrain heightmap", &"heightmap", path, img, props)
+
+
+func _auto_splat() -> void:
+	if not Engine.is_editor_hint():
+		return
+	var img := _read_image()
+	if img == null:
+		push_warning("Auto-splat needs a heightmap — generate or assign one first.")
+		return
+	var path := _target_png_path(splatmap, "splat")
+	if path.is_empty():
+		return
+	var px_x := terrain_size.x / maxf(float(img.get_width() - 1), 1.0)
+	var px_z := terrain_size.y / maxf(float(img.get_height() - 1), 1.0)
+	var splat := TerrainGen.build_splatmap(img, height, px_x, px_z,
+			sand_height, dirt_slope_deg, rock_slope_deg)
+	# One-click promise: if the current material isn't the splat shader, swap in a fresh
+	# splat ShaderMaterial (inside the same undo action, so undo restores the old look).
+	var props := {}
+	var current := material as ShaderMaterial
+	if current == null or current.shader == null \
+			or current.shader.resource_path != SPLAT_SHADER_PATH:
+		var new_material := ShaderMaterial.new()
+		new_material.shader = load(SPLAT_SHADER_PATH)
+		props[&"material"] = [material, new_material]
+	_commit_generated("Auto-splat terrain", &"splatmap", path, splat, props)
+
+
+## One undoable action around a generated image (plan LK3: a stray click must not
+## destroy hand-sculpted work once LK4 lands): do applies the new image, undo restores a
+## snapshot of the prior one — both through _apply_generated, which writes the PNG and
+## reimports, so disk always matches the scene. `props` are sibling property changes
+## ({name: [old, new]} — the random seed, the material swap) riding the same action.
+func _commit_generated(action_name: String, prop: StringName, path: String,
+		new_img: Image, props: Dictionary) -> void:
+	var prior: Image = null
+	var tex: Texture2D = get(prop)
+	if tex != null:
+		prior = tex.get_image()
+		if prior != null and prior.is_compressed():
+			prior.decompress()
+	var undo_redo: EditorUndoRedoManager = \
+			Engine.get_singleton(&"EditorInterface").get_editor_undo_redo()
+	undo_redo.create_action(action_name)
+	for prop_name: StringName in props:
+		# Registered first so e.g. the material is live before the image applies (do
+		# runs in registration order, undo reversed).
+		undo_redo.add_do_property(self, prop_name, props[prop_name][1])
+		undo_redo.add_undo_property(self, prop_name, props[prop_name][0])
+	undo_redo.add_do_method(self, &"_apply_generated", prop, path, new_img)
+	undo_redo.add_undo_method(self, &"_apply_generated", prop, path, prior)
+	undo_redo.commit_action()
+
+
+## Write the image to its PNG (lossless import sidecar enforced), reimport, and point
+## `prop` at the imported texture. A null image (undoing a first-ever Generate) just
+## clears the property; the file stays on disk, harmless.
+func _apply_generated(prop: StringName, path: String, img: Image) -> void:
+	if not Engine.is_editor_hint():
+		return
+	if img == null:
+		set(prop, null)
+		return
+	var err := img.save_png(path)
+	if err != OK:
+		push_error("HeightmapTerrain: failed to write %s (%s)" % [path, error_string(err)])
+		return
+	TerrainGen.ensure_import_settings(path)
+	var filesystem: EditorFileSystem = \
+			Engine.get_singleton(&"EditorInterface").get_resource_filesystem()
+	filesystem.update_file(path)
+	filesystem.reimport_files(PackedStringArray([path]))
+	set(prop, ResourceLoader.load(path, "Texture2D", ResourceLoader.CACHE_MODE_REPLACE))
+
+
+## Where a generated PNG lands: over the current texture's source PNG when there is
+## one (the level's heightmap), else beside the scene as
+## <scene>_<node>_<kind>.png — which requires the scene to be saved once.
+func _target_png_path(tex: Texture2D, kind: String) -> String:
+	if tex != null and tex.resource_path.begins_with("res://") \
+			and tex.resource_path.get_extension() == "png":
+		return tex.resource_path
+	var root := owner if owner != null else self
+	var scene_path := root.scene_file_path
+	if scene_path.is_empty():
+		push_warning("Save the scene first — the generated PNG is written beside it.")
+		return ""
+	return "%s/%s_%s_%s.png" % [scene_path.get_base_dir(),
+			scene_path.get_file().get_basename(), String(name).to_snake_case(), kind]

@@ -1,13 +1,12 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bubpqbi3o05ci"]
 
-[ext_resource type="Script" path="res://src/levels/base/level.gd" id="1_nalb0"]
+[ext_resource type="Script" uid="uid://dfqaw0jscyvlx" path="res://src/levels/base/level.gd" id="1_nalb0"]
 [ext_resource type="Resource" path="res://src/levels/dev/kit_fixture_info.tres" id="2_xpy5n"]
-[ext_resource type="Script" path="res://src/vehicles/base/chase_camera.gd" id="3_7j62h"]
-[ext_resource type="Script" path="res://src/levels/base/vehicle_spawn.gd" id="4_3jx30"]
-[ext_resource type="Script" path="res://kit/helpers/authoring_root.gd" id="5_ejqm7"]
+[ext_resource type="Script" uid="uid://ckxshtqj7odax" path="res://src/vehicles/base/chase_camera.gd" id="3_7j62h"]
+[ext_resource type="Script" uid="uid://5y8krjlda43v" path="res://src/levels/base/vehicle_spawn.gd" id="4_3jx30"]
+[ext_resource type="Script" uid="uid://t88htpmwukbg" path="res://kit/helpers/authoring_root.gd" id="5_ejqm7"]
 [ext_resource type="MeshLibrary" path="res://kit/palettes/roads.meshlib" id="6_nkges"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/nature/grass.tscn" id="7_jm8ie"]
-[ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="8_3x6cf"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/suburban/building-type-a.tscn" id="9_8hbdd"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/nature/tree_default.tscn" id="10_n281j"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/roads/light-square.tscn" id="11_d184b"]
@@ -47,6 +46,7 @@
 [ext_resource type="PackedScene" path="res://kit/prefabs/racing/overheadRound.tscn" id="45_iifwg"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/racing/rail.tscn" id="46_ygi8h"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/racing/treeSmall.tscn" id="47_mb67b"]
+[ext_resource type="MeshLibrary" path="res://kit/palettes/racing.meshlib" id="47_nalb0"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_3cm10"]
 
@@ -109,193 +109,135 @@ cell_center_y = false
 data = {
 "cells": PackedInt32Array(0, 1, 49, 0, 65535, 49, 1, 0, 1048625, 65535, 0, 1048625, 1, 1, 1441792, 1, 65535, 0, 65535, 65535, 1048576, 65535, 1, 655360)
 }
+metadata/_editor_floor_ = Vector3(0, -1, 0)
 
-[node name="Grass" type="Node3D" parent="Authoring" unique_id=457950076 instance=ExtResource("7_jm8ie")]
+[node name="Grass" parent="Authoring" unique_id=457950076 instance=ExtResource("7_jm8ie")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28, 0, 0)
-script = ExtResource("8_3x6cf")
-collision_mode = "none"
 
-[node name="BuildingTypeA" type="Node3D" parent="Authoring" unique_id=716599060 instance=ExtResource("9_8hbdd")]
+[node name="BuildingTypeA" parent="Authoring" unique_id=716599060 instance=ExtResource("9_8hbdd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -28, 0, 0)
-script = ExtResource("8_3x6cf")
 
-[node name="TreeDefault" type="Node3D" parent="Authoring" unique_id=800337657 instance=ExtResource("10_n281j")]
+[node name="TreeDefault" parent="Authoring" unique_id=800337657 instance=ExtResource("10_n281j")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, 0, 22)
-script = ExtResource("8_3x6cf")
-collision_mode = "hull"
 
-[node name="LightSquare" type="Node3D" parent="Authoring" unique_id=364681286 instance=ExtResource("11_d184b")]
+[node name="LightSquare" parent="Authoring" unique_id=364681286 instance=ExtResource("11_d184b")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26, 0, 22)
-script = ExtResource("8_3x6cf")
-collision_mode = "multiconvex"
 
-[node name="Ramp" type="Node3D" parent="Authoring" unique_id=947688029 instance=ExtResource("12_ibfup")]
+[node name="Ramp" parent="Authoring" unique_id=947688029 instance=ExtResource("12_ibfup")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 28)
-script = ExtResource("8_3x6cf")
-collision_mode = "weld"
 
-[node name="@Node3D@2" type="Node3D" parent="Authoring" unique_id=1233327200 instance=ExtResource("9_8hbdd")]
+[node name="@Node3D@2" parent="Authoring" unique_id=1233327200 instance=ExtResource("9_8hbdd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 44)
-script = ExtResource("8_3x6cf")
 
-[node name="BuildingTypeI" type="Node3D" parent="Authoring" unique_id=1185952768 instance=ExtResource("13_j40k1")]
+[node name="BuildingTypeI" parent="Authoring" unique_id=1185952768 instance=ExtResource("13_j40k1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 44)
-script = ExtResource("8_3x6cf")
 
-[node name="BuildingTypeQ" type="Node3D" parent="Authoring" unique_id=2051786092 instance=ExtResource("14_50r16")]
+[node name="BuildingTypeQ" parent="Authoring" unique_id=2051786092 instance=ExtResource("14_50r16")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 44)
-script = ExtResource("8_3x6cf")
 
-[node name="Fence1x2" type="Node3D" parent="Authoring" unique_id=419360044 instance=ExtResource("15_qmjqo")]
+[node name="Fence1x2" parent="Authoring" unique_id=419360044 instance=ExtResource("15_qmjqo")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 44)
-script = ExtResource("8_3x6cf")
 
-[node name="Fence" type="Node3D" parent="Authoring" unique_id=1337597532 instance=ExtResource("16_kahsh")]
+[node name="Fence" parent="Authoring" unique_id=1337597532 instance=ExtResource("16_kahsh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 44)
-script = ExtResource("8_3x6cf")
 
-[node name="TreeSmall" type="Node3D" parent="Authoring" unique_id=1817383096 instance=ExtResource("17_7al81")]
+[node name="TreeSmall" parent="Authoring" unique_id=1817383096 instance=ExtResource("17_7al81")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 44)
-script = ExtResource("8_3x6cf")
-collision_mode = "hull"
 
-[node name="BuildingA" type="Node3D" parent="Authoring" unique_id=2055185933 instance=ExtResource("18_qpmkh")]
+[node name="BuildingA" parent="Authoring" unique_id=2055185933 instance=ExtResource("18_qpmkh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 60)
-script = ExtResource("8_3x6cf")
 
-[node name="BuildingF" type="Node3D" parent="Authoring" unique_id=1295884003 instance=ExtResource("19_eq7na")]
+[node name="BuildingF" parent="Authoring" unique_id=1295884003 instance=ExtResource("19_eq7na")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 60)
-script = ExtResource("8_3x6cf")
 
-[node name="BuildingK" type="Node3D" parent="Authoring" unique_id=1277456100 instance=ExtResource("20_muqit")]
+[node name="BuildingK" parent="Authoring" unique_id=1277456100 instance=ExtResource("20_muqit")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 60)
-script = ExtResource("8_3x6cf")
 
-[node name="BuildingSkyscraperA" type="Node3D" parent="Authoring" unique_id=451818815 instance=ExtResource("21_c8h5w")]
+[node name="BuildingSkyscraperA" parent="Authoring" unique_id=451818815 instance=ExtResource("21_c8h5w")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 60)
-script = ExtResource("8_3x6cf")
 
-[node name="DetailAwningWide" type="Node3D" parent="Authoring" unique_id=1761813470 instance=ExtResource("22_tp48g")]
+[node name="DetailAwningWide" parent="Authoring" unique_id=1761813470 instance=ExtResource("22_tp48g")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 60)
-script = ExtResource("8_3x6cf")
-collision_mode = "none"
 
-[node name="DetailParasolB" type="Node3D" parent="Authoring" unique_id=1779605059 instance=ExtResource("23_572cb")]
+[node name="DetailParasolB" parent="Authoring" unique_id=1779605059 instance=ExtResource("23_572cb")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 60)
-script = ExtResource("8_3x6cf")
-collision_mode = "none"
 
-[node name="@Node3D@3" type="Node3D" parent="Authoring" unique_id=373412317 instance=ExtResource("24_8rhxd")]
+[node name="@Node3D@3" parent="Authoring" unique_id=373412317 instance=ExtResource("24_8rhxd")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 76)
-script = ExtResource("8_3x6cf")
 
-[node name="@Node3D@4" type="Node3D" parent="Authoring" unique_id=518945746 instance=ExtResource("25_ajw1m")]
+[node name="@Node3D@4" parent="Authoring" unique_id=518945746 instance=ExtResource("25_ajw1m")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 76)
-script = ExtResource("8_3x6cf")
 
-[node name="@Node3D@5" type="Node3D" parent="Authoring" unique_id=2006486420 instance=ExtResource("26_vxovx")]
+[node name="@Node3D@5" parent="Authoring" unique_id=2006486420 instance=ExtResource("26_vxovx")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 76)
-script = ExtResource("8_3x6cf")
 
-[node name="BuildingO" type="Node3D" parent="Authoring" unique_id=442262034 instance=ExtResource("27_xcon5")]
+[node name="BuildingO" parent="Authoring" unique_id=442262034 instance=ExtResource("27_xcon5")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 76)
-script = ExtResource("8_3x6cf")
 
-[node name="BuildingT" type="Node3D" parent="Authoring" unique_id=648271235 instance=ExtResource("28_nhpu0")]
+[node name="BuildingT" parent="Authoring" unique_id=648271235 instance=ExtResource("28_nhpu0")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 76)
-script = ExtResource("8_3x6cf")
 
-[node name="DetailTank" type="Node3D" parent="Authoring" unique_id=402852021 instance=ExtResource("29_twal3")]
+[node name="DetailTank" parent="Authoring" unique_id=402852021 instance=ExtResource("29_twal3")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 76)
-script = ExtResource("8_3x6cf")
-collision_mode = "hull"
 
-[node name="CactusShort" type="Node3D" parent="Authoring" unique_id=162812300 instance=ExtResource("30_hqfvi")]
+[node name="CactusShort" parent="Authoring" unique_id=162812300 instance=ExtResource("30_hqfvi")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 92)
-script = ExtResource("8_3x6cf")
-collision_mode = "hull"
 
-[node name="FlowerRedC" type="Node3D" parent="Authoring" unique_id=1388682188 instance=ExtResource("31_72po1")]
+[node name="FlowerRedC" parent="Authoring" unique_id=1388682188 instance=ExtResource("31_72po1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 92)
-script = ExtResource("8_3x6cf")
-collision_mode = "none"
 
-[node name="RockSmallFlatC" type="Node3D" parent="Authoring" unique_id=891711905 instance=ExtResource("32_npqul")]
+[node name="RockSmallFlatC" parent="Authoring" unique_id=891711905 instance=ExtResource("32_npqul")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 92)
-script = ExtResource("8_3x6cf")
-collision_mode = "hull"
 
-[node name="StoneSmallI" type="Node3D" parent="Authoring" unique_id=76192285 instance=ExtResource("33_gwj21")]
+[node name="StoneSmallI" parent="Authoring" unique_id=76192285 instance=ExtResource("33_gwj21")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 92)
-script = ExtResource("8_3x6cf")
-collision_mode = "hull"
 
-[node name="TreePalmDetailedShort" type="Node3D" parent="Authoring" unique_id=201286526 instance=ExtResource("34_pmy26")]
+[node name="TreePalmDetailedShort" parent="Authoring" unique_id=201286526 instance=ExtResource("34_pmy26")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 92)
-script = ExtResource("8_3x6cf")
-collision_mode = "hull"
 
-[node name="TreeThinFall" type="Node3D" parent="Authoring" unique_id=1134537689 instance=ExtResource("35_fj1mw")]
+[node name="TreeThinFall" parent="Authoring" unique_id=1134537689 instance=ExtResource("35_fj1mw")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 92)
-script = ExtResource("8_3x6cf")
-collision_mode = "hull"
 
-[node name="ArrowStanding" type="Node3D" parent="Authoring" unique_id=598436597 instance=ExtResource("36_okm4t")]
+[node name="ArrowStanding" parent="Authoring" unique_id=598436597 instance=ExtResource("36_okm4t")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 108)
-script = ExtResource("8_3x6cf")
-collision_mode = "none"
 
-[node name="BoatRowSmall" type="Node3D" parent="Authoring" unique_id=1223430284 instance=ExtResource("37_c7qvl")]
+[node name="BoatRowSmall" parent="Authoring" unique_id=1223430284 instance=ExtResource("37_c7qvl")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 108)
-script = ExtResource("8_3x6cf")
-collision_mode = "hull"
 
-[node name="BoatSpeedG" type="Node3D" parent="Authoring" unique_id=139339224 instance=ExtResource("38_cr8w4")]
+[node name="BoatSpeedG" parent="Authoring" unique_id=139339224 instance=ExtResource("38_cr8w4")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 108)
-script = ExtResource("8_3x6cf")
-collision_mode = "hull"
 
-[node name="BuoyFlag" type="Node3D" parent="Authoring" unique_id=882002766 instance=ExtResource("39_v5wfh")]
+[node name="BuoyFlag" parent="Authoring" unique_id=882002766 instance=ExtResource("39_v5wfh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 108)
-script = ExtResource("8_3x6cf")
-collision_mode = "none"
 
-[node name="RampWide" type="Node3D" parent="Authoring" unique_id=892537525 instance=ExtResource("40_scojy")]
+[node name="RampWide" parent="Authoring" unique_id=892537525 instance=ExtResource("40_scojy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 108)
-script = ExtResource("8_3x6cf")
-collision_mode = "weld"
 
-[node name="ShipSmall" type="Node3D" parent="Authoring" unique_id=1451156008 instance=ExtResource("41_mb8uq")]
+[node name="ShipSmall" parent="Authoring" unique_id=1451156008 instance=ExtResource("41_mb8uq")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 108)
-script = ExtResource("8_3x6cf")
-collision_mode = "hull"
 
-[node name="BannerTowerGreen" type="Node3D" parent="Authoring" unique_id=975744264 instance=ExtResource("42_rt0ov")]
+[node name="BannerTowerGreen" parent="Authoring" unique_id=975744264 instance=ExtResource("42_rt0ov")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 124)
-script = ExtResource("8_3x6cf")
 
-[node name="FenceCurved" type="Node3D" parent="Authoring" unique_id=105480888 instance=ExtResource("43_4j5jr")]
+[node name="FenceCurved" parent="Authoring" unique_id=105480888 instance=ExtResource("43_4j5jr")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 124)
-script = ExtResource("8_3x6cf")
 
-[node name="GrandStandCoveredRound" type="Node3D" parent="Authoring" unique_id=695583868 instance=ExtResource("44_ref2k")]
+[node name="GrandStandCoveredRound" parent="Authoring" unique_id=695583868 instance=ExtResource("44_ref2k")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 124)
-script = ExtResource("8_3x6cf")
-collision_mode = "multiconvex"
 
-[node name="OverheadRound" type="Node3D" parent="Authoring" unique_id=479630414 instance=ExtResource("45_iifwg")]
+[node name="OverheadRound" parent="Authoring" unique_id=479630414 instance=ExtResource("45_iifwg")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 124)
-script = ExtResource("8_3x6cf")
-collision_mode = "multiconvex"
 
-[node name="Rail" type="Node3D" parent="Authoring" unique_id=2135762678 instance=ExtResource("46_ygi8h")]
+[node name="Rail" parent="Authoring" unique_id=2135762678 instance=ExtResource("46_ygi8h")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 124)
-script = ExtResource("8_3x6cf")
 
-[node name="@Node3D@6" type="Node3D" parent="Authoring" unique_id=1642066795 instance=ExtResource("47_mb67b")]
+[node name="@Node3D@6" parent="Authoring" unique_id=1642066795 instance=ExtResource("47_mb67b")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 124)
-script = ExtResource("8_3x6cf")
-collision_mode = "hull"
+
+[node name="RacingTiles" type="GridMap" parent="Authoring" unique_id=193114331]
+mesh_library = ExtResource("47_nalb0")
+cell_size = Vector3(12, 12, 12)
+cell_center_y = false
 
 [node name="ShowcaseLabels" type="Node3D" parent="." unique_id=1372480440]
 

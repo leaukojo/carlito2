@@ -62,6 +62,20 @@ func test_height_adds_node_offset() -> void:
 	assert_float(t.height_at(Vector3(10, 0, -5))).is_equal_approx(10.0, 0.001)
 
 
+func test_chunked_mesh_builds_per_tile_and_height_matches_across_borders() -> void:
+	# LK3: 4x4 cells at chunk_cells 2 -> 2x2 tiles, one MeshInstance3D each; the height
+	# query is image-based, so values across a chunk border are unchanged.
+	var t := _terrain(Vector2(4, 4), 10.0)
+	t.chunk_cells = 2
+	t.heightmap = _flat(0.5)
+	var chunks := t.get_node("Chunks")
+	assert_int(chunks.get_child_count()).is_equal(4)
+	for chunk in chunks.get_children():
+		assert_object((chunk as MeshInstance3D).mesh).is_not_null()
+	assert_float(t.height_at(Vector3(0, 0, 0))).is_equal_approx(5.0, 0.001)   # tile seam
+	assert_float(t.height_at(Vector3(1.5, 0, 1.5))).is_equal_approx(5.0, 0.001)
+
+
 func test_contains_xz_extent() -> void:
 	var t := _terrain(Vector2(4, 4), 8.0, Vector3(10, 0, 0))   # extent +/-2 around x=10
 	assert_bool(t.contains_xz(Vector3(11.9, 0, 1.9))).is_true()
