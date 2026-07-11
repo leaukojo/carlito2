@@ -108,13 +108,15 @@ func handle_input(camera: Camera3D, event: InputEvent) -> bool:
 			KEY_BRACKETRIGHT:
 				return _nudge_yaw(ROTATE_STEP)
 
-	# Shift + mouse wheel rotates the ghost (plain wheel stays the editor's zoom). Only
-	# consume it when it actually rotates (random yaw off), else let the editor zoom.
-	if event is InputEventMouseButton and event.pressed and event.shift_pressed:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			return _nudge_yaw(ROTATE_STEP)
-		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			return _nudge_yaw(-ROTATE_STEP)
+	# Shift + mouse wheel rotates the ghost. A wheel tick emits BOTH a press and a release;
+	# swallow both so the editor camera can't zoom on the half we don't act on. When random
+	# yaw owns the angle we don't rotate, so let the wheel zoom as usual.
+	if event is InputEventMouseButton and event.shift_pressed \
+			and (event.button_index == MOUSE_BUTTON_WHEEL_UP \
+				or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		if event.pressed:
+			_nudge_yaw(ROTATE_STEP if event.button_index == MOUSE_BUTTON_WHEEL_UP else -ROTATE_STEP)
+		return true
 
 	if event is InputEventMouseButton and event.pressed \
 			and event.button_index == MOUSE_BUTTON_RIGHT:
@@ -140,8 +142,6 @@ func handle_input(camera: Camera3D, event: InputEvent) -> bool:
 ## Manual rotate ([ ] / Shift+wheel). Returns whether it acted, so the caller only consumes
 ## the event when random yaw isn't owning the angle (otherwise the editor keeps the input).
 func _nudge_yaw(delta: float) -> bool:
-	if random_yaw:
-		return false
 	_set_yaw(_preview_yaw + delta)
 	return true
 
