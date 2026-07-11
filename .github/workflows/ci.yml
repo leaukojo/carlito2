@@ -44,12 +44,13 @@ jobs:
 
       # Boot the real main scene headless; a nonzero exit (shell: bash => pipefail)
       # or any SCRIPT ERROR / ERROR fails the build. "still in use" / "leaked at
-      # exit" are known-harmless leak-at-exit noise.
+      # exit" / "Pages in use exist at exit" (PagedAllocator, Linux-only) are
+      # known-harmless leak-at-exit noise emitted after the run's real work.
       - name: Headless smoke
         shell: bash
         run: |
           godot --headless --quit-after 120 2>&1 | tee smoke.log
-          if grep -E "SCRIPT ERROR|ERROR:" smoke.log | grep -vE "still in use at exit|leaked at exit"; then
+          if grep -E "SCRIPT ERROR|ERROR:" smoke.log | grep -vE "still in use at exit|leaked at exit|Pages in use exist at exit"; then
             echo "smoke failed: errors above"
             exit 1
           fi
@@ -64,14 +65,15 @@ jobs:
       # Baked-level smoke (load -> baked-scene swap -> spawn -> play), reinstated by LK1
       # against the permanent kit_fixture canary (level_kit_plan.md §4). CARLITO_LEVEL
       # picks the registry id; boot.gd loads it headless. Same error gate as the default
-      # smoke; "still in use"/"leaked at exit" are known-harmless leak-at-exit noise.
+      # smoke; "still in use"/"leaked at exit"/"Pages in use exist at exit" are known-harmless
+      # leak-at-exit noise.
       - name: Baked-level smoke (kit_fixture)
         shell: bash
         env:
           CARLITO_LEVEL: kit_fixture
         run: |
           godot --headless --quit-after 120 2>&1 | tee baked.log
-          if grep -E "SCRIPT ERROR|ERROR:" baked.log | grep -vE "still in use at exit|leaked at exit"; then
+          if grep -E "SCRIPT ERROR|ERROR:" baked.log | grep -vE "still in use at exit|leaked at exit|Pages in use exist at exit"; then
             echo "baked smoke failed: errors above"
             exit 1
           fi
@@ -86,7 +88,7 @@ jobs:
           SHORT_SHA="${GITHUB_SHA:0:8}"
           mkdir -p build/web
           godot --headless --export-release "Web" "build/web/c2-${SHORT_SHA}.html" 2>&1 | tee export.log
-          if grep -E "ERROR:" export.log | grep -vE "still in use at exit|leaked at exit"; then
+          if grep -E "ERROR:" export.log | grep -vE "still in use at exit|leaked at exit|Pages in use exist at exit"; then
             echo "export failed: errors above"
             exit 1
           fi
