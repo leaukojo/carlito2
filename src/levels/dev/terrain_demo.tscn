@@ -53,15 +53,15 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8022804, 0)
 script = ExtResource("5_terrain")
 heightmap = ExtResource("6_height")
 terrain_size = Vector2(256, 256)
-height = 20.0
+height = 50.0
 material = SubResource("SplatMat")
-gen_seed = 567998
+gen_seed = 446212
 feature_scale = 77.0
 terrace_steps = 6
 splatmap = ExtResource("7_splat")
 
 [node name="Spawn" type="Marker3D" parent="." unique_id=712029966]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.152443, 12.821796, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.321548, 44.660763, -4.378233)
 script = ExtResource("4_spawn")
 vehicle_types = PackedStringArray("car")
 

@@ -373,6 +373,43 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   plateau, a boat spawn in the surrounding `WaterSurface` sea (G swaps), drown-respawn included.
   Regenerating from the recorded knobs reproduces the committed PNGs.
 
+## Terrain brushes (LK4, landed — level_kit_plan.md §4 LK4)
+
+- **Reusable brush chassis** (`addons/carlito_kit/brush_chassis.gd`, `RefCounted`, shared with
+  LK6's scatter brush): owns the radius/strength/falloff params, the circular ground cursor
+  (an `ImmediateMesh` line loop, unowned child of the target, no-depth-test so it's always
+  visible), and the input loop (LMB press→stroke, motion→**spacing-throttled** samples at
+  `radius*0.35`, release→stroke end, `[`/`]` resize). Brush-specific work is delegated to
+  virtuals (`_target_valid`, `_project`, `_cursor_parent/_points/_color`, `_stroke_begin/apply/
+  end`); the chassis is inert (returns false, doesn't touch the viewport) until a subclass
+  reports a valid target, so it never fights normal editor navigation.
+- **`terrain_brush.gd extends brush_chassis.gd`**: sculpt **raise/lower/smooth/flatten** on the
+  heightmap, **paint** on the LK3 splatmap (4 channels). The pure per-pixel stamp math lives in
+  `kit/helpers/brush_ops.gd` (radial `weight` curve, `sculpt_value`, `stamp_height`/`stamp_splat`
+  returning the dirty Rect2i) — editor-free, unit-tested in `tests/test_brush_ops.gd`. Ground
+  under the cursor is found by **iterating ray-vs-heightfield** (no physics — editor space
+  isn't reliably populated, and we want the terrain surface, not a placed prop), sampling the
+  **live working image** so the cursor tracks in-progress sculpting.
+- **Editor-only, PNGs stay the sole artifact (plan LK4).** A brush never swaps the terrain's
+  exported `heightmap`/`splatmap` Texture2D, so the scene always serializes the PNG reference.
+  Live feedback: height remeshes only the touched chunks straight off the in-memory working
+  image via `HeightmapTerrain.rebuild_region_world(img, min_x,max_x,min_z,max_z)` (collision
+  deferred to stroke end via `rebuild_collision_from_image` — HeightMapShape3D has no partial
+  update); paint drives a **temporary splatmap shader-param override** from a throwaway
+  `ImageTexture`. Edits accumulate in per-terrain sessions and are written to the PNGs +
+  reimported **only on scene save** (`EditorPlugin._save_external_data` → `TerrainBrush.flush_all`),
+  never per stroke. `HeightmapTerrain.png_path_for(kind)` reuses the LK3 `_target_png_path` logic.
+- **Undo** snapshots only the touched image region (before/after sub-images via `get_region`,
+  `commit_action(false)` since edits are already live); `_apply_region` blits back and refreshes
+  the visual, robust to the terrain no longer being selected (re-derives the session).
+- **Panel** (`addons/carlito_kit/brush_panel.gd`, right dock `DOCK_SLOT_RIGHT_BL`): mode buttons
+  (index-matched to the brush enum, 0=Off), a Paint-only channel picker, radius/strength/falloff
+  spinners. The plugin tracks `selection_changed` → sets the brush target to any selected
+  `HeightmapTerrain` and enables the panel; picking a mode disarms the placement ghost. In
+  `_forward_3d_gui_input` the brush gets first refusal, then the placement tool. Terrain needs
+  **no AuthoringRoot** for brushing (unlike prop placement) — sculpt the `terrain_demo`/island
+  `HeightmapTerrain` directly.
+
 ## Water & boat — M6 (P8, landed — plan §1, §4.4, §8)
 
 - **`WaterSurface`** (`src/water/water_surface.gd`, `@tool Area3D`, group `"water"`) is one node

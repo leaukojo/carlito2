@@ -110,6 +110,58 @@ func rebuild() -> void:
 	_push_splat_param()
 
 
+## Editor incremental rebuild (LK4 brush): remesh only the render chunks overlapping the
+## world-space XZ rectangle, sampling heights from `img` — the brush's live working image,
+## not the exported (stale) heightmap texture. Lets a sculpt stroke update geometry without
+## remeshing a whole island every sample; collision is refreshed separately on stroke end.
+func rebuild_region_world(img: Image, min_x: float, max_x: float,
+		min_z: float, max_z: float) -> void:
+	var container := get_node_or_null(^"Chunks") as Node3D
+	if container == null:
+		rebuild()   # nothing to patch yet — fall back to a full build
+		return
+	var dims := _grid_dims()
+	var cols := dims.x
+	var rows := dims.y
+	var heights := _sample_heights(img, cols, rows)
+	# World XZ -> cell indices (see _build_chunk: world x of cell cx = gpos.x - (cols-1)/2 +
+	# cx). Expanded one cell each side so an edit on a chunk border also refreshes the
+	# neighbour's shared verts/normals.
+	var span_x := float(cols - 1)
+	var span_z := float(rows - 1)
+	var c0 := int(floor(min_x - global_position.x + span_x * 0.5)) - 1
+	var c1 := int(ceil(max_x - global_position.x + span_x * 0.5)) + 1
+	var r0 := int(floor(min_z - global_position.z + span_z * 0.5)) - 1
+	var r1 := int(ceil(max_z - global_position.z + span_z * 0.5)) + 1
+	var edit := Rect2i(c0, r0, maxi(c1 - c0, 1), maxi(r1 - r0, 1))
+	for rect in TerrainGen.chunk_ranges(cols, rows, chunk_cells):
+		if not Rect2i(rect.position, rect.size).intersects(edit):
+			continue
+		var old := container.get_node_or_null(
+				NodePath("Chunk_%d_%d" % [rect.position.x, rect.position.y]))
+		if old != null:
+			old.free()
+		container.add_child(_build_chunk(rect, cols, rows, heights))
+	_push_splat_param()
+
+
+## Rebuild the collision HeightMapShape3D from `img` (LK4 brush, called once at stroke end —
+## HeightMapShape3D has no partial-update API, so the whole shape is reassigned, but that's
+## cheap data next to remeshing and only happens on release).
+func rebuild_collision_from_image(img: Image) -> void:
+	var dims := _grid_dims()
+	_apply_collision(dims.x, dims.y, _sample_heights(img, dims.x, dims.y))
+
+
+## The source PNG a brush writes on save (LK4): the heightmap's / splatmap's own PNG when it
+## has one, else beside the scene. Wraps _target_png_path so the addon reuses the exact same
+## path logic as the LK3 generation buttons.
+func png_path_for(kind: String) -> String:
+	if kind == "height":
+		return _target_png_path(heightmap, "height")
+	return _target_png_path(splatmap, "splat")
+
+
 ## Vertex grid dimensions: one cell = one world unit, so verts = extent + 1 (min 2).
 ## Shared by rebuild() and height_at() so the world<->grid mapping lives in one place.
 func _grid_dims() -> Vector2i:

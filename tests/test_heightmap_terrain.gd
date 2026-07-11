@@ -76,6 +76,35 @@ func test_chunked_mesh_builds_per_tile_and_height_matches_across_borders() -> vo
 	assert_float(t.height_at(Vector3(1.5, 0, 1.5))).is_equal_approx(5.0, 0.001)
 
 
+func test_rebuild_region_world_remeshes_touched_chunks_only_leaving_collision() -> void:
+	# LK4 incremental sculpt path: remesh from a live working image (not the property) and
+	# leave collision for stroke-end. Flat 0.5 -> verts y=5; feed a flat-0.8 image -> y=8.
+	var t := _terrain(Vector2(4, 4), 10.0)
+	t.chunk_cells = 2
+	t.heightmap = _flat(0.5)
+	var work := Image.create(5, 5, false, Image.FORMAT_RGBF)
+	work.fill(Color(0.8, 0.8, 0.8))
+	t.rebuild_region_world(work, -10, 10, -10, 10)
+	var maxy := 0.0
+	for chunk in t.get_node("Chunks").get_children():
+		for v in (chunk as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]:
+			maxy = maxf(maxy, v.y)
+	assert_float(maxy).is_equal_approx(8.0, 0.001)   # meshes reflect the working image
+	# Collision is untouched by a region rebuild — still the 0.5 heightmap (y=5).
+	var shape := (t.get_node("Collision") as CollisionShape3D).shape as HeightMapShape3D
+	assert_float(shape.map_data[0]).is_equal_approx(5.0, 0.001)
+
+
+func test_rebuild_collision_from_image_updates_shape() -> void:
+	var t := _terrain(Vector2(4, 4), 10.0)
+	t.heightmap = _flat(0.5)
+	var work := Image.create(5, 5, false, Image.FORMAT_RGBF)
+	work.fill(Color(0.8, 0.8, 0.8))
+	t.rebuild_collision_from_image(work)
+	var shape := (t.get_node("Collision") as CollisionShape3D).shape as HeightMapShape3D
+	assert_float(shape.map_data[0]).is_equal_approx(8.0, 0.001)
+
+
 func test_contains_xz_extent() -> void:
 	var t := _terrain(Vector2(4, 4), 8.0, Vector3(10, 0, 0))   # extent +/-2 around x=10
 	assert_bool(t.contains_xz(Vector3(11.9, 0, 1.9))).is_true()
