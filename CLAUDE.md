@@ -13,12 +13,12 @@ the prompt-per-milestone build playbook — read the current prompt's entry befo
 milestone task.
 
 **`version2_plan.md` (repo root) is the plan of record.** Read the section a task references
-before implementing. Milestones M0–M7 are in §5.3; **M0–M6 plus the level kit (P6) have landed** — remaining:
-the level-kit authoring rework (**`level_kit_plan.md`**, phases LK0–LK8, prompts in
-`level_kit_prompts.md` — runs before the island; LK0 deletes every kit level (farm, harbor,
-kit_demo — clean slate, zero legacy compat), LK1 builds the permanent `kit_fixture` CI bake
-level, LK8 rebuilds farm + harbor with the new tools), then island (M7/P9), perf pass +
-procedural engine audio + launch (P10). Launch levels are **signal playgrounds** (level
+before implementing. Milestones M0–M7 are in §5.3; **M0–M6, the level kit (P6), and the
+level-kit authoring rework phases LK0–LK7 have landed** (**`level_kit_plan.md`**, prompts in
+`level_kit_prompts.md` — LK0 deleted every kit level (farm, harbor, kit_demo — clean slate,
+zero legacy compat), LK1 built the permanent `kit_fixture` CI bake level) — remaining:
+**LK8** (rebuild farm + harbor with the new tools, rewrite `docs/making_a_level.md`), then
+island (M7/P9), perf pass + procedural engine audio + launch (P10). Launch levels are **signal playgrounds** (level
 kit plan §2): content must make contract signals visibly perform — no missions.
 
 ## v1 is a reference spec, NEVER a code source
@@ -327,6 +327,8 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   (new bilinear world-space query on `heightmap_terrain.gd`, plus `contains_xz`; runtime-safe,
   reused by LK5 scatter — unit-tested in `tests/test_heightmap_terrain.gd`) → miss → the `Y=0`
   plane. Editor physics isn't always populated, so the terrain/plane branches carry the feature.
+  The chain lives in `addons/carlito_kit/ground_snap.gd` (extracted at the LK7 follow-up, shared
+  with the road draw tool); `placement_tool.gd` delegates to it.
 - **Palette tiles route to the built-in GridMap workflow** (never reimplemented): `select_tile`
   finds — or creates (undoable, `cell_size` + `cell_center_y=false` from the recipe) — the
   AuthoringRoot GridMap using that kit's meshlib and selects/edits it so the built-in palette
@@ -453,8 +455,12 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   On mismatch the node shows a configuration warning (3 s editor poll), **`bake()` fails**
   (like spawn validation), and **`check_level_file` reports stale** — the terrain PNGs live
   beside the level scene, outside the res://kit/ input-hash net, so without this a
-  sculpt-after-scatter would ship floating/buried props CI-green. Only Regenerate (which
-  re-snaps) clears it; regions with zero stored instances never gate.
+  sculpt-after-scatter would ship floating/buried props CI-green. Regenerate (which
+  re-snaps) clears it, as does the ScatterBase **Re-snap to ground** button (LK7
+  follow-up — re-snaps stored Ys in place, keeps XZ/yaw/scale, drops groundless
+  instances, refreshes the hash; the recovery path for a canvas, which cannot
+  Regenerate, after a road Conform or sculpt); regions with zero stored instances
+  never gate.
 - **kit_fixture** carries the permanent canary: `TreeScatter` (80 tree_default, MultiMesh
   path, collision) + `GrassScatter` (20 grass, merge path, collision-off) + LK6's
   `GrassCanvas` (36 grass, `ScatterCanvas`, merge path), expanded programmatically by
@@ -485,6 +491,79 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   selecting a `ScatterCanvas` and forwards viewport input **terrain brush → scatter brush →
   placement tool** (each inert until its target + mode are set); a non-Off scatter mode disarms
   the placement ghost.
+
+## Spline road — RoadPath (LK7, landed — level_kit_plan.md §4 LK7)
+
+- **`RoadPath`** (`kit/helpers/road_path.gd`, `@tool`, under `Authoring`, duck marker
+  `is_carlito_road()`): owns a **serialized `Path3D` child "Path"** (edit with the built-in
+  path gizmo or the addon's **Draw mode**, below; the curve is the bake input) and extrudes a low-poly ribbon
+  from a **`RoadProfile`** (`kit/helpers/road_profile.gd`; presets
+  `kit/roads/asphalt_profile.tres` — painted edge line — and `gravel_profile.tres`;
+  flat-color materials as inline SubResources so a color edit re-stales bakes through the
+  one .tres hash). The ribbon derives from the **curve + profile alone** (never reads the
+  terrain), so bake output depends only on the scene file — the CI hash story is untouched.
+  Preview is unowned; the **dev trimesh exists only outside the editor** (unbaked play
+  drivable; LK2/LK5 editor rays never hit our own ribbon). Profile default: editor `_ready`
+  assigns the asphalt preset via a **plain property set** so it serializes as an ExtResource
+  the input hash sees — never a preload export default (equal-to-default is omitted from the
+  .tscn, a hash hole); the baker errors on a null profile.
+- **Pure math is `RoadBuilder`** (`kit/helpers/road_builder.gd`, tested in
+  `tests/test_road.gd`): curvature-adaptive offsets (**anchored at every interior
+  control point's arc offset** — the corner miter: a kink gets a ring exactly AT the
+  corner whose central-difference tangent is the angle bisector, else the edge notches
+  even at small angles; then uniform coarse split + bisection while
+  tangents disagree, incl. a midpoint check for S-inflections; MIN_SEG 0.5 floor), a
+  **custom frame** (right = tangent×UP stays horizontal, roll ONLY from explicit curve tilt
+  when `banking` is on — deliberately NOT `sample_baked_with_rotation`, whose parallel
+  transport accumulates roll on climbing turns), per-strip extrusion (strips never share
+  verts — crisp hard edges; U = lateral m, V = arc-length m; winding CW-from-above and
+  invariant under curve reversal), and the conform flatten mask. Bake-adjacent CODE like
+  ScatterBase: governed by BAKER_VERSION + re-bake, invisible to the file-hash net.
+- **Draw mode + Drape (LK7 follow-up):** `addons/carlito_kit/road_draw_tool.gd` +
+  `road_panel.gd` (right dock, Off/Draw; RoadPath-selection-gated like the brushes,
+  forwarded terrain brush → scatter brush → **road draw** → placement). Each viewport
+  click ground-snaps via the shared LK2 chain (**extracted to
+  `addons/carlito_kit/ground_snap.gd`**, placement_tool delegates), lifts by the node's
+  `draw_clearance` (0.3), and appends ONE undoable curve point **auto-smoothing the
+  previous point with Catmull-Rom handles** (`RoadBuilder.smooth_handles`, pure/tested —
+  a zero-handle polyline corner folds the ribbon over itself); the first click replaces
+  the untouched 2-point default stub; a ghost line previews the next segment; RMB/Escape
+  exits; the panel's **Close loop** button appends a point ON the first point with
+  Catmull-Rom seam tangents on both sides (C1 through the seam — the duplicated ring
+  welds at bake) and exits Draw. RoadPath buttons: **Drape curve onto terrain** (re-snaps every existing point's
+  Y to terrain + clearance; points over no terrain keep their Y) and **Smooth curve
+  (Catmull-Rom)** (handles for every interior point — the rescue for hand-kinked
+  curves); each is one undoable action. Corners still self-overlap when the local turn
+  radius drops below the ribbon half-width (~5 m asphalt) — that is geometric; space
+  clicks/points wider.
+- **Conform terrain is destructive-by-button** (the LK3 Generate discipline): samples the
+  curve every 0.5 m (deterministic, tessellation-independent), flattens every overlapping
+  `HeightmapTerrain` to road height − `conform_epsilon`. Per pixel the target is **lerped
+  at the projection onto the nearest centerline segment** (never the nearest point sample
+  — that is off by up to half the sample spacing × the grade and poked terrain through
+  the ribbon on grades > ~20%; regression-tested at 8-bit precision). The flatten plateau
+  is the **full ribbon half-width incl. the drop skirt** (`full_half_width()`), so terrain
+  under the skirt sits at a predictable road − ε and always crosses the skirt on its
+  slope; `conform_falloff` smoothsteps out beyond the ribbon. Targets are
+  **floor-quantized to the 8-bit grid** so the PNG can never store terrain above the
+  ribbon — any ε > 0 is z-fight-safe, but the profile's `edge_drop` must absorb
+  **ε + height/255** (conform warns per terrain when it can't). One `_commit_generated`
+  undo action per terrain (PNG write + reimport, same pipeline as Generate/Auto-splat).
+  Conforming changes heightmap bytes, so earlier scatter **trips its stale guard by
+  design** — authoring order: terrain → roads + conform → splat → scatter, and the
+  ScatterBase **Re-snap to ground** button recovers out-of-order edits.
+- **Bake (BAKER_VERSION 4 — v4 = corner miter rings):** `_collect_road` duck-calls `ribbon_surfaces()` /
+  `ribbon_faces()` (they depend only on the serialized Path child + profile, so they work on
+  the baker's untreed instance). Render is **chunk-bucketed by triangle centroid**
+  (`split_arrays_by_chunk`, render-only — collision never splits) through
+  `BakeContext.add_render_arrays` (the dedup path `add_render_mesh` now also routes
+  through); every ribbon triangle joins the level-wide welded Drivable body via
+  `add_weld_faces` (the same 1 mm snap as weld prefabs). Stats gain `roads`. kit_fixture
+  carries the permanent canary (`SplineRoad`, an S-curve at y = 0.05 on the south strip,
+  built by build_kit_fixture.gd with the profile set explicitly — headless runs never hit
+  the editor auto-assign).
+- **Non-goals (permanent, plan LK7):** no junctions (cross two roads over a flat GridMap
+  pad or a painted plaza), no lane-marking system, no traffic data.
 
 ## Water & boat — M6 (P8, landed — plan §1, §4.4, §8)
 

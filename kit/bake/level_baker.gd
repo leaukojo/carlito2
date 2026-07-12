@@ -20,7 +20,8 @@ extends RefCounted
 
 ## Bump when bake semantics change: stale-bake checks treat old-version manifests
 ## as stale, forcing a re-bake after tool upgrades.
-const BAKER_VERSION := 2
+## v4: road extrusion anchors a ring at every interior curve control point (corner miters).
+const BAKER_VERSION := 4
 
 ## LK5 scatter: items with at least this many stored instances bake as one
 ## MultiMeshInstance3D per chunk x item (geometry stored once) instead of merging
@@ -143,6 +144,64 @@ static func validate_spawns(allowed: PackedStringArray, default_vehicle: String,
 			var kind := "water" if wants_water else "land"
 			errors.append("no %s spawn accepts vehicle type '%s'" % [kind, t])
 	return errors
+
+
+## Split one indexed triangle surface into per-chunk sub-surfaces, keyed by the WORLD
+## triangle centroid's chunk (LK7 road ribbons: a road is long, so its render mesh is
+## bucketed for frustum culling; `world_xform` is applied for KEYING ONLY — the output
+## arrays stay in the source space, vertices remapped/deduped per chunk). Render-only:
+## collision never splits (the ribbon welds into the single level-wide Drivable body,
+## §2 rule 1a). Handles VERTEX/NORMAL/TEX_UV channels; triangle count is conserved.
+static func split_arrays_by_chunk(arrays: Array, world_xform: Transform3D,
+		chunk_size: float) -> Dictionary:
+	var pos: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	# regular Arrays (by-reference) during accumulation: Packed*Arrays stored in a
+	# Dictionary are value types, so appending through the dict would mutate a copy
+	var tri_lists := {}   # Vector2i -> Array of source vertex indices (3 per triangle)
+	for i in range(0, idx.size() - 2, 3):
+		var centroid := (pos[idx[i]] + pos[idx[i + 1]] + pos[idx[i + 2]]) / 3.0
+		var key := chunk_key(world_xform * centroid, chunk_size)
+		if not tri_lists.has(key):
+			tri_lists[key] = []
+		var list: Array = tri_lists[key]
+		list.append(idx[i])
+		list.append(idx[i + 1])
+		list.append(idx[i + 2])
+
+	var src_n: Variant = arrays[Mesh.ARRAY_NORMAL]
+	var has_n: bool = src_n is PackedVector3Array \
+			and (src_n as PackedVector3Array).size() == pos.size()
+	var src_uv: Variant = arrays[Mesh.ARRAY_TEX_UV]
+	var has_uv: bool = src_uv is PackedVector2Array \
+			and (src_uv as PackedVector2Array).size() == pos.size()
+
+	var out := {}
+	for key: Vector2i in tri_lists:
+		var remap := {}   # source index -> chunk-local index
+		var cpos := PackedVector3Array()
+		var cnrm := PackedVector3Array()
+		var cuv := PackedVector2Array()
+		var cidx := PackedInt32Array()
+		for si: int in tri_lists[key]:
+			if not remap.has(si):
+				remap[si] = cpos.size()
+				cpos.append(pos[si])
+				if has_n:
+					cnrm.append((src_n as PackedVector3Array)[si])
+				if has_uv:
+					cuv.append((src_uv as PackedVector2Array)[si])
+			cidx.append(remap[si])
+		var carrays := []
+		carrays.resize(Mesh.ARRAY_MAX)
+		carrays[Mesh.ARRAY_VERTEX] = cpos
+		if has_n:
+			carrays[Mesh.ARRAY_NORMAL] = cnrm
+		if has_uv:
+			carrays[Mesh.ARRAY_TEX_UV] = cuv
+		carrays[Mesh.ARRAY_INDEX] = cidx
+		out[key] = carrays
+	return out
 
 
 ## Semantic material key so identical Kenney materials re-imported per GLB merge
@@ -293,7 +352,7 @@ static func scatter_ground_errors(level_root: Node) -> PackedStringArray:
 		if total == 0:
 			continue
 		if String(region.get("stored_ground_hash")) != current:
-			errors.append("scatter region '%s': terrain changed since it was scattered — Regenerate in the editor, then re-bake" % region.name)
+			errors.append("scatter region '%s': terrain changed since it was scattered — Regenerate or Re-snap to ground in the editor, then re-bake" % region.name)
 	return errors
 
 
@@ -369,6 +428,8 @@ static func _collect(node: Node, xform: Transform3D, ctx: BakeContext,
 			_collect_piece(child, cxform, ctx, errors)
 		elif child.has_method("is_carlito_scatter"):
 			_collect_scatter(child, cxform, ctx, errors)
+		elif child.has_method("is_carlito_road"):
+			_collect_road(child, cxform, ctx, errors)
 		else:
 			_collect(child, cxform, ctx, errors)
 
@@ -484,6 +545,31 @@ static func _collect_scatter(region: Node, xform: Transform3D, ctx: BakeContext,
 				_collect_piece_content(template, t, chunk_key(t.origin, ctx.chunk_size),
 						mode if use_collision else "none", ctx, errors)
 		template.free()
+
+
+## LK7 spline road: duck-call the RoadPath's geometry API (ribbon_surfaces /
+## ribbon_faces — the stored layout has one owner, and both depend only on the
+## serialized Path child + profile, so they work on the baker's untreed instance).
+## Render surfaces are chunk-bucketed by triangle centroid for frustum culling;
+## collision is NOT split — every ribbon triangle joins the level-wide welded
+## Drivable body through the same 1 mm snap as weld prefabs (§2 rule 1a). No
+## recursion into the road: Preview/DevCollision never exist off-tree, and the
+## Path child carries no bakeable content of its own.
+static func _collect_road(road: Node, xform: Transform3D, ctx: BakeContext,
+		errors: PackedStringArray) -> void:
+	if road.get("profile") == null:
+		errors.append("RoadPath '%s' has no profile — assign one from kit/roads/" % road.name)
+		return
+	var entries: Array = road.call("ribbon_surfaces")
+	if entries.is_empty():
+		errors.append("RoadPath '%s' has no usable curve (needs at least 2 points)" % road.name)
+		return
+	for e: Dictionary in entries:
+		var buckets := split_arrays_by_chunk(e.arrays, xform, ctx.chunk_size)
+		for key: Vector2i in buckets:
+			ctx.add_render_arrays(key, e.material, buckets[key], xform)
+	ctx.add_weld_faces(road.call("ribbon_faces"), xform)
+	ctx.roads += 1
 
 
 ## Assemble the Baked scene: Chunks/ (merged render meshes), Bodies/ (one
@@ -671,26 +757,39 @@ class BakeContext:
 	## Vector2i chunk key -> { mesh index -> Array of world Transform3D }
 	var multimesh := {}
 	var scatter_instances := 0
+	## LK7 spline roads collected
+	var roads := 0
 
 	func add_render_mesh(key: Vector2i, mesh: Mesh, world_xform: Transform3D) -> void:
+		for si in mesh.get_surface_count():
+			add_render_arrays(key, mesh.surface_get_material(si),
+					mesh.surface_get_arrays(si), world_xform)
+
+	## One raw surface into a chunk's per-material accumulator — the shared dedup/merge
+	## path add_render_mesh loops through, and what LK7 road ribbons (already split into
+	## per-chunk arrays) feed directly.
+	func add_render_arrays(key: Vector2i, mat: Material, arrays: Array,
+			world_xform: Transform3D) -> void:
 		var local := Transform3D(Basis.IDENTITY, -LevelBaker.chunk_origin(key, chunk_size)) * world_xform
 		if not render.has(key):
 			render[key] = {}
 		var groups: Dictionary = render[key]
-		for si in mesh.get_surface_count():
-			var mat := mesh.surface_get_material(si)
-			var mk := LevelBaker.material_key(mat)
-			if not materials.has(mk):
-				materials[mk] = mat.duplicate() if mat != null else null
-			if not groups.has(mk):
-				groups[mk] = SurfaceAccumulator.new()
-			var arrays := mesh.surface_get_arrays(si)
-			(groups[mk] as SurfaceAccumulator).append(arrays, local)
-			total_vertices += (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+		var mk := LevelBaker.material_key(mat)
+		if not materials.has(mk):
+			materials[mk] = mat.duplicate() if mat != null else null
+		if not groups.has(mk):
+			groups[mk] = SurfaceAccumulator.new()
+		(groups[mk] as SurfaceAccumulator).append(arrays, local)
+		total_vertices += (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 
 	func add_weld_mesh(mesh: Mesh, world_xform: Transform3D) -> void:
 		for face in mesh.get_faces():
 			weld_pool.push_back(world_xform * face)
+
+	## A pre-built triangle soup into the level-wide weld pool (LK7 road ribbons).
+	func add_weld_faces(faces: PackedVector3Array, world_xform: Transform3D) -> void:
+		for v in faces:
+			weld_pool.push_back(world_xform * v)
 
 	func add_body_shape(key: Vector2i, shape: Shape3D, world_xform: Transform3D) -> void:
 		if not body_shapes.has(key):
@@ -728,6 +827,7 @@ class BakeContext:
 			"drivable_triangles": weld_pool.size() / 3,
 			"scatter_instances": scatter_instances,
 			"scatter_multimeshes": multimesh_count,
+			"roads": roads,
 		}
 
 

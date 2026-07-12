@@ -14,6 +14,8 @@ const BrushPanel := preload("res://addons/carlito_kit/brush_panel.gd")
 const ScatterGizmo := preload("res://addons/carlito_kit/scatter_gizmo.gd")
 const ScatterBrush := preload("res://addons/carlito_kit/scatter_brush.gd")
 const ScatterPanel := preload("res://addons/carlito_kit/scatter_panel.gd")
+const RoadDrawTool := preload("res://addons/carlito_kit/road_draw_tool.gd")
+const RoadPanel := preload("res://addons/carlito_kit/road_panel.gd")
 
 var _strip: EditorExportPlugin
 var _dock: Control
@@ -23,6 +25,8 @@ var _panel: Control
 var _scatter_gizmo: EditorNode3DGizmoPlugin
 var _scatter_brush  # ScatterBrush (RefCounted)
 var _scatter_panel: Control
+var _road_tool  # RoadDrawTool (RefCounted)
+var _road_panel: Control
 
 
 func _enter_tree() -> void:
@@ -34,7 +38,9 @@ func _enter_tree() -> void:
 
 	_tool = PlacementTool.new(get_undo_redo())
 	_dock = PaletteDock.new()
-	_dock.prefab_armed.connect(func(kit, name): _tool.arm(kit, name))
+	_dock.prefab_armed.connect(func(kit, name):
+		_drop_road_draw()  # the placement ghost owns the viewport now
+		_tool.arm(kit, name))
 	_dock.tile_selected.connect(func(kit, name): _tool.select_tile(kit, name))
 	_dock.settings_changed.connect(_on_settings_changed)
 	_tool.yaw_changed.connect(func(deg): _dock.set_yaw_display(deg))
@@ -57,6 +63,13 @@ func _enter_tree() -> void:
 	_scatter_panel.radius_changed.connect(func(r): _scatter_brush.radius = r)
 	_scatter_brush.radius_display.connect(func(r): _scatter_panel.set_radius_display(r))
 	add_control_to_dock(DOCK_SLOT_RIGHT_BL, _scatter_panel)
+
+	_road_tool = RoadDrawTool.new(get_undo_redo())
+	_road_panel = RoadPanel.new()
+	_road_panel.mode_changed.connect(_on_road_mode)
+	_road_panel.close_requested.connect(func(): _road_tool.close_loop())
+	_road_tool.deactivated.connect(func(): _road_panel.show_off())
+	add_control_to_dock(DOCK_SLOT_RIGHT_BL, _road_panel)
 
 	EditorInterface.get_selection().selection_changed.connect(_on_selection_changed)
 	# Placement works regardless of selection, so we need every viewport event (docs:
@@ -97,6 +110,14 @@ func _exit_tree() -> void:
 		_scatter_panel.free()
 	_scatter_panel = null
 
+	if _road_tool != null:
+		_road_tool.teardown()
+	_road_tool = null
+	if _road_panel != null:
+		remove_control_from_docks(_road_panel)
+		_road_panel.free()
+	_road_panel = null
+
 
 ## Save hook (plan LK4): brush edits accumulate in memory and are written to the heightmap /
 ## splat PNGs only when the scene is saved — never reimported per stroke.
@@ -110,6 +131,8 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 		return EditorPlugin.AFTER_GUI_INPUT_STOP
 	if _scatter_brush != null and _scatter_brush.handle_input(camera, event):
 		return EditorPlugin.AFTER_GUI_INPUT_STOP
+	if _road_tool != null and _road_tool.handle_input(camera, event):
+		return EditorPlugin.AFTER_GUI_INPUT_STOP
 	if _tool != null and _tool.handle_input(camera, event):
 		return EditorPlugin.AFTER_GUI_INPUT_STOP
 	return EditorPlugin.AFTER_GUI_INPUT_PASS
@@ -120,6 +143,7 @@ func _on_brush_mode(mode: int) -> void:
 	_panel.on_mode(mode)
 	if mode != 0:  # a brush mode owns the viewport — drop any armed placement ghost
 		_tool.disarm()
+		_drop_road_draw()
 
 
 ## Scatter brush mode picked: a non-Off mode owns the viewport, so drop the placement ghost
@@ -128,20 +152,38 @@ func _on_scatter_mode(mode: int) -> void:
 	_scatter_brush.set_mode(mode)
 	if mode != 0:
 		_tool.disarm()
+		_drop_road_draw()
+
+
+## Road Draw mode picked: same viewport-ownership rule as the brushes.
+func _on_road_mode(mode: int) -> void:
+	_road_tool.set_active(mode == 1)
+	if mode != 0:
+		_tool.disarm()
+
+
+func _drop_road_draw() -> void:
+	_road_tool.set_active(false)
+	_road_panel.show_off()
 
 
 func _on_selection_changed() -> void:
 	var terrain: HeightmapTerrain = null
 	var canvas: ScatterCanvas = null
+	var road: RoadPath = null
 	for node in EditorInterface.get_selection().get_selected_nodes():
 		if node is HeightmapTerrain:
 			terrain = node
 		elif node is ScatterCanvas:
 			canvas = node
+		elif node is RoadPath:
+			road = node
 	_brush.set_target(terrain)
 	_panel.set_has_terrain(terrain != null)
 	_scatter_brush.set_target(canvas)
 	_scatter_panel.set_has_canvas(canvas != null)
+	_road_tool.set_target(road)
+	_road_panel.set_has_road(road != null)
 
 
 func _on_settings_changed(random_yaw: bool, snap_enabled: bool, snap_step: float,

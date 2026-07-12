@@ -67,6 +67,7 @@ func _ready() -> void:
 	_add_showcase(root, authoring)
 	_add_scatter(root, authoring)
 	_add_canvas(root, authoring)
+	_add_spline_road(root, authoring)
 
 	var packed := PackedScene.new()
 	if packed.pack(root) != OK:
@@ -358,6 +359,30 @@ func _make_region(region_name: String, prefab_path: String, collision: bool,
 	region.set("stored_transforms", stored)
 	print("scatter %s: %d instances" % [region_name, total])
 	return region
+
+
+## One RoadPath S-curve (LK7's permanent bake canary): the spline-road weld path (ribbon
+## joins the level-wide Drivable body) and its chunk-bucketed render surfaces bake in CI
+## every run. Curve at y = 0.05 — 5 cm above the ground plane top at y = 0, so render
+## and collision never z-fight the ground — through the free south strip, clear of the
+## road loop (|X|,|Z| <= 18), the weld ramp (0,0,28), and the scatter strips (x ~ +-50).
+## Profile set explicitly (this builder runs headless; the editor-only auto-assign in
+## RoadPath._ready never fires here) so the preset serializes as an ExtResource and the
+## bake input hash tracks it.
+func _add_spline_road(owner: Node, authoring: Node) -> void:
+	var road := Node3D.new()
+	road.name = "SplineRoad"
+	road.set_script(load("res://kit/helpers/road_path.gd"))
+	road.set("profile", load("res://kit/roads/asphalt_profile.tres"))
+	_add(owner, authoring, road)
+	var path := Path3D.new()
+	path.name = "Path"
+	var curve := Curve3D.new()
+	curve.add_point(Vector3(-40, 0.05, -28), Vector3.ZERO, Vector3(8, 0, -4))
+	curve.add_point(Vector3(-15, 0.05, -34), Vector3(-8, 0, 0), Vector3(8, 0, 0))
+	curve.add_point(Vector3(10, 0.05, -26), Vector3(-8, 0, -4), Vector3.ZERO)
+	path.curve = curve
+	_add(owner, road, path)
 
 
 ## Evenly-spaced sample of a kit's sorted prefab .tscn paths (indices 0 .. n-1 spread across

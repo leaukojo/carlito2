@@ -11,10 +11,11 @@ extends RefCounted
 ## Ground resolution is a fallback chain so a click never dead-drops: physics raycast first,
 ## then the level's HeightmapTerrain height sample, then the Y=0 plane.
 
+const GroundSnap := preload("res://addons/carlito_kit/ground_snap.gd")
+
 const PREFAB_DIR := "res://kit/prefabs"
 const PALETTE_DIR := "res://kit/palettes"
 const RECIPE_DIR := "res://kit/import"
-const RAY_LEN := 100000.0
 const ROTATE_STEP := deg_to_rad(15.0)
 
 signal yaw_changed(degrees: float)  # so the dock's Yaw field tracks the live ghost angle
@@ -176,42 +177,10 @@ func _place_xform(pos: Vector3, yaw: float) -> Transform3D:
 
 # ------------------------------------------------------------------ ground raycast
 
-## Fallback chain (plan LK2): physics hit -> HeightmapTerrain sample -> Y=0 plane. A click
-## must never dead-drop, so every branch yields a point.
+## Fallback chain (plan LK2), extracted to ground_snap.gd (shared with the LK7 road
+## draw tool); the ghost's zeroed collision stays excluded from the ray.
 func _ground_point(camera: Camera3D, mouse_pos: Vector2) -> Vector3:
-	var origin := camera.project_ray_origin(mouse_pos)
-	var dir := camera.project_ray_normal(mouse_pos)
-	var scene_root := EditorInterface.get_edited_scene_root()
-
-	if scene_root is Node3D:
-		var space := (scene_root as Node3D).get_world_3d().direct_space_state
-		if space != null:
-			var q := PhysicsRayQueryParameters3D.create(
-					origin, origin + dir * RAY_LEN, 0xFFFFFFFF, _ghost_excludes)
-			var hit := space.intersect_ray(q)
-			if not hit.is_empty():
-				return hit.position
-
-	# Physics missed (editor space not always populated). Try each terrain by sampling its
-	# height at where the ray crosses the terrain's base plane.
-	if scene_root != null:
-		for terrain in scene_root.find_children("*", "HeightmapTerrain", true, false):
-			var xz := _ray_plane(origin, dir, terrain.global_position.y)
-			if xz != null and terrain.contains_xz(xz):
-				return Vector3(xz.x, terrain.height_at(xz), xz.z)
-
-	var flat = _ray_plane(origin, dir, 0.0)
-	return flat if flat != null else origin + dir * 10.0
-
-
-## Ray vs. the horizontal plane Y=plane_y. Null when the ray is parallel / points away.
-func _ray_plane(origin: Vector3, dir: Vector3, plane_y: float) -> Variant:
-	if absf(dir.y) < 1e-6:
-		return null
-	var t := (plane_y - origin.y) / dir.y
-	if t < 0.0:
-		return null
-	return origin + dir * t
+	return GroundSnap.ground_point(camera, mouse_pos, _ghost_excludes)
 
 
 # ------------------------------------------------------------------ commit

@@ -70,6 +70,14 @@ const RAY_UP := 1000.0
 		if Engine.is_editor_hint():
 			_refresh_stale()
 
+## The stale-guard recovery path when terrain changed UNDER existing instances (a road
+## Conform, a sculpt): re-snap every stored instance's Y to the current ground and
+## refresh the hash — without re-rolling (region) or re-painting (canvas) the layout.
+## XZ, yaw and scale are kept; only instances whose ground is gone are dropped (the
+## no-Y=0 rule). Editor-only, one undoable action.
+@warning_ignore("unused_private_class_variable")
+@export_tool_button("Re-snap to ground") var _resnap_action := _resnap_to_ground
+
 var _stale := false
 var _stale_accum := 0.0
 var _live_editing := false
@@ -325,6 +333,55 @@ func _find_authoring_ancestor() -> Node:
 	return null
 
 
+# ------------------------------------------------------------------ re-snap
+
+func _resnap_to_ground() -> void:
+	if not Engine.is_editor_hint() or not is_inside_tree():
+		return
+	var root := owner if owner != null else self
+	var terrains: Array[Node] = []
+	find_terrains_under(root, terrains)
+	var space := get_world_3d().direct_space_state
+	var to_world := global_transform
+	var to_local := to_world.affine_inverse()
+	# Snapshot by reference: nothing below mutates the stored packed arrays in place
+	# (kept rows are rebuilt), so the old Array is a valid undo value.
+	var before := stored_transforms
+	var after: Array[PackedFloat32Array] = []
+	var dropped := 0
+	for flat in stored_transforms:
+		var kept := PackedFloat32Array()
+		for j in stored_count(flat):
+			var o := j * STRIDE
+			var world := to_world * Vector3(flat[o], flat[o + 1], flat[o + 2])
+			var hit := snap_ground(space, terrains, world)
+			if hit.is_empty():
+				dropped += 1
+				continue
+			var entry := flat.slice(o, o + STRIDE)
+			var local := to_local * (hit.position as Vector3)
+			entry[0] = local.x
+			entry[1] = local.y
+			entry[2] = local.z
+			kept.append_array(entry)
+		after.append(kept)
+	if dropped > 0:
+		push_warning("Scatter '%s': %d instance(s) had no ground under them and were dropped." % [name, dropped])
+	var new_hash := ground_hash(root)
+	if after == before and new_hash == stored_ground_hash:
+		print("%s: already snapped to the current ground." % name)
+		return
+	# Untyped singleton fetch — the HeightmapTerrain._commit_generated rule: an
+	# editor-only type annotation would break this @tool script's parse in exports.
+	var undo_redo = Engine.get_singleton(&"EditorInterface").get_editor_undo_redo()
+	undo_redo.create_action("Re-snap scatter '%s' to ground" % name)
+	undo_redo.add_do_property(self, &"stored_transforms", after)
+	undo_redo.add_do_property(self, &"stored_ground_hash", new_hash)
+	undo_redo.add_undo_property(self, &"stored_transforms", before)
+	undo_redo.add_undo_property(self, &"stored_ground_hash", stored_ground_hash)
+	undo_redo.commit_action()
+
+
 # ----------------------------------------------------------- stale-scatter guard
 
 ## Editor-only slow poll: recompute the ground hash every few seconds and refresh the
@@ -362,7 +419,7 @@ func _get_configuration_warnings() -> PackedStringArray:
 	if items.is_empty():
 		warnings.append("No items. In Items, Add Element, then open the element's dropdown and pick 'New ScatterItem' (it is a Resource — prefabs are dragged into ITS 'prefab' slot, not into the array).")
 	if _stale:
-		warnings.append("Terrain changed since these instances were placed — Regenerate / re-paint, then re-bake the level.")
+		warnings.append("Terrain changed since these instances were placed — Regenerate or Re-snap to ground, then re-bake the level.")
 	warnings.append_array(_extra_warnings())
 	return warnings
 
