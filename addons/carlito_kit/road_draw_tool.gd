@@ -1,9 +1,9 @@
 @tool
 extends RefCounted
-## LK7 follow-up: draw-on-terrain road authoring. The built-in Path3D gizmo places
+## Draw-on-terrain road authoring. The built-in Path3D gizmo places
 ## points on a plane at the node's origin; this tool instead appends ground-snapped
 ## curve points to the selected RoadPath — each viewport click resolves the ground via
-## the shared LK2 fallback chain (ground_snap.gd), lifts it by the road's
+## the shared ground-snap fallback chain (ground_snap.gd), lifts it by the road's
 ## draw_clearance, and commits ONE undoable curve point (the placement_tool pattern).
 ## Right-click / Escape exits Draw mode. A ghost line previews the next segment from
 ## the curve's last point to the cursor (the brush-cursor discipline: unowned,

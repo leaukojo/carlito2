@@ -1,6 +1,6 @@
 class_name Implement
 extends Node3D
-## Cosmetic rear implement (plan §1 "visuals minimal", §4.4, §8 scope guard). It rides the
+## Cosmetic rear implement ("visuals minimal" scope guard). It rides the
 ## tractor body under a HitchSocket Marker3D — NO CollisionShape, NO joint. It only animates:
 ## a LiftArm pivot that raises/lowers with the hitch, and a Rotor the PTO visibly spins.
 ## Being a separate instanced scene makes "one attachable implement" a real attach point

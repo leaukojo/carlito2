@@ -1,6 +1,6 @@
 class_name RayWheel
 extends RefCounted
-## One raycast-suspension wheel (plan §1: one ray/wheel, slip-based grip).
+## One raycast-suspension wheel (one ray/wheel, slip-based grip).
 ##
 ## Ticked by BaseVehicle each physics frame: casts the suspension ray, applies
 ## spring/damper force plus longitudinal/lateral slip friction at the contact, and
@@ -8,7 +8,7 @@ extends RefCounted
 ## 60 Hz tick — the guardrails below (damper clamp, force clamp, low-speed slip
 ## clamps) are what keep explicit integration stable there.
 ## DO NOT remove or weaken any clamp, and DO NOT raise the physics tick to "fix"
-## instability (plan §1) — retune VehicleSpec values instead.
+## instability — retune VehicleSpec values instead.
 ## Approach informed by Dechode/Godot-Advanced-Vehicle and
 ## Tobalation/GDCustomRaycastVehicle (both MIT, credited in README); no code copied.
 

@@ -2,17 +2,17 @@ class_name LampSet
 extends RefCounted
 ## Applies §6 lamp state to the scene-authored lamp nodes a VehicleSpec names.
 ##
-## Placement is scene-authored (plan §4.4): the spec only DECLARES which nodes are
+## Placement is scene-authored: the spec only DECLARES which nodes are
 ## the head / brake / turn lamps (by NodePath, relative to the vehicle root); their
 ## transforms live in the model scene. sloppyCAN is the sole authority on lamp state
-## (plan §6): the brake tier, the turn bits and the headlight level are mirrored
+##: the brake tier, the turn bits and the headlight level are mirrored
 ## VERBATIM here — there is no local blink timer; turn lamps blink because the source
 ## toggles the bit.
 ##
 ## The decision (rear_tier) is a pure static fn, unit-tested in tests/test_lamps.gd;
 ## apply() is the thin scene-touching part (Light3D energy + emissive materials).
 
-## Rear tri-state (plan §6): STOP (brake) > TAIL (headlights on) > OFF (dim housing,
+## Rear tri-state: STOP (brake) > TAIL (headlights on) > OFF (dim housing,
 ## never invisible).
 enum Rear { OFF, TAIL, STOP }
 
@@ -23,7 +23,7 @@ const HL_LOW := 3
 const HL_HIGH := 4
 
 ## Emissive energy per rear tier; OFF keeps a dim housing glow so the lens is always
-## visible (plan §6).
+## visible.
 const REAR_ENERGY := { Rear.OFF: 0.15, Rear.TAIL: 0.7, Rear.STOP: 3.5 }
 const REAR_COLOR := Color(0.95, 0.06, 0.03)
 
@@ -32,7 +32,7 @@ const TURN_OFF_ENERGY := 0.12
 const TURN_ON_ENERGY := 3.5
 const TURN_COLOR := Color(1.0, 0.5, 0.0)
 
-## Headlight SpotLight3D energy + range per level (distinct per state, plan §6).
+## Headlight SpotLight3D energy + range per level (distinct per state).
 const HEAD_ENERGY := { HL_OFF: 0.0, HL_CLEARANCE: 0.6, HL_LOW: 4.0, HL_HIGH: 8.0 }
 const HEAD_RANGE := { HL_OFF: 0.0, HL_CLEARANCE: 8.0, HL_LOW: 28.0, HL_HIGH: 50.0 }
 

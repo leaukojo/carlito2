@@ -1,8 +1,8 @@
 extends RefCounted
-## Pure, unit-tested brush math (level_kit_plan.md LK4). The terrain sculpt/paint brush
+## Pure, unit-tested brush math. The terrain sculpt/paint brush
 ## (addons/carlito_kit/terrain_brush.gd) is editor-only, but the per-pixel stamp math is
 ## plain Image arithmetic with no editor API, so it gets the same test discipline as
-## TerrainGen/Drivetrain (tests/test_brush_ops.gd). Lives in kit/ (plan §2: data +
+## TerrainGen/Drivetrain (tests/test_brush_ops.gd). Lives in kit/ (data +
 ## runtime-safe logic here, editor UX in addons/carlito_kit).
 ##
 ## Everything is deterministic and works in PIXEL space with separate x/z pixel radii, so a

@@ -1,9 +1,9 @@
 class_name KitRecipe
 extends RefCounted
-## Pure, unit-tested logic for the kit asset generator (plan LK1 / level_kit_plan.md §4).
+## Pure, unit-tested logic for the kit asset generator.
 ## Extracted from tools/gen_kit_assets.gd so the coverage gate and meshlib id-preservation
 ## rules get the same test discipline as Drivetrain/telemetry — a mis-classified or dropped
-## asset is exactly the silent P6-class failure the LK1 gate exists to catch.
+## asset is exactly the silent failure the coverage gate exists to catch.
 ##
 ## The recipe is families-driven (single source of truth): one ordered `families` list per
 ## kit/import/<kit>.json classifies every GLB. First matching family wins, so ordering
@@ -15,7 +15,7 @@ extends RefCounted
 
 
 ## Assign each name to the first family whose any `match` regex matches (RegEx.search
-## semantics, matching v1's classify). Returns:
+## semantics). Returns:
 ##   assignments : {name -> family_name}   (only accounted names)
 ##   unaccounted : [name]                  (matched no family -> gate failure)
 ##   counts      : {family_name -> int}    (member count, for the visibility report)
@@ -47,7 +47,7 @@ static func classify(names: Array, families: Array) -> Dictionary:
 
 ## Recipe-shape validation independent of the asset set (fails the gate before classifying):
 ##  - every family needs a name and at least one match pattern
-##  - exclude families MUST carry a non-empty reason (no silent excludes, plan LK1)
+##  - exclude families MUST carry a non-empty reason (no silent excludes)
 ##  - regex patterns must compile
 ## Returns a list of human-readable error strings (empty == valid).
 static func validate_families(families: Array) -> Array:
@@ -76,7 +76,7 @@ static func validate_families(families: Array) -> Array:
 
 ## A family is a catch-all if any pattern matches every possible name (".", ".*", "^.*$" …).
 ## The generator tags such families in its per-family count report so an oversized "box
-## everything else" bucket — v1's actual failure mode — surfaces at generation.
+## everything else" bucket surfaces at generation.
 static func is_catch_all(family: Dictionary) -> bool:
 	# Asset names are never empty; "." (one char) is a legit catch-all, so probe non-empty.
 	const PROBE := ["x", "road-straight", "tree_default", "zZ9_-Anything"]

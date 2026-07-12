@@ -1,8 +1,8 @@
 @tool
 extends RefCounted
-## LK2 click-to-place tool (level_kit_plan.md §4 LK2). All viewport/placement/editor-undo
+## Click-to-place tool. All viewport/placement/editor-undo
 ## logic lives here, driven by the plugin's forwarded 3D input — the editor half of the
-## editor/runtime split (plan §2: editor APIs stay in addons/carlito_kit).
+## editor/runtime split (editor APIs stay in addons/carlito_kit).
 ##
 ## Flow: the dock arms a prefab -> a non-saved "ghost" instance follows the ground-snapped
 ## cursor -> left-click commits a real, owned, undoable copy under the level's AuthoringRoot
@@ -177,7 +177,7 @@ func _place_xform(pos: Vector3, yaw: float) -> Transform3D:
 
 # ------------------------------------------------------------------ ground raycast
 
-## Fallback chain (plan LK2), extracted to ground_snap.gd (shared with the LK7 road
+## Fallback chain, extracted to ground_snap.gd (shared with the road
 ## draw tool); the ghost's zeroed collision stays excluded from the ray.
 func _ground_point(camera: Camera3D, mouse_pos: Vector2) -> Vector3:
 	return GroundSnap.ground_point(camera, mouse_pos, _ghost_excludes)
@@ -217,7 +217,7 @@ func _commit(world_xform: Transform3D) -> void:
 
 # ------------------------------------------------------------------ palette tiles
 
-## Route a palette-tile pick to the built-in GridMap workflow (plan LK2: never reimplement
+## Route a palette-tile pick to the built-in GridMap workflow (never reimplement
 ## painting). Selects — creating if absent — the AuthoringRoot GridMap that uses this kit's
 ## meshlib, so the built-in palette (with LK1b thumbnails) opens ready to paint.
 func select_tile(kit: String, name: String) -> void:

@@ -1,20 +1,19 @@
 # carlito2
 
-Carlito v2 — a browser-based CAN-bus driving sandbox built with Godot 4.6. Drive vehicles
+Carlito — a browser-based CAN-bus driving sandbox built with Godot 4.6. Drive vehicles
 (car, truck, tractor, boat) while exchanging live CAN signals with the
-[sloppyCAN](../sloppycan)/RAMN simulator through a postMessage bridge. Ground-up rebuild of
-Carlito v1 with real vehicle physics (raycast suspension + simplified drivetrain), a single
-shared signal contract (`contract/carlito_contract.json`), and CI-deployed web builds.
+[sloppyCAN](../sloppycan)/RAMN simulator through a postMessage bridge. Real vehicle
+physics (raycast suspension + simplified drivetrain), a single shared signal contract
+(`contract/carlito_contract.json`), and CI-deployed web builds.
 
-- **Plan of record:** [`version2_plan.md`](version2_plan.md) — architecture, milestones, rules.
-- **Status:** M6 — car/truck/tractor/boat with telemetry dashboard, web CAN bridge, ISOBUS
-  implement signals, water + probe buoyancy (gym pool), and the level-authoring kit (Kenney
-  palettes/prefabs + chunk bake tool with CI stale-bake gate). The kit levels (farm, harbor,
-  kit_demo) were deleted in the LK0 authoring rework and are rebuilt with the new tools in LK8.
-  [`docs/making_a_level.md`](docs/making_a_level.md) is the level walkthrough (stale pending
-  the LK8 rewrite).
+- **What works:** car/truck/tractor/boat with a contract-driven telemetry dashboard, the
+  web CAN bridge, ISOBUS implement signals, water + probe buoyancy, and a full
+  level-authoring kit (thumbnail palette dock, generated/sculpted terrain with color
+  splat, seeded + painted scatter, spline roads, and a chunk bake tool with a CI
+  stale-bake gate). Remaining work is content and polish — see [`TODO.md`](TODO.md).
 - **Deployed build:** https://leaukojo.github.io/carlito2/
-- **Dev docs:** [`CLAUDE.md`](CLAUDE.md) (how to run, test, export).
+- **Dev docs:** [`CLAUDE.md`](CLAUDE.md) (how to run, test, export),
+  [`docs/overview.md`](docs/overview.md) (architecture map).
 
 ## License
 
@@ -31,4 +30,4 @@ Code is MIT (see [LICENSE](LICENSE)); bundled art/audio assets are CC0 (Kenney k
 - [Dechode/Godot-Advanced-Vehicle](https://github.com/Dechode/Godot-Advanced-Vehicle) (MIT) and
   [Tobalation/GDCustomRaycastVehicle](https://github.com/Tobalation/GDCustomRaycastVehicle) (MIT)
   — studied as approach references for the raycast suspension / slip tires / drivetrain in
-  `src/vehicles/base/` (plan §7); no code copied.
+  `src/vehicles/base/`; no code copied.

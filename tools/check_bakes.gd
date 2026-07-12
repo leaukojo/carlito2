@@ -1,5 +1,5 @@
 extends Node
-## CI stale-bake check (plan §2 rule 1 / §5.1): for every registered level with an
+## CI stale-bake check: for every registered level with an
 ## AuthoringRoot, recompute the authoring-input hash and compare it against the
 ## committed bake manifest. Exits non-zero on any missing or stale bake, so
 ## "repainted the GridMap, forgot to re-bake" cannot ship. Game-mode tool scene for

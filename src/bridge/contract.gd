@@ -2,9 +2,9 @@ extends Node
 ## Contract autoload — loads and validates the shared signal contract at startup.
 ##
 ## The contract (contract/carlito_contract.json) is the single definition of every
-## signal crossing the sloppyCAN bridge (plan §3). The bridge marshals messages from
+## signal crossing the sloppyCAN bridge. The bridge marshals messages from
 ## it and the dashboard builds its tell-tales/gauges from it; code must never
-## hand-duplicate signal names (plan §2 rule 4).
+## hand-duplicate signal names.
 ##
 ## All parsing/validation logic lives in the static inner classes so unit tests can
 ## exercise it without the autoload lifecycle. Consumers read `Contract.data`.

@@ -1,7 +1,7 @@
 @tool
 class_name RoadPath
 extends Node3D
-## Spline road (level_kit_plan.md §4 LK7): owns a Path3D child ("Path", edited with the
+## Spline road: owns a Path3D child ("Path", edited with the
 ## built-in path gizmo or the addon's Draw mode — road_draw_tool.gd appends
 ## ground-snapped points; the Drape button below re-snaps existing points to terrain)
 ## and extrudes a low-poly ribbon along its curve from a RoadProfile
@@ -11,14 +11,14 @@ extends Node3D
 ## ribbon derives from the curve + profile ALONE (never reads the terrain), so bake
 ## output depends only on the scene file — the CI hash story is untouched.
 ##
-## Conform terrain is destructive-by-button (the LK3 Generate discipline): flattens every
+## Conform terrain is destructive-by-button (the terrain-Generate discipline): flattens every
 ## overlapping HeightmapTerrain's heightmap under the ribbon with a side falloff, one
 ## deterministic write per terrain, undoable, saved to the PNG (reuses the terrain's
 ## _commit_generated pipeline). Conforming changes heightmap bytes, so scatter placed
 ## earlier trips its stale guard — authoring order is terrain -> roads + conform ->
 ## splat -> scatter.
 ##
-## Non-goals (plan LK7): no junctions (cross two roads over a flat GridMap pad or a
+## Non-goals: no junctions (cross two roads over a flat GridMap pad or a
 ## painted plaza), no lane-marking system, no traffic data.
 ##
 ## NOTE: no editor-only type annotations anywhere in this @tool script (they would break
@@ -78,7 +78,7 @@ const ASPHALT_PROFILE_PATH := "res://kit/roads/asphalt_profile.tres"
 ## Blend band (m) beyond the full ribbon half-width over which the flatten fades out.
 @export var conform_falloff := 4.0
 ## Terrain is flattened this far BELOW the road surface (the ribbon rides on top —
-## plan §5's z-fighting guard). Any value > 0 works: the flatten floor-quantizes, so
+## the z-fighting guard). Any value > 0 works: the flatten floor-quantizes, so
 ## the PNG can never store terrain above the road. What must absorb the resulting
 ## epsilon + one-height-step gap is the profile's drop skirt — conform warns when
 ## edge_drop < conform_epsilon + terrain height / 255.
@@ -145,8 +145,8 @@ func _mark_dirty() -> void:
 
 ## Rebuild the unowned preview + dev collision from the curve (never serialized — the
 ## HeightmapTerrain Chunks / ScatterBase Preview discipline). The dev trimesh exists
-## only OUTSIDE the editor: unbaked play is drivable, while editor raycasts (LK2
-## placement, LK5 snap) never hit our own ribbon.
+## only OUTSIDE the editor: unbaked play is drivable, while editor raycasts (prop
+## placement, scatter snap) never hit our own ribbon.
 func _rebuild_road() -> void:
 	_dirty = false
 	if not is_inside_tree():
@@ -356,7 +356,7 @@ func _set_curve_handles(ins: PackedVector3Array, outs: PackedVector3Array) -> vo
 
 
 # --------------------------------------------------------------- conform terrain
-# Editor-only, destructive-by-button (the LK3 Generate discipline). The heavy lifting
+# Editor-only, destructive-by-button (the terrain-Generate discipline). The heavy lifting
 # is pure (RoadBuilder.conform_heights); the PNG write / reimport / undo action reuses
 # HeightmapTerrain._commit_generated verbatim (the same cross-file reuse decision as
 # ScatterBase calling height_at — GDScript has no privacy, and the pipeline must be

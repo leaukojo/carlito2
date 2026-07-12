@@ -7,7 +7,7 @@ const LampSet := preload("res://src/vehicles/base/lamp_set.gd")
 const Horn := preload("res://src/vehicles/base/horn.gd")
 
 
-# --- rear tri-state (plan §6: STOP > TAIL > OFF) -----------------------------
+# --- rear tri-state (STOP > TAIL > OFF) --------------------------------------
 
 func test_brake_bit_gives_stop_regardless_of_headlights() -> void:
 	for lights in [LampSet.HL_OFF, LampSet.HL_CLEARANCE, LampSet.HL_LOW, LampSet.HL_HIGH]:
@@ -22,12 +22,12 @@ func test_tail_only_when_headlights_at_clearance_or_brighter() -> void:
 
 
 func test_off_tier_is_never_dark() -> void:
-	# OFF keeps a dim housing glow so the lens is always visible (plan §6).
+	# OFF keeps a dim housing glow so the lens is always visible.
 	assert_float(LampSet.REAR_ENERGY[LampSet.Rear.OFF]).is_greater(0.0)
 
 
 func test_headlight_levels_have_distinct_increasing_energy_and_range() -> void:
-	# off/clearance/low/high with distinct energy/range (plan §6).
+	# off/clearance/low/high with distinct energy/range.
 	assert_float(LampSet.HEAD_ENERGY[LampSet.HL_OFF]).is_equal(0.0)
 	assert_float(LampSet.HEAD_ENERGY[LampSet.HL_CLEARANCE]).is_less(LampSet.HEAD_ENERGY[LampSet.HL_LOW])
 	assert_float(LampSet.HEAD_ENERGY[LampSet.HL_LOW]).is_less(LampSet.HEAD_ENERGY[LampSet.HL_HIGH])

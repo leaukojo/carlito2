@@ -1,7 +1,7 @@
 class_name LevelSelect
 extends Control
-## Level-select screen (plan §4.6): the shell's first screen. Walks LevelRegistry and
-## emits the chosen scene path. Plain text + a dim backdrop, no emoji (plan §2 rule 10).
+## Level-select screen: the shell's first screen. Walks LevelRegistry and
+## emits the chosen scene path. Plain text + a dim backdrop, no emoji.
 ## Built in code (like the dashboard) — it is a transient overlay the shell frees on pick.
 
 signal level_chosen(scene_path: String)

@@ -3,7 +3,7 @@ class_name KitPiece
 extends Node3D
 ## Root of every generated kit prefab (kit/prefabs/**). Carries the one piece of
 ## bake metadata the level baker needs: how this piece participates in collision
-## (plan §2 rules 1-2). Placement is ordinary editor work; the baker finds these
+##. Placement is ordinary editor work; the baker finds these
 ## nodes under the level's AuthoringRoot and merges their meshes per chunk.
 ##
 ## Collision modes:

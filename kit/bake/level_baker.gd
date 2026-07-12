@@ -1,6 +1,6 @@
 class_name LevelBaker
 extends RefCounted
-## The level bake tool (plan §2 rule 1, §4.5). Reads a level's AuthoringRoot subtree
+## The level bake tool. Reads a level's AuthoringRoot subtree
 ## (GridMap road palettes + KitPiece prefabs + ScatterRegion stored transforms), and
 ## produces the shipping form:
 ##  - render: static meshes merged per chunk (tunable chunk_size), one MeshInstance3D
@@ -9,9 +9,9 @@ extends RefCounted
 ##    shapes, plus ONE level-wide "Drivable" body whose ConcavePolygonShape3D is the
 ##    vertex-welded union of every drivable surface (road tiles, ramps, bridges,
 ##    piers) — a drivable structure is never split across bodies, so there are no
-##    body-seam ghost collisions (§2 rule 1a);
+##    body-seam ghost collisions;
 ##  - a manifest JSON stamped with a hash of the authoring inputs so CI can fail on
-##    stale bakes (§5.1).
+##    stale bakes.
 ##
 ## Everything that can be pure is a static fn (weld, chunking, hashing, spawn
 ## validation) — unit-tested in tests/test_bake.gd, same discipline as Drivetrain.
@@ -23,7 +23,7 @@ extends RefCounted
 ## v4: road extrusion anchors a ring at every interior curve control point (corner miters).
 const BAKER_VERSION := 4
 
-## LK5 scatter: items with at least this many stored instances bake as one
+## Scatter: items with at least this many stored instances bake as one
 ## MultiMeshInstance3D per chunk x item (geometry stored once) instead of merging
 ## their verts into the chunk meshes. ScatterItem.bake_threshold_override overrides
 ## per item.
@@ -118,7 +118,7 @@ static func hash_inputs(paths: PackedStringArray, extra := PackedStringArray()) 
 	return ("\n".join(lines)).sha256_text()
 
 
-## Validate the level's spawn coverage (bake gate, plan §4.5). `spawns` is a list of
+## Validate the level's spawn coverage (bake gate). `spawns` is a list of
 ## {types: PackedStringArray, is_water: bool}; empty types = accepts any. Boats need
 ## a water spawn, land vehicles a land spawn. Returns human-readable errors.
 static func validate_spawns(allowed: PackedStringArray, default_vehicle: String,
@@ -147,7 +147,7 @@ static func validate_spawns(allowed: PackedStringArray, default_vehicle: String,
 
 
 ## Split one indexed triangle surface into per-chunk sub-surfaces, keyed by the WORLD
-## triangle centroid's chunk (LK7 road ribbons: a road is long, so its render mesh is
+## triangle centroid's chunk (road ribbons: a road is long, so its render mesh is
 ## bucketed for frustum culling; `world_xform` is applied for KEYING ONLY — the output
 ## arrays stay in the source space, vertices remapped/deduped per chunk). Render-only:
 ## collision never splits (the ribbon welds into the single level-wide Drivable body,
@@ -332,7 +332,7 @@ static func collect_spawn_descriptors(root: Node) -> Array:
 	return out
 
 
-## Stale-scatter guard (LK5, shared by the bake gate and check_level_file): a region
+## Stale-scatter guard (shared by the bake gate and check_level_file): a region
 ## with stored instances whose stored_ground_hash no longer matches the level's
 ## terrain heightmaps was snapped against ground that has since been sculpted — the
 ## author must Regenerate in the editor (only that re-snaps), then re-bake. The
@@ -384,7 +384,7 @@ static func bake(level_root: Node) -> Dictionary:
 	var allowed: PackedStringArray = info.get("allowed_vehicles") if info != null else PackedStringArray()
 	var default_vehicle := String(info.get("default_vehicle")) if info != null else "car"
 	errors.append_array(validate_spawns(allowed, default_vehicle, collect_spawn_descriptors(level_root)))
-	# Stale-scatter is a bake gate too (LK5): sculpt-after-scatter must never
+	# Stale-scatter is a bake gate too: sculpt-after-scatter must never
 	# silently bake floating or buried props.
 	errors.append_array(scatter_ground_errors(level_root))
 
@@ -481,7 +481,7 @@ static func _collect_piece_content(node: Node, xform: Transform3D, key: Vector2i
 		_collect_piece_content(child, cxform, key, mode, ctx, errors)
 
 
-## LK5 scatter (plan §4 LK5): consume the region's STORED transforms only — no
+## Scatter: consume the region's STORED transforms only — no
 ## expansion, no raycast, no physics here, so editor and bake can never diverge.
 ## Per item: at or above the MultiMesh threshold the render side becomes chunked
 ## MultiMeshes over ONE merged item mesh (an island forest never duplicates its
@@ -547,12 +547,12 @@ static func _collect_scatter(region: Node, xform: Transform3D, ctx: BakeContext,
 		template.free()
 
 
-## LK7 spline road: duck-call the RoadPath's geometry API (ribbon_surfaces /
+## Spline road: duck-call the RoadPath's geometry API (ribbon_surfaces /
 ## ribbon_faces — the stored layout has one owner, and both depend only on the
 ## serialized Path child + profile, so they work on the baker's untreed instance).
 ## Render surfaces are chunk-bucketed by triangle centroid for frustum culling;
 ## collision is NOT split — every ribbon triangle joins the level-wide welded
-## Drivable body through the same 1 mm snap as weld prefabs (§2 rule 1a). No
+## Drivable body through the same 1 mm snap as weld prefabs. No
 ## recursion into the road: Preview/DevCollision never exist off-tree, and the
 ## Path child carries no bakeable content of its own.
 static func _collect_road(road: Node, xform: Transform3D, ctx: BakeContext,
@@ -706,7 +706,7 @@ static func bake_level_file(level_path: String) -> Dictionary:
 	return {"ok": true, "errors": errors, "stats": result.stats}
 
 
-## Freshness check for CI (§5.1): "fresh" | "stale" | "missing" for a level that has
+## Freshness check for CI: "fresh" | "stale" | "missing" for a level that has
 ## kit authoring content, "no_authoring" for levels the bake doesn't apply to.
 static func check_level_file(level_path: String) -> Dictionary:
 	var packed := load(level_path) as PackedScene
@@ -752,12 +752,12 @@ class BakeContext:
 	## world-space triangle soup for the single welded drivable body
 	var weld_pool := PackedVector3Array()
 	var total_vertices := 0
-	## LK5 scatter: merged item meshes, geometry stored ONCE (shared across chunks)
+	## Scatter: merged item meshes, geometry stored ONCE (shared across chunks)
 	var scatter_meshes: Array[ArrayMesh] = []
 	## Vector2i chunk key -> { mesh index -> Array of world Transform3D }
 	var multimesh := {}
 	var scatter_instances := 0
-	## LK7 spline roads collected
+	## Spline roads collected
 	var roads := 0
 
 	func add_render_mesh(key: Vector2i, mesh: Mesh, world_xform: Transform3D) -> void:
@@ -766,7 +766,7 @@ class BakeContext:
 					mesh.surface_get_arrays(si), world_xform)
 
 	## One raw surface into a chunk's per-material accumulator — the shared dedup/merge
-	## path add_render_mesh loops through, and what LK7 road ribbons (already split into
+	## path add_render_mesh loops through, and what road ribbons (already split into
 	## per-chunk arrays) feed directly.
 	func add_render_arrays(key: Vector2i, mat: Material, arrays: Array,
 			world_xform: Transform3D) -> void:
@@ -786,7 +786,7 @@ class BakeContext:
 		for face in mesh.get_faces():
 			weld_pool.push_back(world_xform * face)
 
-	## A pre-built triangle soup into the level-wide weld pool (LK7 road ribbons).
+	## A pre-built triangle soup into the level-wide weld pool (road ribbons).
 	func add_weld_faces(faces: PackedVector3Array, world_xform: Transform3D) -> void:
 		for v in faces:
 			weld_pool.push_back(world_xform * v)

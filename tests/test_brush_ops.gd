@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## BrushOps pure fns (level_kit_plan.md LK4): the radial weight curve, the four sculpt ops,
+## BrushOps pure fns: the radial weight curve, the four sculpt ops,
 ## and the height/splat image stamps. Editor-free Image arithmetic, so it gets the same test
 ## discipline as TerrainGen — hand-checkable numbers throughout. Float image formats (RF /
 ## RGBAF) keep expected values exact (RGB8 would quantize).

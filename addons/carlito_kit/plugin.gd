@@ -1,10 +1,10 @@
 @tool
 extends EditorPlugin
-## Kit editor surface: the export-time authoring stripper (always), the LK2 palette dock +
-## click-to-place tool, and the LK4 terrain sculpt/paint brush. The dock browses the LK1 kit
+## Kit editor surface: the export-time authoring stripper (always), the palette dock +
+## click-to-place tool, and the terrain sculpt/paint brush. The dock browses the kit
 ## assets; viewport clicks are forwarded here to whichever tool is active — the brush when a
 ## HeightmapTerrain is selected with a mode picked, else the placement tool. All editor API
-## stays in this addon (plan §2's editor/runtime split).
+## stays in this addon (the editor/runtime split).
 
 const StripExport := preload("res://addons/carlito_kit/strip_export.gd")
 const PaletteDock := preload("res://addons/carlito_kit/palette_dock.gd")
@@ -119,7 +119,7 @@ func _exit_tree() -> void:
 	_road_panel = null
 
 
-## Save hook (plan LK4): brush edits accumulate in memory and are written to the heightmap /
+## Save hook: brush edits accumulate in memory and are written to the heightmap /
 ## splat PNGs only when the scene is saved — never reimported per stroke.
 func _save_external_data() -> void:
 	if _brush != null:

@@ -1,8 +1,8 @@
 extends GdUnitTestSuite
-## Boat buoyancy/thrust/rudder math (plan §1, §4.4, M6). Pure static fns exercised
+## Boat buoyancy/thrust/rudder math. Pure static fns exercised
 ## without the physics body — the same testing discipline as Drivetrain and RayWheel's
-## telemetry derivations. What matters most here are the 60 Hz one-tick clamps (plan §1,
-## the RayWheel discipline): the damper may never reverse a velocity within one tick,
+## telemetry derivations. What matters most here are the 60 Hz one-tick clamps (the
+## RayWheel discipline): the damper may never reverse a velocity within one tick,
 ## drag may at most zero the component it opposes, and buoyancy is hard-capped.
 
 const B := preload("res://src/vehicles/boat/boat.gd")
@@ -109,7 +109,7 @@ func test_yaw_inertia_box_footprint() -> void:
 	assert_float(B.yaw_inertia(1200.0, 4.0, 2.0)).is_equal_approx(2000.0, 1e-6)
 
 
-# --- pitch / roll extraction (plan §2 rule 3: straight from the sim's basis) ----
+# --- pitch / roll extraction (straight from the sim's basis) --------------------
 
 func test_pitch_deg_bow_up_positive() -> void:
 	assert_float(B.pitch_deg(Basis.IDENTITY)).is_equal_approx(0.0, 1e-4)

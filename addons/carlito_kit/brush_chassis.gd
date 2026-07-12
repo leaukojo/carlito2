@@ -1,11 +1,11 @@
 @tool
 extends RefCounted
-## Reusable viewport brush chassis (level_kit_plan.md LK4 — shared with LK6's scatter brush).
+## Reusable viewport brush chassis (shared by the terrain and scatter brushes).
 ## Owns the pieces every brush needs: radius/strength/falloff params, the circular ground
 ## cursor, and the input loop (press -> stroke, motion -> spacing-throttled samples, release
 ## -> stroke end, [ ] adjust radius). The editor half of the editor/runtime split; the
 ## brush-specific work (where the ground is, what a stroke does) is delegated to virtuals a
-## subclass overrides (terrain_brush.gd today, a scatter brush at LK6).
+## subclass overrides (terrain_brush.gd, scatter_brush.gd).
 ##
 ## Virtuals a subclass provides:
 ##   _target_valid() -> bool                         is there something to brush right now

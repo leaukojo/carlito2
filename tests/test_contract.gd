@@ -1,16 +1,16 @@
 extends GdUnitTestSuite
-## Contract loader tests (plan §5.2 "contract loading/validation").
+## Contract loader tests.
 ## Exercises the pure-logic ContractData parser directly — no autoload lifecycle needed.
 
 const ContractScript := preload("res://src/bridge/contract.gd")
 
-## Every v1 bridge signal, from plan §6 / the v1 reference spec. The contract must
-## cover all of them (M0 requirement: "every v1 signal plus rpm as a real signal").
-const V1_IN_SIGNALS: PackedStringArray = [
+## Every core bridge signal (the original parity set). The contract must
+## cover all of them.
+const CORE_IN_SIGNALS: PackedStringArray = [
 	"accel", "brake", "steer", "handbrake", "key", "lights", "gear",
 	"turnL", "turnR", "horn", "checkEngine", "battery", "brakeLamp",
 ]
-const V1_OUT_SIGNALS: PackedStringArray = [
+const CORE_OUT_SIGNALS: PackedStringArray = [
 	"speed", "kmh", "rpm", "gear", "throttle", "yaw", "accLong", "accLat",
 	"steer", "slip", "ground", "posX", "posZ", "heading", "lat", "lon",
 	"odo", "status", "impact", "fuel", "coolant", "battery",
@@ -33,21 +33,21 @@ func test_real_contract_is_valid_v5() -> void:
 	assert_int(data.version).is_equal(5)
 
 
-func _assert_v1_signals_present(names: PackedStringArray, dir: String) -> void:
+func _assert_core_signals_present(names: PackedStringArray, dir: String) -> void:
 	var data := _real_contract()
 	for name in names:
 		assert_bool(data.has_signal_def(name, dir)) \
-			.override_failure_message("missing v1 '%s' signal: %s" % [dir, name]).is_true()
+			.override_failure_message("missing core '%s' signal: %s" % [dir, name]).is_true()
 		assert_bool(data.is_todo(name, dir)) \
-			.override_failure_message("v1 '%s' signal must not be todo: %s" % [dir, name]).is_false()
+			.override_failure_message("core '%s' signal must not be todo: %s" % [dir, name]).is_false()
 
 
 func test_every_v1_in_signal_present() -> void:
-	_assert_v1_signals_present(V1_IN_SIGNALS, "in")
+	_assert_core_signals_present(CORE_IN_SIGNALS, "in")
 
 
 func test_every_v1_out_signal_present() -> void:
-	_assert_v1_signals_present(V1_OUT_SIGNALS, "out")
+	_assert_core_signals_present(CORE_OUT_SIGNALS, "out")
 
 
 func test_rpm_is_a_real_out_signal() -> void:
@@ -112,11 +112,11 @@ func test_battery_resolves_distinctly_per_dir() -> void:
 
 func test_contract_is_fully_implemented() -> void:
 	var data := _real_contract()
-	# Tractor ISOBUS signals landed in P5b (v4): no longer todo, still flavored isobus.
+	# Tractor ISOBUS signals: implemented (not todo), flavored isobus.
 	assert_bool(data.is_todo("hitch_pos", "in")).is_false()
 	var hitch := data.get_signal_def("hitch_pos", "in")
 	assert_str(hitch.flavor).is_equal("isobus")
-	# Boat signals landed in P8 (M6, v5) — as of v5 NO signal is todo anymore.
+	# Boat signals: implemented — as of v5 NO signal is todo anymore.
 	assert_bool(data.is_todo("pitch", "out")).is_false()
 	for sig in data.signals:
 		assert_bool(sig.todo) \

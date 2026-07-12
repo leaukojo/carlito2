@@ -1,7 +1,7 @@
 @tool
 class_name AuthoringRoot
 extends Node3D
-## The authoring container of a level (plan §4.5): every GridMap palette and
+## The authoring container of a level: every GridMap palette and
 ## KitPiece prefab an author places goes under this node. It is the bake tool's
 ## input and never ships — Level frees it at runtime when a baked scene exists,
 ## and the export plugin strips it from exported scenes entirely.
@@ -9,7 +9,7 @@ extends Node3D
 ## Bake output lands next to the level scene by convention:
 ##   <level>.baked.scn  +  <level>.bake.json (input-hash manifest, checked by CI).
 
-## Chunk edge length in world units (plan §2 rule 1b: the knob trading frustum
+## Chunk edge length in world units (the knob trading frustum
 ## culling for batching; the §5.4 draw-call budget is the guardrail).
 @export var chunk_size := 48.0
 

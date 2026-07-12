@@ -1,13 +1,13 @@
 class_name TouchControls
 extends Control
 ## On-screen touch controls, rebuilt on the InputRouter as a second local source
-## (plan §4.3/§4.6): a steering joystick (bottom-left), gas/brake pedals (bottom-right),
+##: a steering joystick (bottom-left), gas/brake pedals (bottom-right),
 ## and a right-edge button stack. It reports raw intents via poll() exactly like
-## local_source.gd — arbitration stays in InputRouter (plan §2 rule 5). Plain text, no
-## emoji (plan §2 rule 10).
+## local_source.gd — arbitration stays in InputRouter. Plain text, no
+## emoji.
 ##
 ## Bridge-conflicting buttons (horn / lights / handbrake — sloppyCAN owns those while the
-## bridge is live, plan §6) are hidden whenever Bridge.is_active(); the shell buttons
+## bridge is live) are hidden whenever Bridge.is_active(); the shell buttons
 ## (garage / respawn) stay. Widgets respond to touch AND mouse, so the layout is
 ## verifiable on desktop with the F4 toggle.
 
@@ -70,7 +70,7 @@ func poll() -> Dictionary:
 
 
 func _process(_dt: float) -> void:
-	# Hide the buttons sloppyCAN owns while it is driving (plan §6).
+	# Hide the buttons sloppyCAN owns while it is driving.
 	var driving := Bridge.is_active()
 	for b in _bridge_buttons:
 		b.visible = not driving

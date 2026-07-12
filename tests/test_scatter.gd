@@ -1,6 +1,6 @@
 # GdUnit generated TestSuite
 extends GdUnitTestSuite
-## Unit tests for the LK5 scatter core (plan §2 rule 8): deterministic seeded
+## Unit tests for the scatter core: deterministic seeded
 ## placement (same seed = identical forest, forever), min-spacing guarantees,
 ## footprint containment, weighted item picks, the stored stride-5 layout, the
 ## stale-guard ground hash, and the shared item-mesh/shape harvesting.
@@ -253,7 +253,7 @@ func test_shape_entries_accumulate_local_transforms() -> void:
 	assert_that((entries[0][1] as Transform3D).origin).is_equal(Vector3(0, 1.5, 0))
 
 
-# ----------------------------------------------------------------- LK6 canvas
+# --------------------------------------------------------------------- canvas
 
 ## The shared statics live on ScatterBase; the two front-ends must resolve them identically
 ## (GDScript inherits statics), so the baker can duck-call them on a region or a canvas.

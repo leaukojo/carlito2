@@ -1,5 +1,5 @@
 extends Node
-## CLI bake runner (plan §2 rule 1 / §4.5). Bakes registered levels headless — the
+## CLI bake runner. Bakes registered levels headless — the
 ## same LevelBaker the editor Bake button uses. Runs as a GAME-MODE tool scene, not
 ## --script: level scenes type against BaseVehicle, whose scripts reference the
 ## InputRouter autoload, and autoload identifiers only compile when autoloads are

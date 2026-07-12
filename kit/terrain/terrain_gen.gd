@@ -1,6 +1,6 @@
 class_name TerrainGen
 extends RefCounted
-## Pure, unit-tested terrain-generation math (level_kit_plan.md LK3). HeightmapTerrain's
+## Pure, unit-tested terrain-generation math. HeightmapTerrain's
 ## Generate / Auto-splat buttons and the chunked render mesh all call these statics, so
 ## the noise remap, island falloff, splat classification, and chunk lattice get the same
 ## test discipline as Drivetrain (tests/test_terrain_gen.gd). Everything is deterministic
@@ -77,7 +77,7 @@ static func island_falloff(r: float, start: float, end: float) -> float:
 
 
 ## Terrace the normalized height into `steps` plateau bands (buildable flats for
-## villages/farms — LK3 feedback). flat_frac in [0,1) is the portion of each band that
+## villages/farms). flat_frac in [0,1) is the portion of each band that
 ## stays dead flat; the rest ramps between plateaus. Band centres are preserved
 ## (terrace(h) == h at the middle of every ramp), so overall relief is unchanged.
 ## steps < 2 is a no-op.

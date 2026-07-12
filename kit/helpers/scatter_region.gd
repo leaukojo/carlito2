@@ -1,12 +1,12 @@
 @tool
 class_name ScatterRegion
 extends ScatterBase
-## Seeded procedural fill region (level_kit_plan.md §4 LK5). Placed under the level's
+## Seeded procedural fill region. Placed under the level's
 ## AuthoringRoot; fills a box/polygon footprint with weighted kit prefabs. The front-end that
 ## PRODUCES stored transforms by regeneration; everything downstream (preview, dev collision,
 ## bake, stale guard) lives in ScatterBase and is shared with the hand-painted ScatterCanvas.
 ##
-## The stored-transform contract (the LK5 non-negotiable): expansion happens exactly once, in
+## The stored-transform contract (non-negotiable): expansion happens exactly once, in
 ## the editor Regenerate button — it runs the pure seeded placement, ground-snaps every
 ## instance against the live edited scene, and STORES the final region-local transforms in the
 ## scene. The baker and dev-play only ever consume the stored transforms — no raycast, no
@@ -130,7 +130,7 @@ static func polygon_area(points: PackedVector2Array) -> float:
 
 # ------------------------------------------------------- Regenerate (editor only)
 
-## The one expansion site (plan LK5): pure placement -> ground snap against the live edited
+## The one expansion site: pure placement -> ground snap against the live edited
 ## scene -> slope filter -> store region-local transforms + the ground hash, all as one
 ## undoable action.
 func _regenerate() -> void:

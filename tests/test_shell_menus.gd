@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## Shell menu overlays (plan §4.6): the level-select reads the registry, the garage reads
+## Shell menu overlays: the level-select reads the registry, the garage reads
 ## the passed allowed-vehicle list, and both emit their pick. Pure Control scenes, so
 ## they build and fire headless without a 3D level.
 

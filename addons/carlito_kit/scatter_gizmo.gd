@@ -1,10 +1,10 @@
 @tool
 extends EditorNode3DGizmoPlugin
-## Viewport gizmo for ScatterRegion (LK5): draws the footprint border — box or
+## Viewport gizmo for ScatterRegion: draws the footprint border — box or
 ## polygon — in the region's local space while the node is selected, so an author
 ## can see the area Regenerate will fill. Corner posts keep the border readable
 ## when it sinks into sloped ground (the loop is drawn flat at the node's Y).
-## Editor-only, so it lives in the addon (plan §2's editor/runtime split); the
+## Editor-only, so it lives in the addon (the editor/runtime split); the
 ## region is detected by its duck-typed marker like everywhere else.
 
 const POST_HEIGHT := 2.0

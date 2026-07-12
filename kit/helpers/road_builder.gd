@@ -1,6 +1,6 @@
 class_name RoadBuilder
 extends RefCounted
-## Pure road-geometry math for RoadPath (level_kit_plan.md §4 LK7): curvature-adaptive
+## Pure road-geometry math for RoadPath: curvature-adaptive
 ## curve sampling, ribbon extrusion from a RoadProfile cross-section, and the destructive
 ## conform-terrain flatten mask. Everything is static, deterministic, and editor-free so
 ## the baker (a game-mode tool, never the editor) can call it on an untreed level, and it
@@ -293,7 +293,7 @@ static func flatten_weight(dist: float, half_width: float, falloff: float) -> fl
 ## wins (first segment wins ties — deterministic) and the target is LERPED at the
 ## pixel's projection onto it — never the nearest point sample: a point target is off
 ## by up to half the sample spacing x the grade, which at ε = 0.05 pokes terrain
-## through the ribbon on any grade over ~20% (the LK7 seam pass finding). One apply
+## through the ribbon on any grade over ~20%. One apply
 ## pass then blends toward the target:
 ##   new = lerp(old, quantize(target), flatten_weight(dist, half_width, falloff))
 ## half_width is the flatten plateau — callers pass the FULL ribbon half-width

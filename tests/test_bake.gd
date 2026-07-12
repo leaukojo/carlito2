@@ -1,6 +1,6 @@
 # GdUnit generated TestSuite
 extends GdUnitTestSuite
-## Unit tests for the level baker's pure logic (plan §2 rule 8): chunk assignment,
+## Unit tests for the level baker's pure logic: chunk assignment,
 ## vertex welding, spawn validation, hashing/normalization, and the manifest
 ## round-trip. Scene-level bake behaviour is exercised end-to-end by the CI bake
 ## check (tools/check_bakes.gd), not here.

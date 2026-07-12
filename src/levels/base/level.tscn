@@ -1,6 +1,6 @@
 [gd_scene load_steps=6 format=3]
 
-; Level template (plan §4.5 authoring workflow): duplicate this scene, then add
+; Level template: duplicate this scene, then add
 ; terrain/props, drop VehicleSpawn markers, and point `info` at a LevelInfo .tres.
 ; It ships the pieces every level needs — env, sun, chase camera, one spawn — and
 ; nothing else. See src/levels/gym/gym.tscn for a fully dressed example.

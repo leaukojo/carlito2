@@ -1,10 +1,10 @@
 @tool
 extends VBoxContainer
-## LK2 palette dock (level_kit_plan.md §4 LK2): the bottom-panel browser over the LK1 kit
+## Palette dock: the bottom-panel browser over the kit
 ## assets. Kit tabs -> family sections (the recipe taxonomy) -> thumbnail grid, plus a
 ## global text search across every kit. Clicking a prefab arms the placement tool; clicking
 ## a palette tile routes to the built-in GridMap workflow. UI only — no viewport/editor
-## logic (that lives in placement_tool.gd), matching the plan's editor/runtime split.
+## logic (that lives in placement_tool.gd), matching the editor/runtime split.
 
 const Recipe := preload("res://kit/helpers/kit_recipe.gd")
 const RECIPE_DIR := "res://kit/import"

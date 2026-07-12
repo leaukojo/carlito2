@@ -1,8 +1,8 @@
 @tool
 extends VBoxContainer
-## LK6 scatter-brush panel (level_kit_plan.md §4 LK6): the inspector-side controls for the
+## Scatter-brush panel: the inspector-side controls for the
 ## paint/erase scatter brush. Mode buttons (Off/Paint/Erase) and a Radius spinner. UI only — the
-## viewport/edit logic lives in scatter_brush.gd (plan's editor/runtime split). Density, spacing,
+## viewport/edit logic lives in scatter_brush.gd (the editor/runtime split). Density, spacing,
 ## and the yaw/scale/slope jitter knobs live on the selected ScatterCanvas node itself (its
 ## inspector), matching where a ScatterRegion keeps them. Modes are index-matched to
 ## scatter_brush.gd's enum (0 = Off, 1 = Paint, 2 = Erase).

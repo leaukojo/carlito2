@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## Telemetry derivations (plan §5.2 "GPS/odometer mapping", §3, §6). Pure static math,
+## Telemetry derivations. Pure static math,
 ## exercised without the physics body — the same testing discipline as Drivetrain.
 ## Motion values are read straight from the sim in BaseVehicle and need no test here;
 ## what is tested is every value the sim *derives*: GPS, heading, odometer, body-frame
@@ -11,7 +11,7 @@ const BoatT := preload("res://src/vehicles/boat/boat_telemetry.gd")
 const ContractScript := preload("res://src/bridge/contract.gd")
 
 
-# --- GPS mapping (plan §6: world XZ -> lat/lon around Paris 48.8566, 2.3522) ---
+# --- GPS mapping (world XZ -> lat/lon around Paris 48.8566, 2.3522) ---
 
 func test_gps_lat_maps_north_to_higher_latitude() -> void:
 	assert_float(T.gps_lat(0.0)).is_equal_approx(T.GPS_ORIGIN_LAT, 1e-9)
@@ -130,7 +130,7 @@ func test_fresh_telemetry_has_sane_defaults() -> void:
 	assert_float(t.odo).is_equal(0.0)
 
 
-# --- bridge marshaling conformance (plan §3, §2 rule 4) ----------------------
+# --- bridge marshaling conformance ----------------------
 ## to_bridge_dict must supply a value for every non-todo "out" signal a ground vehicle
 ## declares — otherwise the Bridge would silently drop it. Mirrors test_contract's
 ## undefined-signal guard, from the telemetry side.
@@ -157,7 +157,7 @@ func test_to_bridge_dict_covers_every_ground_out_signal() -> void:
 				.is_true()
 
 
-# --- tractor engine-load model (plan §3, modeled honest value) ----------------
+# --- tractor engine-load model (modeled honest value) -------------------------
 
 func test_engine_load_pct_throttle_and_pto_terms() -> void:
 	# Throttle only: |throttle| as a percentage.

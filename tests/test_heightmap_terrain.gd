@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## HeightmapTerrain world-space height query (LK2): the ground-sample fallback the palette
+## HeightmapTerrain world-space height query: the ground-sample fallback the palette
 ## dock uses when a placement raycast misses. Pure image math — built inline with round
 ## numbers so every expected value is hand-checkable.
 
@@ -63,7 +63,7 @@ func test_height_adds_node_offset() -> void:
 
 
 func test_chunked_mesh_builds_per_tile_and_height_matches_across_borders() -> void:
-	# LK3: 4x4 cells at chunk_cells 2 -> 2x2 tiles, one MeshInstance3D each; the height
+	# 4x4 cells at chunk_cells 2 -> 2x2 tiles, one MeshInstance3D each; the height
 	# query is image-based, so values across a chunk border are unchanged.
 	var t := _terrain(Vector2(4, 4), 10.0)
 	t.chunk_cells = 2
@@ -77,7 +77,7 @@ func test_chunked_mesh_builds_per_tile_and_height_matches_across_borders() -> vo
 
 
 func test_rebuild_region_world_remeshes_touched_chunks_only_leaving_collision() -> void:
-	# LK4 incremental sculpt path: remesh from a live working image (not the property) and
+	# Incremental sculpt path: remesh from a live working image (not the property) and
 	# leave collision for stroke-end. Flat 0.5 -> verts y=5; feed a flat-0.8 image -> y=8.
 	var t := _terrain(Vector2(4, 4), 10.0)
 	t.chunk_cells = 2

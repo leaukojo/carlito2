@@ -1,9 +1,9 @@
 class_name ChaseCamera
 extends Camera3D
-## Chase camera on the BaseVehicle camera-target contract (plan §4.4).
+## Chase camera on the BaseVehicle camera-target contract.
 ##
 ## Follows in _process using get_global_transform_interpolated(): physics runs at
-## the locked 60 Hz with interpolation (plan §1), so reading global_transform here
+## the locked 60 Hz with interpolation, so reading global_transform here
 ## would sample the raw tick and stutter. Yaw-only follow (ignores body pitch/roll).
 
 @export var target: Node3D

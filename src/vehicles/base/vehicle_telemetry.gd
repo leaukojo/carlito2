@@ -1,18 +1,18 @@
 class_name VehicleTelemetry
 extends RefCounted
-## Per-tick telemetry published by BaseVehicle (plan §4.4, §3). Covers every contract
+## Per-tick telemetry published by BaseVehicle. Covers every contract
 ## "out" signal for ground vehicles (car/truck/tractor).
 ##
 ## Motion values (speed, rpm, gear, slip, accel, yaw, heading, position) are read out
-## of the sim that produced the motion — never derived fictions (plan §2 rule 3). The
-## auxiliary systems (fuel, coolant, battery) are simple *honest models* (v1 parity,
-## plan §1) clearly labelled as modeled, not measured.
+## of the sim that produced the motion — never derived fictions. The
+## auxiliary systems (fuel, coolant, battery) are simple *honest models*,
+## clearly labelled as modeled, not measured.
 ##
 ## Every non-trivial derivation is a static pure function down below and is unit-tested
 ## in tests/test_telemetry.gd, exactly like Drivetrain's math — BaseVehicle only holds
 ## the per-tick state (previous velocity, accumulators) and calls these.
 
-# --- GPS mapping (plan §6: world XZ -> lat/lon around the Paris origin) ---
+# --- GPS mapping (world XZ -> lat/lon around the Paris origin) ---
 const GPS_ORIGIN_LAT := 48.8566
 const GPS_ORIGIN_LON := 2.3522
 const METERS_PER_DEG_LAT := 111320.0  ## mean meters per degree of latitude
@@ -27,7 +27,7 @@ const BATTERY_RESTING := 12.6    ## V engine off
 const BATTERY_CHARGING := 14.2   ## V engine running (alternator), before load droop
 
 # --- status bitfield (contract 'status', u16) ---
-## Provisional layout: the final bit assignment is fixed at P3 with sloppyCAN
+## Provisional layout: the final bit assignment is fixed with sloppyCAN frame packing
 ## (contract note). Kept here as named bits so nothing hand-codes magic numbers.
 const ST_IGNITION := 1 << 0    ## engine running (key in Ignition)
 const ST_GROUND := 1 << 1      ## all wheels on the ground
@@ -47,7 +47,7 @@ var steer := 0.0        ## -1..1 as applied (contract 'steer')
 var yaw := 0.0          ## yaw rate rad/s about the body up axis (contract 'yaw')
 var acc_long := 0.0     ## longitudinal accel m/s^2, smoothed (contract 'accLong')
 var acc_lat := 0.0      ## lateral accel m/s^2, smoothed (contract 'accLat')
-var slip_front := 0.0   ## mean |slip ratio| per axle (contract 'slip'; per-axle split is P2)
+var slip_front := 0.0   ## mean |slip ratio| per axle (contract 'slip'; per-axle split is an open option)
 var slip_rear := 0.0
 var ground := false     ## all wheels in contact (contract 'ground')
 var impact := 0.0       ## impact event magnitude m/s^2, peak-held (contract 'impact')
@@ -161,9 +161,9 @@ static func pack_status(ignition: bool, ground_contact: bool, moving: bool,
 # --- bridge marshaling -------------------------------------------------------
 
 ## Every non-todo ground "out" signal keyed by its contract name, in the units the
-## contract declares (plan §3). The Bridge walks Contract.signals_out() and pulls
+## contract declares. The Bridge walks Contract.signals_out() and pulls
 ## each name from here, so the field-name list lives once, in the contract — the
-## bridge never hand-writes it (plan §2 rule 4). throttle/steer are reported as
+## bridge never hand-writes it. throttle/steer are reported as
 ## percent (contract i8 %) and slip as the mean per-axle ratio; the fixed-point CAN
 ## byte scaling is the sloppyCAN side's job, not ours.
 func to_bridge_dict() -> Dictionary:

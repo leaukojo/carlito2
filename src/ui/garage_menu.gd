@@ -1,9 +1,9 @@
 class_name GarageMenu
 extends Control
-## In-play garage menu (plan §4.6): lists the level's allowed vehicles and asks the shell
+## In-play garage menu: lists the level's allowed vehicles and asks the shell
 ## to respawn the player as the chosen one at a matching spawn marker. Reads
 ## LevelInfo.allowed_vehicles (passed by the shell) — it never touches the scene tree
-## itself. Plain text, no emoji (plan §2 rule 10).
+## itself. Plain text, no emoji.
 
 signal vehicle_chosen(type: String)
 signal closed

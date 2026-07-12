@@ -1,4 +1,4 @@
-# CI per version2_plan.md §5.1: headless web export on every push to main,
+# CI: headless web export on every push to main,
 # cache-busted Pages deploy, headless smoke that fails on script errors.
 name: CI
 
@@ -55,15 +55,15 @@ jobs:
             exit 1
           fi
 
-      # Stale-bake check (plan §2 rule 1 / §5.1): recompute each registered level's
+      # Stale-bake check: recompute each registered level's
       # authoring-input hash and compare against its committed bake manifest.
       # Game-mode tool scene (not --script): level scripts only compile with
       # autoloads registered.
       - name: Stale-bake check
         run: godot --headless res://tools/check_bakes.tscn
 
-      # Baked-level smoke (load -> baked-scene swap -> spawn -> play), reinstated by LK1
-      # against the permanent kit_fixture canary (level_kit_plan.md §4). CARLITO_LEVEL
+      # Baked-level smoke (load -> baked-scene swap -> spawn -> play) against the
+      # permanent kit_fixture canary. CARLITO_LEVEL
       # picks the registry id; boot.gd loads it headless. Same error gate as the default
       # smoke; "still in use"/"leaked at exit"/"Pages in use exist at exit" are known-harmless
       # leak-at-exit noise.

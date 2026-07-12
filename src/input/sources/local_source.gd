@@ -1,8 +1,7 @@
 extends RefCounted
-## Keyboard/gamepad input source (plan §4.3). Reads the project [input] actions and
+## Keyboard/gamepad input source. Reads the project [input] actions and
 ## reports raw intents only — every interpretation (reverse engagement, key gating,
-## source priority, the headlight cycle) happens in InputRouter, nowhere else (plan §2
-## rule 5). Headlights report a per-frame `lights_cycle` EDGE, not a level: InputRouter
+## source priority, the headlight cycle) happens in InputRouter, nowhere else. Headlights report a per-frame `lights_cycle` EDGE, not a level: InputRouter
 ## owns the OFF->CLEARANCE->LOW->HIGH state so keyboard and touch share one owner.
 
 

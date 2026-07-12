@@ -1,6 +1,6 @@
 class_name Dashboard
 extends Control
-## Instrument cluster (plan §4.6). The split the plan mandates:
+## Instrument cluster. The mandated split:
 ##   - the tell-tale row and the bars are GENERATED from contract signal metadata
 ##     (name, range, warn thresholds) — add a bool "in" signal or a warn'd "out"
 ##     signal to the JSON and it appears here, no code change;
@@ -8,7 +8,7 @@ extends Control
 ##     their scale/redline from the contract.
 ## This is emphatically NOT a generic dashboard-from-JSON framework: which two signals
 ## are gauges, and the cosmetic lamp labels/colors, are hand-picked here; the repetitive
-## parts (the lamp row, the bars) are generated. Plain text + color only (plan §2 rule 10).
+## parts (the lamp row, the bars) are generated. Plain text + color only.
 
 ## The two signals rendered as bespoke radial gauges (never as generated bars).
 const GAUGE_SIGNALS: PackedStringArray = ["kmh", "rpm"]
@@ -153,7 +153,7 @@ func _build_telltale_row(vehicle_type: String) -> Control:
 		_lamps[sig.name] = _make_lamp(sig.name, row)
 
 	# ISOBUS bool "out" signals become tell-tales too (e.g. pto_state), driven from
-	# telemetry rather than input — plan §4.6 "generated from contract signal metadata".
+	# telemetry rather than input — generated from contract signal metadata.
 	for sig in Contract.data.signals_for_vehicle(vehicle_type, "out"):
 		if sig.type != "bool" or sig.flavor != "isobus":
 			continue
@@ -172,7 +172,7 @@ func _make_lamp(sig_name: String, into: Node) -> Label:
 
 
 ## Bars for every "out" signal (this vehicle) that has a range and is either warn'd
-## (fuel/coolant) or an ISOBUS signal (the tractor implement panel — plan §4.6, driven
+## (fuel/coolant) or an ISOBUS signal (the tractor implement panel — driven
 ## from the contract 'flavor' metadata, not hardcoded names), except the two gauges.
 func _build_bars(vehicle_type: String, into: Node) -> void:
 	for sig in Contract.data.signals_for_vehicle(vehicle_type, "out"):
@@ -255,7 +255,7 @@ func _process(_dt: float) -> void:
 
 func _update_telltales() -> void:
 	var vi := InputRouter.get_vehicle_input()
-	# Mirror every lamp/warning bit the input carries (plan §6). sloppyCAN is the sole
+	# Mirror every lamp/warning bit the input carries. sloppyCAN is the sole
 	# authority when the bridge is live; locally only handbrake/horn/brake_lamp are
 	# driven and the turn/warning LEDs stay off — their correct default.
 	var active := {

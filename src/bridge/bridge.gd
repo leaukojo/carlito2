@@ -1,5 +1,5 @@
 extends Node
-## Bridge autoload — CAN bridge to sloppyCAN (plan §4.2, M3).
+## Bridge autoload — CAN bridge to sloppyCAN.
 ##
 ## Web-only postMessage transport. The export head-include (src/bridge/web/head_include.html)
 ## installs `window.__carlito`: it stashes inbound {type:'carlitoInput'} values with a timestamp
@@ -7,10 +7,10 @@ extends Node
 ##   - polls the inbound stash each physics tick (~60 Hz), freshness-gated at 300 ms, and exposes
 ##     is_active()/get_input_values() to the bridge InputSource;
 ##   - publishes telemetry outward at ~20 Hz, marshaling values by contract name from the bound
-##     vehicle's VehicleTelemetry.to_bridge_dict() — never a hand-written field list (plan §2 rule 4).
+##     vehicle's VehicleTelemetry.to_bridge_dict() — never a hand-written field list.
 ## On desktop OS.has_feature("web") is false: the bridge stays inactive and never touches JS.
 
-const FRESHNESS_MS := 300           ## stale inbound past this is ignored → local input owns (plan §6)
+const FRESHNESS_MS := 300           ## stale inbound past this is ignored → local input owns
 const PUBLISH_HZ := 20
 const PUBLISH_INTERVAL := 1.0 / PUBLISH_HZ
 
@@ -95,7 +95,7 @@ func _publish() -> void:
 		return
 	var dict: Dictionary = tel.to_bridge_dict()
 	var values := {}
-	# Publish only the signals the active vehicle actually declares (plan §4.4): a car emits
+	# Publish only the signals the active vehicle actually declares: a car emits
 	# car signals, a tractor adds the ISOBUS four. Walking all signals_out() would (now that
 	# the tractor signals are no longer todo) warn on a car for the missing hitch/PTO values.
 	for sig in Contract.data.signals_for_vehicle(GameState.current_vehicle, "out"):

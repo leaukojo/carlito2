@@ -1,6 +1,6 @@
 extends Node3D
-## Shell (plan §4.6): boot -> level select -> load level -> play, with an in-play garage
-## menu. Composes independent level/UI scenes (plan §2 rule 6) — there is no giant
+## Shell: boot -> level select -> load level -> play, with an in-play garage
+## menu. Composes independent level/UI scenes — there is no giant
 ## main.tscn. The persistent HUD (dashboard, debug overlay, touch controls) lives in
 ## boot.tscn; the level-select and garage screens are transient overlays created here.
 
@@ -25,7 +25,7 @@ func _ready() -> void:
 	# The headless CI smoke can't click the menu, so boot straight into the first level
 	# there — this keeps the smoke exercising the full load -> spawn -> play path.
 	# CARLITO_LEVEL picks a different registry id, so CI can also smoke a baked level
-	# without reordering the registry (used again once LK1 lands kit_fixture).
+	# without reordering the registry.
 	if DisplayServer.get_name() == "headless":
 		var wanted := OS.get_environment("CARLITO_LEVEL")
 		var scene := String(LevelRegistry.LEVELS[0]["scene"])

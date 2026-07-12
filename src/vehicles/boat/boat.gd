@@ -1,16 +1,16 @@
 class_name BoatVehicle
 extends BaseVehicle
-## Boat (plan §1, §4.4, M6). A real BaseVehicle subclass because it owns the buoyancy/
+## Boat. A real BaseVehicle subclass because it owns the buoyancy/
 ## thrust/rudder locomotion module the base has no concept of. It never forks
 ## _physics_process — it plugs into the two base seams (_make_telemetry, _tick_extras),
 ## exactly like the tractor.
 ##
-## Locomotion (plan §4.4 Boat): float probes sample the WaterSurface height API and
+## Locomotion: float probes sample the WaterSurface height API and
 ## push the hull up; thrust at the stern; rudder yaw torque. All force magnitudes are
-## pure static fns with the RayWheel one-tick clamps (60 Hz locked tick, plan §1) —
+## pure static fns with the RayWheel one-tick clamps (60 Hz locked tick) —
 ## a damper/drag term may never exceed the impulse that reverses/zeroes the velocity
 ## it acts on within one tick, and buoyancy is hard-capped like max_suspension_force.
-## Unit-tested in tests/test_boat.gd. DO NOT remove or weaken any clamp (plan §1).
+## Unit-tested in tests/test_boat.gd. DO NOT remove or weaken any clamp.
 ##
 ## Hull geometry (probes, prop position) is authored here as node knobs, like the
 ## tractor's implement knobs; drive tuning (mass, rudder slew) is boat_spec.tres.
@@ -19,7 +19,7 @@ const RUDDER_SPEED_REF := 6.0   ## m/s of forward flow that gives full rudder au
 const RUDDER_PROP_WASH := 0.5   ## authority contributed by full throttle prop wash
 
 @export_group("Buoyancy")
-## Float probe positions, body space (bow = -Z). 4-6 probes (plan §1).
+## Float probe positions, body space (bow = -Z). 4-6 probes.
 @export var probe_points := PackedVector3Array([
 	Vector3(-0.8, -0.2, -1.6), Vector3(0.8, -0.2, -1.6),
 	Vector3(-0.8, -0.2, 1.8), Vector3(0.8, -0.2, 1.8),
@@ -113,7 +113,7 @@ func _tick_extras(input: InputRouter.VehicleInput, delta: float) -> void:
 			apply_torque(up * (-_steer * rudder_torque * authority))
 
 	# Telemetry: pitch/roll straight out of the body basis, rudder as applied (the base
-	# slews _steer), trim modeled (plan §2 rule 3 latitude — see BoatTelemetry).
+	# slews _steer), trim modeled (honest-model latitude — see BoatTelemetry).
 	_trim = BoatTelemetry.trim_step(_trim, input.throttle, BoatTelemetry.TRIM_RATE, delta)
 	t.pitch = pitch_deg(global_transform.basis)
 	t.roll = roll_deg(global_transform.basis)
@@ -138,7 +138,7 @@ func _find_water() -> WaterSurface:
 # --- pure force math (unit-tested, one-tick clamped like RayWheel) ------------
 
 ## Per-probe buoyancy: spring on depth + damper on the probe's vertical velocity.
-## 60 Hz guardrails (plan §1, RayWheel discipline): the damper may never exceed the
+## 60 Hz guardrails (RayWheel discipline): the damper may never exceed the
 ## force that would reverse the vertical velocity within one tick, and the total is
 ## non-negative (water only pushes up) and hard-capped at max_force.
 static func probe_force(depth: float, vert_vel: float, k: float, damp: float,
@@ -175,7 +175,7 @@ static func yaw_inertia(body_mass: float, length: float, width: float) -> float:
 	return body_mass * (length * length + width * width) / 12.0
 
 
-## Hull pitch in degrees, + = bow up. Read straight from the basis (plan §2 rule 3).
+## Hull pitch in degrees, + = bow up. Read straight from the basis.
 static func pitch_deg(b: Basis) -> float:
 	return rad_to_deg(asin(clampf((-b.z).y, -1.0, 1.0)))
 

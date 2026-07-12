@@ -1,6 +1,6 @@
 class_name Horn
 extends RefCounted
-## Procedural car-horn tone (plan §6 "horn"). No audio asset: the sample is
+## Procedural car-horn tone. No audio asset: the sample is
 ## synthesized once as a looping AudioStreamWAV so the horn honks for as long as
 ## the button is held. BaseVehicle plays it on the horn rising edge (source-agnostic
 ## — local key or bridge bit, whichever set VehicleInput.horn).

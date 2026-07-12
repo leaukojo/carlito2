@@ -1,13 +1,13 @@
 @tool
 extends "res://addons/carlito_kit/brush_chassis.gd"
-## LK6 scatter brush (level_kit_plan.md §4 LK6). Rides the shared LK4 brush chassis; adds the
+## Scatter brush. Rides the shared brush chassis; adds the
 ## scatter-specific half: PAINT lays instances into a selected ScatterCanvas density-per-stroke,
-## ERASE removes them within the brush radius. The second front-end on the LK5 scatter core —
+## ERASE removes them within the brush radius. The second front-end on the scatter core —
 ## it reuses the seeded sampler (ScatterRegion.generate_placements), the jitter knobs and ground
 ## snapping (ScatterBase), and the canvas's pure erase, so painted and regenerated scatter share
 ## one placement philosophy and one bake path.
 ##
-## Editor-only by construction (plan §2 editor/runtime split): the brush mutates the canvas's
+## Editor-only by construction (editor/runtime split): the brush mutates the canvas's
 ## stored transforms (authored, serialized content) live during a stroke for feedback, and
 ## commits ONE undoable stored_transforms swap at stroke end (whole-array, like Regenerate — the
 ## arrays are small). No new runtime or baker code: the canvas is a ScatterBase, so it renders
@@ -78,7 +78,7 @@ func _cursor_color() -> Color:
 
 
 ## Ground point under the cursor: edited-scene physics ray -> terrain sample -> Y=0 plane (the
-## LK2 fallback chain — a click never dead-drops). Returns a world Vector3.
+## shared fallback chain — a click never dead-drops). Returns a world Vector3.
 func _project(camera: Camera3D, mouse: Vector2) -> Variant:
 	if not is_instance_valid(_canvas):
 		return null
@@ -213,7 +213,7 @@ func _update_live_preview() -> void:
 
 # ------------------------------------------------------------------ painting
 
-## Lay one dab: seed the LK5 sampler over a world-XZ square bounding the brush disc, then keep
+## Lay one dab: seed the region sampler over a world-XZ square bounding the brush disc, then keep
 ## the candidates that fall in the disc, snap to ground, pass the slope filter, and clear the
 ## min-spacing hash (which carries prior dabs + existing instances, so density is even
 ## regardless of stroke speed). Region-local transforms are appended to `_work`. Returns the

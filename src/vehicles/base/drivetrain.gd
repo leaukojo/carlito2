@@ -1,14 +1,14 @@
 class_name Drivetrain
 extends RefCounted
-## Simplified clutch-less, diff-less drivetrain (plan §4.4): engine torque curve ->
+## Simplified clutch-less, diff-less drivetrain: engine torque curve ->
 ## gearbox (RAMN gear byte semantics) -> drive axle. RPM follows wheel speed through
-## the ratio with idle/redline clamps — the *real* RPM signal (plan §2 rule 3).
+## the ratio with idle/redline clamps — the *real* RPM signal.
 ##
 ## All math lives in static pure functions (unit-tested); the instance only holds
 ## current gear + smoothed RPM. Approach informed by Dechode/Godot-Advanced-Vehicle
 ## and Tobalation/GDCustomRaycastVehicle (both MIT, credited in README); no code copied.
 
-## RAMN gear byte (plan §6): 0x00 = N, 0x01..0x06 = D1-D6, 0xFF = R.
+## RAMN gear byte: 0x00 = N, 0x01..0x06 = D1-D6, 0xFF = R.
 const GEAR_N := 0x00
 const GEAR_R := 0xFF
 
@@ -65,7 +65,7 @@ static func rpm_from_wheel(p_spec: VehicleSpec, wheel_omega: float, byte: int) -
 
 
 ## Torque delivered to the drive axle, signed by the gear ratio (throttle is a 0..1
-## magnitude — direction always comes from the gear, per plan §6).
+## magnitude — direction always comes from the gear).
 static func wheel_torque(p_spec: VehicleSpec, at_rpm: float, throttle: float, byte: int) -> float:
 	return engine_torque(p_spec, at_rpm) * clampf(throttle, 0.0, 1.0) \
 			* ratio_for_byte(p_spec, byte) * p_spec.efficiency
@@ -84,8 +84,8 @@ static func auto_shift(p_spec: VehicleSpec, byte: int, at_rpm: float) -> int:
 
 ## Per-tick update: adopt the gear request, update RPM, return drive-axle torque (Nm).
 ## auto=true (local input): the request is a direction (N / enter-D / R) and the box
-## auto-shifts within D1-D6. auto=false (bridge, M3): the byte is exact — the bridge
-## gear owns direction (plan §6) and auto-shift is bypassed.
+## auto-shifts within D1-D6. auto=false (bridge): the byte is exact — the bridge
+## gear owns direction and auto-shift is bypassed.
 ## `ground_speed` is the body's forward road speed (m/s); auto-shift decides on it, not
 ## on `drive_wheel_omega`, so wheelspin can't fake a high rpm and make the box hunt.
 func process(delta: float, throttle: float, drive_wheel_omega: float,
@@ -100,7 +100,7 @@ func process(delta: float, throttle: float, drive_wheel_omega: float,
 			# Shift on ROAD speed, not the spinning drive wheel: under wheelspin the
 			# wheel over-reads rpm, upshifting early; the taller gear then bogs below the
 			# downshift point and drops back -> hunting. The real (spinning) rpm still
-			# drives the engine target below and the tach (plan §2 rule 3).
+			# drives the engine target below and the tach.
 			var road_omega := ground_speed / spec.wheel_radius
 			gear_byte = auto_shift(spec, gear_byte, rpm_from_wheel(spec, road_omega, gear_byte))
 	else:

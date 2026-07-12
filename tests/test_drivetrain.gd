@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## Drivetrain math + RAMN gear-byte semantics (plan §5.2, §6).
+## Drivetrain math + RAMN gear-byte semantics.
 ## Pure logic — specs are built inline with round numbers so every expected value
 ## is hand-checkable; the shipped car spec is only used for the §6 force-hierarchy
 ## invariants at the bottom.
@@ -110,7 +110,7 @@ func test_wheel_torque_product_and_sign() -> void:
 
 func test_wheel_torque_clamps_throttle_magnitude() -> void:
 	var spec := _spec()
-	# Throttle is a 0..1 magnitude — direction comes from the gear (plan §6), so a
+	# Throttle is a 0..1 magnitude — direction comes from the gear, so a
 	# stray negative value must never flip the torque sign.
 	assert_float(DrivetrainScript.wheel_torque(spec, 2000.0, -1.0, 1)).is_equal(0.0)
 	assert_float(DrivetrainScript.wheel_torque(spec, 2000.0, 2.0, 1)) \
@@ -159,7 +159,7 @@ func test_process_reverse_delivers_negative_torque() -> void:
 func test_process_exact_mode_adopts_bridge_byte_without_auto_shift() -> void:
 	var spec := _spec()
 	var dt: DrivetrainScript = DrivetrainScript.new(spec)
-	# Bridge mode (gear owns direction, plan §6): byte is verbatim even at a wheel
+	# Bridge mode (gear owns direction): byte is verbatim even at a wheel
 	# speed whose rpm is far above the auto upshift threshold.
 	dt.process(1.0 / 60.0, 1.0, 100.0, 100.0 * spec.wheel_radius, 2, false)
 	assert_int(dt.gear_byte).is_equal(2)
@@ -193,9 +193,9 @@ func test_car_spec_brake_stronger_than_accel_stronger_than_handbrake() -> void:
 	var max_drive: float = peak_engine * spec.gear_ratios[0] * spec.final_drive * spec.efficiency
 	var total_brake: float = spec.brake_torque * spec.wheel_positions.size()
 	var total_handbrake: float = spec.handbrake_torque * 2.0
-	# Full accel + full brake must come to a stop (§6): brake beats peak drive torque.
+	# Full accel + full brake must come to a stop: brake beats peak drive torque.
 	assert_float(total_brake).is_greater(max_drive)
-	# Handbrake holds only below ~25% throttle (§6): bracket it against launch
+	# Handbrake holds only below ~25% throttle: bracket it against launch
 	# torque (idle rpm, D1) at 25% and 50% throttle.
 	var drive_25: float = absf(DrivetrainScript.wheel_torque(spec, spec.idle_rpm, 0.25, 1))
 	var drive_50: float = absf(DrivetrainScript.wheel_torque(spec, spec.idle_rpm, 0.5, 1))

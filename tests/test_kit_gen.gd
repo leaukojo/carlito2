@@ -1,6 +1,6 @@
 # GdUnit generated TestSuite
 extends GdUnitTestSuite
-## Unit tests for the kit generator's pure logic (plan §2 rule 8 / level_kit_plan.md §4 LK1):
+## Unit tests for the kit generator's pure logic:
 ## families-driven classification (ordered first-match), the coverage gate (unaccounted +
 ## reasonless-exclude failures), catch-all detection, and meshlib id preservation — the
 ## rules that keep a mis-classified or silently-dropped asset from baking into every level.
@@ -49,7 +49,7 @@ func test_classify_counts_per_family() -> void:
 
 
 func test_classify_search_semantics_anchored_vs_free() -> void:
-	# "^road" is anchored; "barrier" is a free substring match (v1 classify semantics).
+	# "^road" is anchored; "barrier" is a free substring match.
 	var families := [
 		_fam("barrier", ["barrier"], "palette"),
 		_fam("road", ["^road"], "palette"),
@@ -101,7 +101,7 @@ func test_assign_item_ids_preserves_existing() -> void:
 
 
 func test_assign_item_ids_fresh_start_from_zero() -> void:
-	# Clean-slate regen (LK1): no existing meshlib -> ids restart at 0 in order.
+	# Clean-slate regen: no existing meshlib -> ids restart at 0 in order.
 	var ids := Recipe.assign_item_ids({}, ["b", "a", "c"])
 	assert_int(ids["b"]).is_equal(0)
 	assert_int(ids["a"]).is_equal(1)

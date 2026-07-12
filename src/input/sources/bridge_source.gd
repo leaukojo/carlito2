@@ -1,11 +1,11 @@
 extends RefCounted
-## Bridge input source (plan §4.3, M3). Reads the freshness-gated inbound values the Bridge
+## Bridge input source. Reads the freshness-gated inbound values the Bridge
 ## autoload polls from sloppyCAN and reports them as raw intents — like local_source.gd, every
-## interpretation (gear-owns-direction, key gating) happens in InputRouter (plan §2 rule 5).
+## interpretation (gear-owns-direction, key gating) happens in InputRouter.
 ##
 ## Fields are the contract "in" names; the driving-relevant subset is normalized to VehicleInput
 ## ranges here (percent → unit). Lamp/warning bits (turnL/turnR/brakeLamp/checkEngine/battery)
-## pass through as bools for LampSet + the dashboard tell-tales (plan §6 — mirrored verbatim).
+## pass through as bools for LampSet + the dashboard tell-tales (mirrored verbatim).
 
 
 func poll() -> Dictionary:
@@ -32,7 +32,7 @@ func poll() -> Dictionary:
 		"hitch_pos": clampf(float(v.get("hitch_pos", 100.0)), 0.0, 100.0),
 		"pto": bool(v.get("pto", false)),
 	}
-	# Boat rudder (M6 decision, contract v5): included ONLY when sloppyCAN sends it —
+	# Boat rudder: included ONLY when sloppyCAN sends it —
 	# presence is what makes it override 'steer' in arbitrate_bridge. Normalized %→unit
 	# like steer.
 	if v.has("rudder"):

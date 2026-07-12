@@ -1,8 +1,8 @@
 extends Node
-## Kit thumbnail generator (level_kit_plan.md §4 LK1, prompt LK1b): renders a 128x128
+## Kit thumbnail generator: renders a 128x128
 ## preview PNG for every prefab/palette asset a recipe emits, to kit/thumbs/<kit>/<name>.png.
 ## gen_kit_assets.gd then embeds them as MeshLibrary item previews (the built-in GridMap
-## palette shows pictures) and the LK2 dock loads them from disk.
+## palette shows pictures) and the palette dock loads them from disk.
 ##
 ## MUST run WINDOWED (a real GPU context) — headless has no renderer, so the SubViewport
 ## captures come back blank. It is a GAME-MODE tool scene, not --script, for the same reason

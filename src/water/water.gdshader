@@ -1,6 +1,6 @@
 shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back;
-// Water surface visuals (plan §4.4/§8): the waves here are SHADER-ONLY — physics reads
+// Water surface visuals: the waves here are SHADER-ONLY — physics reads
 // WaterSurface.get_height(), which is flat. Never feed VERTEX.y back into gameplay.
 
 uniform vec4 water_color : source_color = vec4(0.10, 0.38, 0.52, 0.78);

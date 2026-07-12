@@ -1,9 +1,9 @@
 @tool
 extends VBoxContainer
-## LK7 road-draw panel: the inspector-side toggle for the draw-on-terrain road tool.
+## Road-draw panel: the inspector-side toggle for the draw-on-terrain road tool.
 ## Off/Draw mode buttons only — clearance lives on the RoadPath node itself
 ## (draw_clearance), matching where a ScatterCanvas keeps its knobs. UI only; the
-## viewport/edit logic lives in road_draw_tool.gd (plan's editor/runtime split).
+## viewport/edit logic lives in road_draw_tool.gd (the editor/runtime split).
 ## Modes are index-matched to the plugin's expectation (0 = Off, 1 = Draw).
 
 signal mode_changed(mode: int)

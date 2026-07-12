@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
-## RoadBuilder / RoadProfile pure fns + the baker's road integration (level_kit_plan.md
-## §4 LK7): curvature-adaptive sampling, ribbon extrusion (winding must stay up-facing
+## RoadBuilder / RoadProfile pure fns + the baker's road integration:
+## curvature-adaptive sampling, ribbon extrusion (winding must stay up-facing
 ## for BOTH curve directions — a flipped ribbon is drive-through), banking from tilt,
 ## the conform flatten mask (floor-quantized so the 8-bit PNG never sits above the
 ## road), and split_arrays_by_chunk. Hand-checkable numbers throughout, same discipline
@@ -318,7 +318,7 @@ func test_conform_heights_lerps_target_along_segment() -> void:
 	assert_float(img.get_pixel(15, 7).r * 255.0).is_equal_approx(76.0, 0.5)
 
 
-## The seam invariant (LK7 seam pass): on a steep road, every plateau pixel stays
+## The seam invariant: on a steep road, every plateau pixel stays
 ## within (target - one 8-bit step, target] of the analytic road height at its own
 ## projection. The nearest-point-sample flatten violated this on any grade over ~20%
 ## (a point target is off by up to half the sample spacing x the grade).

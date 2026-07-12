@@ -1,7 +1,7 @@
 @tool
 class_name VehicleSpawn
 extends Marker3D
-## A place a vehicle can start (plan §4.5). Its transform is the spawn pose; the
+## A place a vehicle can start. Its transform is the spawn pose; the
 ## filter says which vehicle types belong here. Water spawns (is_water) are where a
 ## boat starts and where a drowned car respawns from — land vehicles never pick one.
 ##
@@ -12,7 +12,7 @@ extends Marker3D
 
 const _LAND_COLOR := Color(1.0, 0.55, 0.1, 0.35)
 const _WATER_COLOR := Color(0.2, 0.7, 1.0, 0.35)
-## Roughly the car's footprint (1.8 m wide, 4.2 m long), plan §6 scale.
+## Roughly the car's footprint (1.8 m wide, 4.2 m long).
 const _FOOTPRINT := Vector3(1.9, 1.0, 4.4)
 
 ## Vehicle type ids this spawn accepts (e.g. "car", "boat"). Empty = any type.

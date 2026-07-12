@@ -1,7 +1,7 @@
 @tool
 class_name HeightmapTerrain
 extends StaticBody3D
-## Terrain from a heightmap image (plan §4.5): a greyscale texture becomes both a
+## Terrain from a heightmap image: a greyscale texture becomes both a
 ## welded ground mesh and a matching HeightMapShape3D. This is the §2-rule-2 ground
 ## path — a dedicated collision surface, never a trimesh scatter. One grid cell = one
 ## world unit, so the mesh and collision vertices coincide exactly (no shape scaling).
@@ -9,7 +9,7 @@ extends StaticBody3D
 ## @tool so authors see the terrain in the editor; call rebuild() after changing the
 ## image or size. Cells sample the red channel as normalized height [0,1] * height.
 ##
-## LK3 additions (level_kit_plan.md §4):
+## Generation/chunking:
 ##  - The render mesh is CHUNKED (one MeshInstance3D per chunk_cells tile) so island-
 ##    scale maps frustum-cull instead of drawing one giant always-on mesh. Culling
 ##    granularity only, not LOD. Collision stays ONE HeightMapShape3D (§2-2 untouched).
@@ -110,7 +110,7 @@ func rebuild() -> void:
 	_push_splat_param()
 
 
-## Editor incremental rebuild (LK4 brush): remesh only the render chunks overlapping the
+## Editor incremental rebuild (terrain brush): remesh only the render chunks overlapping the
 ## world-space XZ rectangle, sampling heights from `img` — the brush's live working image,
 ## not the exported (stale) heightmap texture. Lets a sculpt stroke update geometry without
 ## remeshing a whole island every sample; collision is refreshed separately on stroke end.
@@ -145,7 +145,7 @@ func rebuild_region_world(img: Image, min_x: float, max_x: float,
 	_push_splat_param()
 
 
-## Rebuild the collision HeightMapShape3D from `img` (LK4 brush, called once at stroke end —
+## Rebuild the collision HeightMapShape3D from `img` (terrain brush, called once at stroke end —
 ## HeightMapShape3D has no partial-update API, so the whole shape is reassigned, but that's
 ## cheap data next to remeshing and only happens on release).
 func rebuild_collision_from_image(img: Image) -> void:
@@ -153,9 +153,9 @@ func rebuild_collision_from_image(img: Image) -> void:
 	_apply_collision(dims.x, dims.y, _sample_heights(img, dims.x, dims.y))
 
 
-## The source PNG a brush writes on save (LK4): the heightmap's / splatmap's own PNG when it
+## The source PNG a brush writes on save: the heightmap's / splatmap's own PNG when it
 ## has one, else beside the scene. Wraps _target_png_path so the addon reuses the exact same
-## path logic as the LK3 generation buttons.
+## path logic as the generation buttons.
 func png_path_for(kind: String) -> String:
 	if kind == "height":
 		return _target_png_path(heightmap, "height")
@@ -169,8 +169,8 @@ func _grid_dims() -> Vector2i:
 
 
 ## World-space surface height under `world_pos`'s XZ, bilinearly sampled from the
-## heightmap (the §2-rule-2 ground query — used by the LK2 placement fallback and, later,
-## LK5 scatter ground-snap). Assumes the terrain is axis-aligned (unrotated/unscaled, as
+## heightmap (the ground query used by the editor placement fallback and
+## scatter ground-snap). Assumes the terrain is axis-aligned (unrotated/unscaled, as
 ## all authored HeightmapTerrains are); a null heightmap is flat at the node's Y.
 func height_at(world_pos: Vector3) -> float:
 	var img := _read_image()
@@ -244,16 +244,16 @@ func _sample_heights(img: Image, cols: int, rows: int) -> PackedFloat32Array:
 
 
 ## Rebuild every render chunk (one MeshInstance3D per chunk_cells tile). Full rebuild is
-## button/load-time only; LK4 strokes will call _build_chunk for just the touched tiles.
+## button/load-time only; brush strokes call _build_chunk for just the touched tiles.
 func _apply_chunks(cols: int, rows: int, heights: PackedFloat32Array) -> void:
 	var container := get_node_or_null(^"Chunks") as Node3D
 	if container == null:
-		var legacy := get_node_or_null(^"Mesh")   # pre-LK3 single-mesh child (hot reload)
+		var legacy := get_node_or_null(^"Mesh")   # legacy single-mesh child (hot reload)
 		if legacy != null:
 			legacy.free()
 		# Left unowned on purpose: the mesh is regenerated from the heightmap on
 		# every load, so it must never be serialized into the level scene (an
-		# editor save would otherwise bake stale geometry — plan §2 rule 1). It
+		# editor save would otherwise bake stale geometry). It
 		# still renders in the editor viewport as a preview.
 		container = Node3D.new()
 		container.name = "Chunks"
@@ -317,7 +317,7 @@ func _push_splat_param() -> void:
 		(material as ShaderMaterial).set_shader_parameter(&"splatmap", splatmap)
 
 
-# --- LK3 generation (editor-only: destructive-by-button, undoable, never per-frame) ---
+# --- generation (editor-only: destructive-by-button, undoable, never per-frame) ---
 
 
 func _generate() -> void:
@@ -369,8 +369,8 @@ func _auto_splat() -> void:
 	_commit_generated("Auto-splat terrain", &"splatmap", path, splat, props)
 
 
-## One undoable action around a generated image (plan LK3: a stray click must not
-## destroy hand-sculpted work once LK4 lands): do applies the new image, undo restores a
+## One undoable action around a generated image (a stray click must not
+## destroy hand-sculpted brush work): do applies the new image, undo restores a
 ## snapshot of the prior one — both through _apply_generated, which writes the PNG and
 ## reimports, so disk always matches the scene. `props` are sibling property changes
 ## ({name: [old, new]} — the random seed, the material swap) riding the same action.

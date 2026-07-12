@@ -1,8 +1,8 @@
 extends SceneTree
-## Kit asset generator (plan §4.5 / level_kit_plan.md §4 LK1): turns the CC0 GLBs under
+## Kit asset generator: turns the CC0 GLBs under
 ## kit/raw/ into the two authoring surfaces, driven by the kit/import/*.json recipes.
 ##
-## Recipes are FAMILIES-DRIVEN (single source of truth, LK1): one ordered `families` list
+## Recipes are FAMILIES-DRIVEN (single source of truth): one ordered `families` list
 ## classifies every GLB — first matching family wins, so ordering resolves overlaps and
 ## patterns stay simple. Each family declares a pipeline:
 ##   - "palette"  -> a MeshLibrary tile (kit/palettes/<kit>.meshlib): mesh with the kit's
@@ -14,10 +14,10 @@ extends SceneTree
 ##                   StaticBody3D the baker harvests into per-chunk bodies.
 ##   - "exclude"  -> not emitted (requires a non-empty reason string).
 ##
-## COVERAGE GATE (LK1): every GLB under kit/raw/<kit>/ must match exactly one family, or the
+## COVERAGE GATE: every GLB under kit/raw/<kit>/ must match exactly one family, or the
 ## generator FAILS listing the unaccounted names — availability can no longer be an accident
 ## of pattern-writing. Per-family member counts are printed (catch-all families tagged) so an
-## oversized "box everything else" bucket — v1's actual failure — is visible, not silent.
+## oversized "box everything else" bucket is visible, not silent.
 ##
 ## Run after --import (needs the GLB import cache):
 ##   godot --headless --path . --script res://tools/gen_kit_assets.gd            # all kits
@@ -28,7 +28,7 @@ extends SceneTree
 ## tests/test_kit_gen.gd (kit/helpers/kit_recipe.gd).
 ##
 ## Palette items get a MeshLibrary preview from kit/thumbs/<kit>/<name>.png when present, so
-## the built-in GridMap palette shows pictures. Full thumb workflow (LK1b), run locally:
+## the built-in GridMap palette shows pictures. Full thumb workflow, run locally:
 ##   godot --path . res://tools/gen_thumbs.tscn        # windowed render -> kit/thumbs PNGs
 ##   godot --headless --path . --import                # import the new PNGs
 ##   godot --headless --path . --script res://tools/gen_kit_assets.gd   # embed the previews
@@ -130,7 +130,7 @@ func _run_recipe(recipe_path: String) -> void:
 
 
 ## Per-kit visibility line: family=count, with (catch-all) tagged so an oversized default
-## bucket surfaces (the v1 failure the coverage gate targets).
+## bucket surfaces (the failure the coverage gate targets).
 func _report(kit: String, families: Array, counts: Dictionary) -> void:
 	var parts := []
 	for fam: Dictionary in families:

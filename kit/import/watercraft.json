@@ -2,7 +2,7 @@
 	"kit": "watercraft",
 	"source": "res://kit/raw/watercraft",
 	"scale": 2.0,
-	"_notes": "Watercraft Pack. Near-real-scale authoring (speedboat ~3.4 units); scale 2 puts the cargo container at real 20 ft proportions and ship-small at ~21 m. Boat launch ramps are drivable by cars -> weld. Vessels are static dressing props (hull); the playable boat is the hand-built M6 scene. Buoys keep their authored waterline origin (raw align + none). boat-house family is ordered BEFORE water-craft so '^boat' doesn't swallow the houses.",
+	"_notes": "Watercraft Pack. Near-real-scale authoring (speedboat ~3.4 units); scale 2 puts the cargo container at real 20 ft proportions and ship-small at ~21 m. Boat launch ramps are drivable by cars -> weld. Vessels are static dressing props (hull); the playable boat is the hand-built vehicle scene. Buoys keep their authored waterline origin (raw align + none). boat-house family is ordered BEFORE water-craft so '^boat' doesn't swallow the houses.",
 	"families": [
 		{ "name": "water-buoys", "label": "Buoys",
 			"match": ["^buoy"], "pipeline": "prefab", "collision_mode": "none",

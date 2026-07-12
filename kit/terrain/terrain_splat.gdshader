@@ -1,5 +1,5 @@
 shader_type spatial;
-// 4-color splat ground material (level_kit_plan.md LK3): albedo colors blended by an
+// 4-color splat ground material: albedo colors blended by an
 // RGBA splatmap (R=grass, G=dirt, B=sand, A=rock — TerrainGen's channel order). Plain
 // arithmetic + one sampler, gl_compatibility-safe; no texture layers by design (plan:
 // low-poly color fields). The splatmap is raw weight data, NOT source_color — sRGB

@@ -1,11 +1,11 @@
 class_name VehicleSpec
 extends Resource
-## All tuning for one vehicle (plan §4.4): new vehicle = new spec + model scene.
+## All tuning for one vehicle: new vehicle = new spec + model scene.
 ##
 ## Data-only; consumed by BaseVehicle / RayWheel / Drivetrain. Curves are point
 ## arrays with linear interpolation (sample_curve) instead of Curve resources so
 ## tuning is deterministic and directly assertable in unit tests.
-## Lamp PLACEMENT stays scene-authored (plan §4.4): the spec only declares which scene
+## Lamp PLACEMENT stays scene-authored: the spec only declares which scene
 ## nodes are which lamp (the *_paths below), never their transforms.
 
 @export_group("Body")
@@ -70,7 +70,7 @@ extends Resource
 
 @export_group("Lamps")
 ## NodePaths (relative to the vehicle root) naming the scene-authored lamp nodes
-## LampSet drives (plan §4.4/§6). Headlights are SpotLight3D nodes (energy/range per
+## LampSet drives. Headlights are SpotLight3D nodes (energy/range per
 ## level); the rest are MeshInstance3D lenses given a private emissive material.
 @export var headlight_paths: Array[NodePath] = []
 @export var brake_lamp_paths: Array[NodePath] = []

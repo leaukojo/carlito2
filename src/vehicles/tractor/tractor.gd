@@ -1,15 +1,15 @@
 class_name TractorVehicle
 extends BaseVehicle
-## Tractor (plan §1 Machinery, §4.4). A real BaseVehicle subclass because it owns per-tick
+## Tractor. A real BaseVehicle subclass because it owns per-tick
 ## subsystem state the base has no concept of: the rear hitch position and the PTO. It never
 ## forks _physics_process — it plugs into the two base seams (_make_telemetry, _tick_extras).
 ##
-## Implement geometry is scene-authored on the Implement (like lamp placement, plan §4.4);
+## Implement geometry is scene-authored on the Implement (like lamp placement);
 ## drive tuning lives in tractor_spec.tres. Only the three implement behaviour knobs are
 ## @export here (node behaviour, not wheel/engine tuning — a 3-number TractorSpec would be
 ## over-engineering, CLAUDE.md rule 2).
 
-const SPAWN_HITCH := 1.0                ## spawn default: raised (transport), PTO off (plan §3)
+const SPAWN_HITCH := 1.0                ## spawn default: raised (transport), PTO off
 
 @export var hitch_travel_time := 1.5   ## s for a full raise or lower
 @export var pto_ratio := 0.45          ## engine rpm -> PTO shaft rpm (redline*ratio must be <= 1200)

@@ -1,7 +1,7 @@
 @tool
 class_name RoadProfile
 extends Resource
-## Cross-section recipe for RoadPath ribbons (level_kit_plan.md §4 LK7): lane/shoulder/
+## Cross-section recipe for RoadPath ribbons: lane/shoulder/
 ## edge-line widths, an edge drop skirt, and one flat-color material per strip kind
 ## (the Kenney low-poly look — no textures). Presets live in kit/roads/ (asphalt with a
 ## painted edge line, gravel without) so gather_bake_inputs hash-tracks them; editing a

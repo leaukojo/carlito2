@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## TerrainGen pure fns (level_kit_plan.md LK3): island falloff, noise remap, splat
+## TerrainGen pure fns: island falloff, noise remap, splat
 ## classification, chunk lattice, normals — hand-checkable numbers throughout, same
 ## discipline as Drivetrain. Generation must be deterministic from the seed (bake
 ## hashing and git diffs depend on it).

@@ -1,10 +1,10 @@
 class_name DebugOverlay
 extends Label
-## Always-available perf overlay (plan §2 rule 9: "the FPS/draw-call overlay is always
+## Always-available perf overlay ("the FPS/draw-call overlay is always
 ## available"). Toggle with F3 (the "debug_overlay" action). Reads the engine's own
 ## Performance monitors — FPS, frame time, draw calls, primitives, VRAM, node count —
 ## so the §5.4 web budget (60 fps, < ~500 draw calls) can be checked while driving.
-## Plain text only (plan §2 rule 10).
+## Plain text only.
 
 const REFRESH := 0.25  ## s between text rebuilds (per-frame churn is pointless and noisy)
 

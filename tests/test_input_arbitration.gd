@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## InputRouter arbitration rules that exist at M1 (plan §5.2, §6): key gating,
+## InputRouter local arbitration rules: key gating,
 ## brake-never-throttle, and the local S = brake-then-reverse scheme.
 ## Exercises the pure static arbitrate_local — no autoload lifecycle needed.
 
@@ -94,7 +94,7 @@ func test_steer_and_handbrake_pass_through_clamped() -> void:
 	assert_float(out.handbrake).is_equal(1.0)
 
 
-# --- bridge arbitration (plan §6: gear owns direction while active) -----------
+# --- bridge arbitration (gear owns direction while active) --------------------
 ## Values reach arbitrate_bridge already normalized (bridge_source did the /100).
 
 func _bridge(accel := 0.0, brake := 0.0, steer := 0.0, handbrake := 0.0,
@@ -153,7 +153,7 @@ func test_bridge_steer_and_handbrake_pass_through() -> void:
 	assert_float(out.handbrake).is_equal(1.0)
 
 
-# --- lamp/warning bits (plan §6) --------------------------------------------
+# --- lamp/warning bits --------------------------------------------
 
 func test_local_lamp_bits_default_off_and_brake_lamp_follows_brake() -> void:
 	# Rolling in D1 with S held: foot brake on -> STOP; turn/warning LEDs off (no local
@@ -184,7 +184,7 @@ func test_merge_local_combines_keyboard_and_touch() -> void:
 	assert_bool(m["lights_cycle"]).is_false()
 
 
-# --- ISOBUS implement (tractor, plan §3/§4.4) --------------------------------
+# --- ISOBUS implement (tractor) -----------------------------------------------
 
 func test_bridge_maps_hitch_percent_and_mirrors_pto() -> void:
 	# hitch_pos arrives 0..100 (bridge_source keeps contract units); arbitrate_bridge /100.
@@ -225,7 +225,7 @@ func test_merge_local_ors_implement_toggle_edges() -> void:
 	assert_bool(none["pto_toggle"]).is_false()
 
 
-# --- boat rudder (contract v5, M6) --------------------------------------------
+# --- boat rudder (contract v5) -------------------------------------------------
 
 func test_bridge_rudder_overrides_steer_when_present() -> void:
 	# sloppyCAN driving a boat sends 'rudder' (bridge_source only includes the key

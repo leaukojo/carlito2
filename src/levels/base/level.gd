@@ -1,13 +1,13 @@
 class_name Level
 extends Node3D
-## Base script for every playable level (plan §4.5/§4.6). A level scene is
+## Base script for every playable level. A level scene is
 ## self-contained: static geometry, VehicleSpawn markers, a WorldEnvironment, a
 ## ChaseCamera, and a LevelInfo resource. This script composes them at load time —
 ## it instances the default vehicle at a matching spawn, points the camera at it,
-## and handles respawn. Vehicles/levels/UI stay independent scenes (plan §2 rule 6).
+## and handles respawn. Vehicles/levels/UI stay independent scenes.
 
 ## Emitted after the active vehicle is (re)spawned — at load and on a garage swap — so
-## the shell can rebind the dashboard/bridge to the new vehicle type (plan §4.6).
+## the shell can rebind the dashboard/bridge to the new vehicle type.
 signal vehicle_changed(type: String)
 
 ## Vehicle type id -> scene path. New vehicles register here; scenes are loaded on
@@ -23,7 +23,7 @@ const VEHICLE_SCENES := {
 ## The chase camera to follow the active vehicle. Optional; a level may omit it.
 @export var camera: ChaseCamera
 
-## Night preset (plan §4.5 environment / §6 day-night parity): a dim bluish sun + low
+## Night preset: a dim bluish sun + low
 ## ambient. The 'day_night' action toggles between the scene-authored day values
 ## (captured at load) and these — a level convenience, not a bridge signal.
 const NIGHT_SUN_ENERGY := 0.12
@@ -50,7 +50,7 @@ func _ready() -> void:
 			camera = node as ChaseCamera
 			break
 	# GameState is fetched by path, not by autoload identifier: the CLI bake tools
-	# (--script mode, plan §2 rule 1) load level scenes headless, where autoload
+	# (--script mode) load level scenes headless, where autoload
 	# globals don't resolve at compile time. Runtime behaviour is identical.
 	_game_state().current_level = scene_file_path
 	_setup_baked()
@@ -65,7 +65,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_toggle_day_night()
 
 
-## Swap kit authoring content for the baked scene when one exists (plan §2 rule 1).
+## Swap kit authoring content for the baked scene when one exists.
 ## The AuthoringRoot subtree (GridMap palettes + KitPiece prefabs) is the bake
 ## tool's INPUT: with a bake present it is freed at load (and export strips it from
 ## shipped builds entirely); without one the level plays the authoring content
@@ -127,7 +127,7 @@ func _toggle_day_night() -> void:
 		_env.ambient_light_energy = NIGHT_AMBIENT_ENERGY if _is_night else _day_ambient_energy
 
 
-## Respawn the player as `type` at a matching spawn marker (plan §4.6 garage menu).
+## Respawn the player as `type` at a matching spawn marker (garage menu).
 ## Ignores unknown/disallowed types so a bad menu choice can't break the level.
 func set_vehicle(type: String) -> void:
 	if not info.allows(type):

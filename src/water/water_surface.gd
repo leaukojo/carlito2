@@ -1,13 +1,13 @@
 @tool
 class_name WaterSurface
 extends Area3D
-## One rectangular water region (plan §4.4/§4.5/§8): the water HEIGHT API, the visual
+## One rectangular water region: the water HEIGHT API, the visual
 ## surface, and the non-boat kill/respawn volume in a single node a level drops in.
 ##
-## - Height API: get_height() returns the node's global Y — FLAT at launch (plan §4.4).
-##   The visual waves live entirely in water.gdshader and never feed physics (plan §8).
+## - Height API: get_height() returns the node's global Y — FLAT at launch.
+##   The visual waves live entirely in water.gdshader and never feed physics.
 ## - Buoyancy callers (BoatVehicle) find water via the "water" group + contains_xz().
-## - Kill volume (plan §8 "water region defines kill/respawn volume for non-boats"):
+## - Kill volume:
 ##   the Area's box spans the water body but its top sits kill_margin below the surface,
 ##   so a splash at the shoreline is survivable while a sunk vehicle respawns (the
 ##   existing BaseVehicle.respawn path, which already zeroes the accel history).
@@ -46,7 +46,7 @@ func _ready() -> void:
 		body_entered.connect(_on_body_entered)
 
 
-## Water surface height at `pos` — constant across the region at launch (plan §4.4).
+## Water surface height at `pos` — constant across the region at launch.
 ## Boats sample this; the shader waves are cosmetic and deliberately not reflected here.
 func get_height(_pos: Vector3) -> float:
 	return global_position.y
@@ -82,7 +82,7 @@ func _rebuild() -> void:
 	_shape.position = Vector3(0.0, -kill_margin - box_height * 0.5, 0.0)
 
 
-## Non-boat vehicle in the water body -> drown: reuse the respawn path (plan §8).
+## Non-boat vehicle in the water body -> drown: reuse the respawn path.
 ## Deferred because Area3D signals fire during the physics flush, where transforms
 ## can't be written. Boats float; everything else that isn't a vehicle is ignored.
 func _on_body_entered(body: Node3D) -> void:

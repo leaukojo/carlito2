@@ -1,14 +1,14 @@
 @tool
 extends RefCounted
-## Shared editor ground resolution — the LK2 fallback chain, extracted from
-## placement_tool.gd so the LK7 road draw tool reuses it verbatim: physics raycast
+## Shared editor ground resolution — the ground-snap fallback chain, extracted from
+## placement_tool.gd so the road draw tool reuses it verbatim: physics raycast
 ## first, then each HeightmapTerrain's height sample, then the Y=0 plane. A click
 ## never dead-drops; every branch yields a point. Editor-only (addons never ship).
 
 const RAY_LEN := 100000.0
 
 
-## Fallback chain (plan LK2): physics hit -> HeightmapTerrain sample -> Y=0 plane.
+## Fallback chain: physics hit -> HeightmapTerrain sample -> Y=0 plane.
 ## `excludes` keeps caller-owned collision (the placement ghost) out of the ray.
 static func ground_point(camera: Camera3D, mouse_pos: Vector2,
 		excludes: Array[RID]) -> Vector3:

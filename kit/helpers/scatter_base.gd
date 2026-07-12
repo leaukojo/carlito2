@@ -1,11 +1,11 @@
 @tool
 class_name ScatterBase
 extends Node3D
-## Shared core for the two scatter front-ends (level_kit_plan.md §4 LK5/LK6): the seeded
+## Shared core for the two scatter front-ends: the seeded
 ## footprint region (ScatterRegion) and the hand-painted canvas (ScatterCanvas). Both store
 ## their result the same way — one compact stride-5 packed array per item, region-local — so
 ## the baker and dev-play consume STORED transforms only and can never diverge from the editor
-## (the LK5 non-negotiable). This base owns everything that is identical between the two:
+## (the stored-transform non-negotiable). This base owns everything that is identical between the two:
 ##
 ##   - the item table + stored transforms + stored ground hash (@export state),
 ##   - the unowned MultiMesh preview / dev-collision subtree (never serialized),
@@ -181,7 +181,7 @@ static func find_terrains_under(node: Node, out: Array[Node]) -> void:
 		find_terrains_under(child, out)
 
 
-## Ground snap, LK2-fallback-chain style: physics ray straight down (editor space may be
+## Ground snap, fallback-chain style: physics ray straight down (editor space may be
 ## unpopulated) -> HeightmapTerrain bilinear sample (normal by finite difference) -> empty
 ## (the point is dropped; scatter has no Y=0 fallback on purpose — a floating instance is
 ## worse than a missing one). Shared by ScatterRegion's Regenerate and ScatterCanvas's brush.

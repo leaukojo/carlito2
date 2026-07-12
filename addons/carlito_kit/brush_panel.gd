@@ -1,9 +1,9 @@
 @tool
 extends VBoxContainer
-## LK4 terrain-brush panel (level_kit_plan.md §4 LK4): the inspector-side controls for the
+## Terrain-brush panel: the inspector-side controls for the
 ## sculpt/paint brush. Mode buttons (Off/Raise/Lower/Smooth/Flatten/Paint), a splat-channel
 ## picker shown only in Paint mode, and radius/strength/falloff spinners. UI only — the
-## viewport/edit logic lives in terrain_brush.gd (plan's editor/runtime split). Modes are
+## viewport/edit logic lives in terrain_brush.gd (the editor/runtime split). Modes are
 ## index-matched to terrain_brush.gd's enum (0 = Off .. 5 = Paint).
 
 signal mode_changed(mode: int)

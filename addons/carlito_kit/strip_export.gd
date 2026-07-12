@@ -1,6 +1,6 @@
 @tool
 extends EditorExportPlugin
-## Export-time counterpart of Level._setup_baked (plan §2 rule 1): every exported
+## Export-time counterpart of Level._setup_baked: every exported
 ## scene loses its AuthoringRoot subtree (GridMap palettes + KitPiece prefabs), so
 ## the pck ships only baked geometry. Combined with the export_presets.cfg
 ## exclude_filter (kit GLBs / palettes / prefabs), authoring data never reaches

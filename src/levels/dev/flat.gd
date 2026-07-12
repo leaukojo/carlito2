@@ -1,6 +1,6 @@
 extends Node3D
-## Dev-only flat test drive scene (M1 core): flat plane + one car + chase camera.
-## Not a shipped level — the real gym level (plan §4.5) replaces it later in M1.
+## Dev-only flat test drive scene: flat plane + one car + chase camera.
+## Not a shipped level — kept for isolated wheel checks; the gym is the dressed dev level.
 
 
 @onready var _car: BaseVehicle = $Car

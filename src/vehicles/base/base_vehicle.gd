@@ -1,7 +1,7 @@
 class_name BaseVehicle
 extends RigidBody3D
-## Vehicle base (plan §4.4): consumes one normalized VehicleInput from InputRouter
-## (never reads input sources itself — plan §2 rule 5), runs the raycast wheels and
+## Vehicle base: consumes one normalized VehicleInput from InputRouter
+## (never reads input sources itself), runs the raycast wheels and
 ## drivetrain, and publishes VehicleTelemetry each physics tick. Spawn/respawn and
 ## the camera target are part of this base contract. All tuning lives in `spec`.
 
@@ -10,7 +10,7 @@ signal respawned
 const WHEEL_VISUAL_NAMES: PackedStringArray = ["WheelFL", "WheelFR", "WheelRL", "WheelRR"]
 const FALL_RESPAWN_Y := -20.0
 
-## Telemetry derivation tuning (plan §3): kept out of VehicleSpec — these are the
+## Telemetry derivation tuning: kept out of VehicleSpec — these are the
 ## same for every vehicle, not feel knobs.
 const ACCEL_SMOOTH := 10.0      ## 1/s exp rate the reported long/lat accel tracks raw
 const COOLANT_RATE := 2.0       ## degC/s the coolant chases its steady-state target
@@ -90,7 +90,7 @@ func _physics_process(delta: float) -> void:
 	_update_telemetry(input, delta)
 	_lamps.apply(input.brake_lamp, input.lights, input.turn_left, input.turn_right)
 	# Horn honks on the rising edge and holds while pressed — source-agnostic (the bit
-	# is set by whichever source owns input this tick, plan §6).
+	# is set by whichever source owns input this tick).
 	if input.horn and not _prev_horn:
 		_horn_player.play()
 	elif not input.horn and _prev_horn:
@@ -105,13 +105,13 @@ func _physics_process(delta: float) -> void:
 		respawn()
 
 
-## Telemetry factory (plan §4.4 seam): the base publishes the plain struct; a subclass
+## Telemetry factory (subclass seam): the base publishes the plain struct; a subclass
 ## with extra "out" fields (e.g. the tractor's ISOBUS signals) returns its own subclass.
 func _make_telemetry() -> VehicleTelemetry:
 	return VehicleTelemetry.new()
 
 
-## Per-tick subsystem hook (plan §4.4 seam): empty in the base, run at the end of
+## Per-tick subsystem hook (subclass seam): empty in the base, run at the end of
 ## _physics_process. Subclasses (tractor hitch/PTO) do their per-tick work here so they
 ## never fork _physics_process / _update_telemetry.
 func _tick_extras(_input: InputRouter.VehicleInput, _delta: float) -> void:
@@ -123,7 +123,7 @@ func _update_telemetry(input: InputRouter.VehicleInput, delta: float) -> void:
 	var forward := -xform.basis.z
 	var up := xform.basis.y
 
-	# Motion read straight out of the sim (plan §2 rule 3).
+	# Motion read straight out of the sim.
 	telemetry.speed = linear_velocity.dot(forward)
 	telemetry.kmh = absf(telemetry.speed) * 3.6
 	telemetry.rpm = drivetrain.rpm

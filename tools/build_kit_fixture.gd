@@ -1,16 +1,16 @@
 extends Node
 ## One-shot builder for the permanent CI bake fixture src/levels/dev/kit_fixture.tscn
-## (level_kit_plan.md §4 LK1): a level on the re-derived lattice — a small road loop from
+##: a level on the re-derived lattice — a small road loop from
 ## the roads palette (scale-verification), one prefab of each collision mode + a weld ramp
 ## (the bake canary), a per-kit ASSET SHOWCASE (evenly-sampled prefabs in labelled rows so
-## every kit's scale can be eyeballed against the car), two LK5 scatter regions (MultiMesh
+## every kit's scale can be eyeballed against the car), two scatter regions (MultiMesh
 ## and merge bake paths), and a car spawn — all the kit content under an AuthoringRoot so
 ## the baker/CI cover it.
 ##
 ## Built programmatically because hand-authoring GridMap cell+orientation data in a .tscn
 ## is fragile; re-run if the roads palette rescales (item ids are stable across regen).
 ## GAME-MODE tool scene, not --script: level.gd types against BaseVehicle -> InputRouter,
-## which only compiles with autoloads registered (the P6 CLI lesson, CLAUDE.md kit notes):
+## which only compiles with autoloads registered (see CLAUDE.md's kit gotchas):
 ##   godot --headless --path . res://tools/build_kit_fixture.tscn
 ## The built tree is never added to the active SceneTree, so no _ready hook fires.
 
@@ -272,7 +272,7 @@ func _add_showcase(owner: Node, authoring: Node) -> void:
 
 const SCATTER_SEED := 20260711
 
-## Two scatter regions on the east strip (LK5's permanent bake canary): trees above
+## Two scatter regions on the east strip (the permanent scatter bake canary): trees above
 ## the MultiMesh threshold with collision, grass below it collision-off — so CI's
 ## baked smoke covers both scatter bake paths forever. The builder is the fixture's
 ## "Regenerate": it runs the pure placement and snaps to the known flat ground at
@@ -290,7 +290,7 @@ func _add_scatter(owner: Node, authoring: Node) -> void:
 			Vector3(50, 0, -20), Vector2(10, 20), 0.1, 1.0))
 
 
-## One ScatterCanvas (LK6's permanent bake canary): the hand-painted front-end bakes through
+## One ScatterCanvas (the permanent canvas bake canary): the hand-painted front-end bakes through
 ## the exact same ScatterBase + baker path as a region, so CI's baked smoke proves the canvas
 ## NODE type bakes end-to-end. Built like a "painted" result: a deterministic fill stored
 ## straight in (no editor, no brush), on the flat west strip so it never overlaps the regions.
@@ -306,7 +306,7 @@ func _add_canvas(owner: Node, authoring: Node) -> void:
 	var items: Array[ScatterItem] = [item]
 	canvas.set("items", items)
 
-	# Fill deterministically via the shared LK5 sampler over the canvas footprint (12x30 m at
+	# Fill deterministically via the shared scatter sampler over the canvas footprint (12x30 m at
 	# density 0.1 -> ~36 grass), then store region-local stride-5 transforms on flat y=0 ground.
 	var placements: Array[PackedFloat32Array] = ScatterRegion.generate_placements({
 		"polygon": PackedVector2Array([Vector2(-6, -15), Vector2(6, -15),
@@ -361,7 +361,7 @@ func _make_region(region_name: String, prefab_path: String, collision: bool,
 	return region
 
 
-## One RoadPath S-curve (LK7's permanent bake canary): the spline-road weld path (ribbon
+## One RoadPath S-curve (the permanent road bake canary): the spline-road weld path (ribbon
 ## joins the level-wide Drivable body) and its chunk-bucketed render surfaces bake in CI
 ## every run. Curve at y = 0.05 — 5 cm above the ground plane top at y = 0, so render
 ## and collision never z-fight the ground — through the free south strip, clear of the

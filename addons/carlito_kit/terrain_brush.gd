@@ -1,10 +1,10 @@
 @tool
 extends "res://addons/carlito_kit/brush_chassis.gd"
-## Terrain sculpt/paint brush (level_kit_plan.md LK4). Rides the shared brush chassis; adds
+## Terrain sculpt/paint brush. Rides the shared brush chassis; adds
 ## the terrain-specific half: raise / lower / smooth / flatten on the heightmap image, and
-## splat-channel painting on the LK3 splatmap.
+## splat-channel painting on the splatmap.
 ##
-## Editor-only by construction (plan LK4): a brush edits image CONTENT only. It never swaps
+## Editor-only by construction: a brush edits image CONTENT only. It never swaps
 ## the terrain's exported heightmap/splatmap Texture2D (so the scene always serializes the
 ## PNG reference, never a transient in-memory texture). Live feedback comes from remeshing
 ## the touched chunks straight off the working image (height) and a temporary splatmap shader
@@ -57,8 +57,8 @@ func set_mode(m: int) -> void:
 		_hide_cursor()
 
 
-## Write every dirty session's working image back to its PNG and reimport once (plan LK4:
-## PNGs saved on scene save). Called from the plugin's _save_external_data hook.
+## Write every dirty session's working image back to its PNG and reimport once (PNGs are
+## saved on scene save, never per stroke). Called from the plugin's _save_external_data hook.
 func flush_all() -> void:
 	for id: int in _sessions:
 		var s: Dictionary = _sessions[id]
@@ -180,7 +180,7 @@ func _stroke_apply(center: Vector3) -> void:
 		_refresh_splat(_terrain, work)
 		_mark_dirty(_terrain, "splat")
 	else:
-		# Remesh only the chunks under the brush footprint (plan LK4: never a full rebuild
+		# Remesh only the chunks under the brush footprint (never a full rebuild
 		# per stroke). Collision is deferred to stroke end.
 		_terrain.rebuild_region_world(work, center.x - radius, center.x + radius,
 				center.z - radius, center.z + radius)
@@ -195,7 +195,7 @@ func _stroke_end() -> void:
 	if _stroke_kind == "height":
 		_terrain.rebuild_collision_from_image(work)  # catch physics up once, at stroke end
 
-	# Undo snapshots only the touched region of each side (plan LK4).
+	# Undo snapshots only the touched region of each side.
 	var before_region := _stroke_before.get_region(_dirty)
 	var after_region := work.get_region(_dirty)
 	_stroke_before = null

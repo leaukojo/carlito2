@@ -1,9 +1,9 @@
 @tool
 class_name ScatterCanvas
 extends ScatterBase
-## Hand-painted scatter (level_kit_plan.md §4 LK6). Placed under the level's AuthoringRoot; the
-## second front-end on the LK5 scatter core. Where ScatterRegion fills a footprint by
-## regeneration, ScatterCanvas stores instances the author PAINTS in with the LK6 scatter brush
+## Hand-painted scatter. Placed under the level's AuthoringRoot; the
+## second front-end on the scatter core. Where ScatterRegion fills a footprint by
+## regeneration, ScatterCanvas stores instances the author PAINTS in with the scatter brush
 ## (addons/carlito_kit/scatter_brush.gd) — density-per-stroke placement plus radius erase, using
 ## the same jitter knobs (yaw/scale/spacing/slope on ScatterBase) and the same seeded sampler
 ## (ScatterRegion.generate_placements) and ground snapping.
