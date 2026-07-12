@@ -382,8 +382,11 @@ func _commit_generated(action_name: String, prop: StringName, path: String,
 		prior = tex.get_image()
 		if prior != null and prior.is_compressed():
 			prior.decompress()
-	var undo_redo: EditorUndoRedoManager = \
-			Engine.get_singleton(&"EditorInterface").get_editor_undo_redo()
+	# Untyped on purpose: EditorUndoRedoManager is an editor-only class, so ANNOTATING with it
+	# makes this @tool script fail to PARSE in exported (non-editor) builds — which silently
+	# breaks every HeightmapTerrain at runtime. The value is fetched by string singleton lookup
+	# and this whole function is is_editor_hint()-guarded, so dynamic typing costs nothing.
+	var undo_redo = Engine.get_singleton(&"EditorInterface").get_editor_undo_redo()
 	undo_redo.create_action(action_name)
 	for prop_name: StringName in props:
 		# Registered first so e.g. the material is live before the image applies (do
@@ -409,8 +412,9 @@ func _apply_generated(prop: StringName, path: String, img: Image) -> void:
 		push_error("HeightmapTerrain: failed to write %s (%s)" % [path, error_string(err)])
 		return
 	TerrainGen.ensure_import_settings(path)
-	var filesystem: EditorFileSystem = \
-			Engine.get_singleton(&"EditorInterface").get_resource_filesystem()
+	# Untyped: EditorFileSystem is editor-only — see the note in _commit_generated (a type
+	# annotation here breaks the exported build's parse of this runtime script).
+	var filesystem = Engine.get_singleton(&"EditorInterface").get_resource_filesystem()
 	filesystem.update_file(path)
 	filesystem.reimport_files(PackedStringArray([path]))
 	set(prop, ResourceLoader.load(path, "Texture2D", ResourceLoader.CACHE_MODE_REPLACE))

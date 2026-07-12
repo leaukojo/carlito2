@@ -169,8 +169,10 @@ func _regenerate() -> void:
 		new_stored.append(stored)
 
 	var new_hash := ground_hash(level_root)
-	var undo_redo: EditorUndoRedoManager = \
-			Engine.get_singleton(&"EditorInterface").get_editor_undo_redo()
+	# Untyped: EditorUndoRedoManager is editor-only, and a type annotation would make this
+	# @tool script fail to parse in exported builds. It is stripped from exports today (always
+	# under AuthoringRoot), but keep it export-safe so it never becomes a runtime landmine.
+	var undo_redo = Engine.get_singleton(&"EditorInterface").get_editor_undo_redo()
 	undo_redo.create_action("Regenerate scatter '%s'" % name)
 	undo_redo.add_do_property(self, &"stored_transforms", new_stored)
 	undo_redo.add_undo_property(self, &"stored_transforms", stored_transforms)
