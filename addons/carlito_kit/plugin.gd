@@ -12,6 +12,8 @@ const PlacementTool := preload("res://addons/carlito_kit/placement_tool.gd")
 const TerrainBrush := preload("res://addons/carlito_kit/terrain_brush.gd")
 const BrushPanel := preload("res://addons/carlito_kit/brush_panel.gd")
 const ScatterGizmo := preload("res://addons/carlito_kit/scatter_gizmo.gd")
+const ScatterBrush := preload("res://addons/carlito_kit/scatter_brush.gd")
+const ScatterPanel := preload("res://addons/carlito_kit/scatter_panel.gd")
 
 var _strip: EditorExportPlugin
 var _dock: Control
@@ -19,6 +21,8 @@ var _tool  # PlacementTool (RefCounted)
 var _brush  # TerrainBrush (RefCounted)
 var _panel: Control
 var _scatter_gizmo: EditorNode3DGizmoPlugin
+var _scatter_brush  # ScatterBrush (RefCounted)
+var _scatter_panel: Control
 
 
 func _enter_tree() -> void:
@@ -46,6 +50,13 @@ func _enter_tree() -> void:
 		_brush.falloff = f)
 	_brush.radius_display.connect(func(r): _panel.set_radius_display(r))
 	add_control_to_dock(DOCK_SLOT_RIGHT_BL, _panel)
+
+	_scatter_brush = ScatterBrush.new(get_undo_redo())
+	_scatter_panel = ScatterPanel.new()
+	_scatter_panel.mode_changed.connect(_on_scatter_mode)
+	_scatter_panel.radius_changed.connect(func(r): _scatter_brush.radius = r)
+	_scatter_brush.radius_display.connect(func(r): _scatter_panel.set_radius_display(r))
+	add_control_to_dock(DOCK_SLOT_RIGHT_BL, _scatter_panel)
 
 	EditorInterface.get_selection().selection_changed.connect(_on_selection_changed)
 	# Placement works regardless of selection, so we need every viewport event (docs:
@@ -78,6 +89,14 @@ func _exit_tree() -> void:
 		_panel.free()
 	_panel = null
 
+	if _scatter_brush != null:
+		_scatter_brush.teardown()
+	_scatter_brush = null
+	if _scatter_panel != null:
+		remove_control_from_docks(_scatter_panel)
+		_scatter_panel.free()
+	_scatter_panel = null
+
 
 ## Save hook (plan LK4): brush edits accumulate in memory and are written to the heightmap /
 ## splat PNGs only when the scene is saved — never reimported per stroke.
@@ -88,6 +107,8 @@ func _save_external_data() -> void:
 
 func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 	if _brush != null and _brush.handle_input(camera, event):
+		return EditorPlugin.AFTER_GUI_INPUT_STOP
+	if _scatter_brush != null and _scatter_brush.handle_input(camera, event):
 		return EditorPlugin.AFTER_GUI_INPUT_STOP
 	if _tool != null and _tool.handle_input(camera, event):
 		return EditorPlugin.AFTER_GUI_INPUT_STOP
@@ -101,14 +122,26 @@ func _on_brush_mode(mode: int) -> void:
 		_tool.disarm()
 
 
+## Scatter brush mode picked: a non-Off mode owns the viewport, so drop the placement ghost
+## (same rule as the terrain brush).
+func _on_scatter_mode(mode: int) -> void:
+	_scatter_brush.set_mode(mode)
+	if mode != 0:
+		_tool.disarm()
+
+
 func _on_selection_changed() -> void:
 	var terrain: HeightmapTerrain = null
+	var canvas: ScatterCanvas = null
 	for node in EditorInterface.get_selection().get_selected_nodes():
 		if node is HeightmapTerrain:
 			terrain = node
-			break
+		elif node is ScatterCanvas:
+			canvas = node
 	_brush.set_target(terrain)
 	_panel.set_has_terrain(terrain != null)
+	_scatter_brush.set_target(canvas)
+	_scatter_panel.set_has_canvas(canvas != null)
 
 
 func _on_settings_changed(random_yaw: bool, snap_enabled: bool, snap_step: float,

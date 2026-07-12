@@ -424,14 +424,19 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   non-destructive runtime modifier stack is the model we reject; **no code adopted**.
 - **Nodes:** `ScatterRegion` (`kit/helpers/scatter_region.gd`, `@tool`, under `Authoring`,
   duck marker `is_carlito_scatter()`): box/polygon footprint (box unifies into the polygon
-  sampling path), density / min_spacing / placement_seed / yaw+scale jitter / max_slope
-  knobs, `items: Array[ScatterItem]` (`kit/helpers/scatter_item.gd`: prefab **PackedScene**
-  — so `gather_bake_inputs` tracks it — weight, collision on/off, per-item threshold
-  override). Pure statics (`generate_placements` — rejection sampling with a spatial-hash
-  spacing guarantee, deterministic per seed — `polygon_area`, `ground_hash`,
-  `stored_transform`, `build_item_mesh`, `shape_entries`) are unit-tested in
-  `tests/test_scatter.gd`; the baker duck-calls them through the region node so the stored
-  layout has one owner.
+  sampling path), density / placement_seed knobs plus the shared min_spacing / yaw+scale
+  jitter / max_slope, `items: Array[ScatterItem]` (`kit/helpers/scatter_item.gd`: prefab
+  **PackedScene** — so `gather_bake_inputs` tracks it — weight, collision on/off, per-item
+  threshold override). Region-specific placement statics (`generate_placements` — rejection
+  sampling with a spatial-hash spacing guarantee, deterministic per seed — `polygon_area`)
+  are unit-tested in `tests/test_scatter.gd`.
+- **Shared core is `ScatterBase`** (`kit/helpers/scatter_base.gd`, extended by both
+  `ScatterRegion` and LK6's `ScatterCanvas`): the `items` / `stored_transforms` /
+  `stored_ground_hash` state, the MultiMesh preview + dev-collision subtree, the stale guard,
+  and the pure statics the baker duck-calls (`stored_transform`, `stored_count`, `build_item_mesh`,
+  `shape_entries`, `ground_hash`, `snap_ground`, `find_terrains_under`). GDScript inherits
+  statics, so `ScatterRegion.stored_transform`/etc. still resolve; the baker treats a region
+  and a canvas identically (both are `is_carlito_scatter()`).
 - **Preview/dev-play:** unowned children rebuilt from stored data (never serialized, the
   HeightmapTerrain `Chunks` discipline): one MultiMeshInstance3D per item; **dev collision
   bodies only outside the editor** (unbaked play is drivable; editor raycasts never hit our
@@ -451,9 +456,35 @@ Autoloads (keep this the whole set): `Contract`, `Bridge`, `InputRouter`, `GameS
   sculpt-after-scatter would ship floating/buried props CI-green. Only Regenerate (which
   re-snaps) clears it; regions with zero stored instances never gate.
 - **kit_fixture** carries the permanent canary: `TreeScatter` (80 tree_default, MultiMesh
-  path, collision) + `GrassScatter` (20 grass, merge path, collision-off), expanded
-  programmatically by `build_kit_fixture.gd` (flat ground y=0, no editor; no terrain so
-  hash "" matches) — CI's baked smoke covers both paths every run.
+  path, collision) + `GrassScatter` (20 grass, merge path, collision-off) + LK6's
+  `GrassCanvas` (36 grass, `ScatterCanvas`, merge path), expanded programmatically by
+  `build_kit_fixture.gd` (flat ground y=0, no editor; no terrain so hash "" matches) — CI's
+  baked smoke covers every scatter path every run.
+
+## Scatter canvas — hand-painted scatter (LK6, landed — level_kit_plan.md §4 LK6)
+
+- **`ScatterCanvas`** (`kit/helpers/scatter_canvas.gd`, `@tool extends ScatterBase`, under
+  `Authoring`, `is_carlito_scatter()`): the second scatter front-end. Same stored-transform
+  contract, preview, dev collision, bake path and stale guard as `ScatterRegion` (all on the
+  shared `ScatterBase`) — the only differences are that its instances are **painted in** (not
+  regenerated from a footprint) and one `paint_density` knob. Adds one pure/tested static,
+  `erase_within` (drop instances inside a world-XZ disc). It has **no footprint and no
+  Regenerate button** (the gizmo keys on `footprint_polygon`, which only the region has).
+- **The paint/erase brush is the LK4 chassis's second subclass**
+  (`addons/carlito_kit/scatter_brush.gd extends brush_chassis.gd`): **Paint** seeds the LK5
+  sampler (`ScatterRegion.generate_placements`) over a world-XZ square bounding the brush disc,
+  keeps candidates inside the disc, ground-snaps (`ScatterBase.snap_ground`), slope-filters, and
+  enforces min_spacing against a running world-XZ spatial hash (prior dabs + existing instances,
+  so density is even regardless of stroke speed); **Erase** calls `ScatterCanvas.erase_within`
+  within the radius. Reuses the canvas node's jitter/spacing/slope exports (density/knobs on the
+  node inspector, matching where a region keeps them). Strokes mutate `stored_transforms` live
+  for feedback and commit **one** undoable whole-array swap (+ the ground hash) at stroke end —
+  editor-only; no runtime or baker code (a canvas is a `ScatterBase`).
+- **Panel/wiring** (`addons/carlito_kit/scatter_panel.gd`, same right dock as the terrain
+  brush): Off/Paint/Erase + Radius (`[`/`]` resize). The plugin sets the brush target on
+  selecting a `ScatterCanvas` and forwards viewport input **terrain brush → scatter brush →
+  placement tool** (each inert until its target + mode are set); a non-Off scatter mode disarms
+  the placement ghost.
 
 ## Water & boat — M6 (P8, landed — plan §1, §4.4, §8)
 

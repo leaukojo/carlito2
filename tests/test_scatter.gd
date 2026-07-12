@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 ## stale-guard ground hash, and the shared item-mesh/shape harvesting.
 
 const Scatter := preload("res://kit/helpers/scatter_region.gd")
+const Canvas := preload("res://kit/helpers/scatter_canvas.gd")
 
 
 func _square(half: float) -> PackedVector2Array:
@@ -250,3 +251,36 @@ func test_shape_entries_accumulate_local_transforms() -> void:
 	var entries := Scatter.shape_entries(template)
 	assert_int(entries.size()).is_equal(1)
 	assert_that((entries[0][1] as Transform3D).origin).is_equal(Vector3(0, 1.5, 0))
+
+
+# ----------------------------------------------------------------- LK6 canvas
+
+## The shared statics live on ScatterBase; the two front-ends must resolve them identically
+## (GDScript inherits statics), so the baker can duck-call them on a region or a canvas.
+func test_canvas_inherits_shared_statics() -> void:
+	var flat := PackedFloat32Array([1.0, 2.0, 3.0, 0.0, 1.0])
+	assert_int(Canvas.stored_count(flat)).is_equal(1)
+	assert_that(Canvas.stored_transform(flat, 0).origin).is_equal(Vector3(1, 2, 3))
+	var root: Node3D = auto_free(Node3D.new())
+	assert_str(Canvas.ground_hash(root)).is_empty()
+
+
+## Erase drops exactly the instances whose world XZ falls inside the brush disc; Y is ignored
+## (it is a top-down radius), and the canvas transform is applied (stored data is region-local).
+func test_canvas_erase_within_radius() -> void:
+	# Three instances at region-local x = 0, 5, 20 (z = 0). Canvas is offset +100 in world X.
+	var flat := PackedFloat32Array([
+		0.0, 9.0, 0.0, 0.0, 1.0,     # world x = 100 (Y ignored)
+		5.0, 0.0, 0.0, 0.0, 1.0,     # world x = 105
+		20.0, 0.0, 0.0, 0.0, 1.0])   # world x = 120
+	var base := Transform3D(Basis.IDENTITY, Vector3(100, 0, 0))
+	# Radius 6 around world (104, *, 0): catches x=100 and x=105, spares x=120.
+	var out := Canvas.erase_within([flat], base, Vector3(104, 0, 0), 6.0)
+	assert_int(Canvas.stored_count(out[0])).is_equal(1)
+	assert_that(Canvas.stored_transform(out[0], 0).origin).is_equal(Vector3(20, 0, 0))
+
+
+func test_canvas_erase_empty_when_all_inside() -> void:
+	var flat := PackedFloat32Array([0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0])
+	var out := Canvas.erase_within([flat], Transform3D.IDENTITY, Vector3.ZERO, 100.0)
+	assert_int(Canvas.stored_count(out[0])).is_equal(0)

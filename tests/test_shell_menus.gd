@@ -18,14 +18,15 @@ func test_level_select_lists_registry_and_emits_scene() -> void:
 	var sel: LevelSelect = auto_free(LevelSelect.new())
 	add_child(sel)
 	var buttons := _buttons(sel)
-	# dev fixtures (kit_fixture) are hidden from select — only shippable levels get buttons.
-	var shipped := LevelRegistry.LEVELS.filter(func(e: Dictionary) -> bool: return not e.get("dev", false))
-	assert_int(buttons.size()).is_equal(shipped.size())
+	# Dev fixtures are currently un-hidden in level-select (a temporary debug-levels link from
+	# the main menu), so every registry entry gets a button. When that is reverted, restore the
+	# `not dev` filter here alongside level_select.gd.
+	assert_int(buttons.size()).is_equal(LevelRegistry.LEVELS.size())
 
 	var chosen := [""]
 	sel.level_chosen.connect(func(path: String) -> void: chosen[0] = path)
 	buttons[0].pressed.emit()
-	assert_str(chosen[0]).is_equal(String(shipped[0]["scene"]))
+	assert_str(chosen[0]).is_equal(String(LevelRegistry.LEVELS[0]["scene"]))
 
 
 func test_garage_lists_allowed_vehicles_and_emits_choice() -> void:

@@ -66,6 +66,7 @@ func _ready() -> void:
 	_add_prefabs(root, authoring)
 	_add_showcase(root, authoring)
 	_add_scatter(root, authoring)
+	_add_canvas(root, authoring)
 
 	var packed := PackedScene.new()
 	if packed.pack(root) != OK:
@@ -286,6 +287,45 @@ func _add_scatter(owner: Node, authoring: Node) -> void:
 	_add(owner, authoring, _make_region("GrassScatter",
 			"res://kit/prefabs/nature/grass.tscn", false,
 			Vector3(50, 0, -20), Vector2(10, 20), 0.1, 1.0))
+
+
+## One ScatterCanvas (LK6's permanent bake canary): the hand-painted front-end bakes through
+## the exact same ScatterBase + baker path as a region, so CI's baked smoke proves the canvas
+## NODE type bakes end-to-end. Built like a "painted" result: a deterministic fill stored
+## straight in (no editor, no brush), on the flat west strip so it never overlaps the regions.
+func _add_canvas(owner: Node, authoring: Node) -> void:
+	var canvas := Node3D.new()
+	canvas.name = "GrassCanvas"
+	canvas.set_script(load("res://kit/helpers/scatter_canvas.gd"))
+	canvas.position = Vector3(-50, 0, 45)
+	canvas.set("min_spacing", 1.0)
+	var item: Resource = (load("res://kit/helpers/scatter_item.gd") as GDScript).new()
+	item.set("prefab", load("res://kit/prefabs/nature/grass.tscn"))
+	item.set("collision", false)   # merge path, zero physics
+	var items: Array[ScatterItem] = [item]
+	canvas.set("items", items)
+
+	# Fill deterministically via the shared LK5 sampler over the canvas footprint (12x30 m at
+	# density 0.1 -> ~36 grass), then store region-local stride-5 transforms on flat y=0 ground.
+	var placements: Array[PackedFloat32Array] = ScatterRegion.generate_placements({
+		"polygon": PackedVector2Array([Vector2(-6, -15), Vector2(6, -15),
+				Vector2(6, 15), Vector2(-6, 15)]),
+		"density": 0.1, "min_spacing": 1.0, "seed": SCATTER_SEED,
+		"weights": PackedFloat32Array([1.0]), "yaw_jitter_deg": 360.0,
+		"scale_min": 0.85, "scale_max": 1.15,
+	})
+	var stored: Array[PackedFloat32Array] = []
+	var total := 0
+	for flat in placements:
+		var s := PackedFloat32Array()
+		for j in flat.size() / 4:
+			s.append_array(PackedFloat32Array([
+					flat[j * 4], 0.0, flat[j * 4 + 1], flat[j * 4 + 2], flat[j * 4 + 3]]))
+		stored.append(s)
+		total += s.size() / 5
+	canvas.set("stored_transforms", stored)
+	print("canvas GrassCanvas: %d instances" % total)
+	_add(owner, authoring, canvas)
 
 
 func _make_region(region_name: String, prefab_path: String, collision: bool,

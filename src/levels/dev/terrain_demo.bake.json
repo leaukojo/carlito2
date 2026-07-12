@@ -1,16 +1,16 @@
 {
 	"baker_version": 2,
 	"chunk_size": 48.0,
-	"input_hash": "6b55ad8ae5bf04d715b46b09e60939dbf5970a3b5d77b40fba009450ccf26809",
+	"input_hash": "e462958f36ec9d8bfd99201f63b4c5940c926620c3ea7ad05c89c31f85d2f197",
 	"level": "res://src/levels/dev/terrain_demo.tscn",
 	"stats": {
 		"bodies": 0,
-		"chunks": 0,
+		"chunks": 6,
 		"drivable_triangles": 0,
-		"scatter_instances": 78,
-		"scatter_multimeshes": 4,
+		"scatter_instances": 42,
+		"scatter_multimeshes": 0,
 		"shapes": 0,
-		"surfaces": 0,
-		"vertices": 284
+		"surfaces": 12,
+		"vertices": 5628
 	}
 }

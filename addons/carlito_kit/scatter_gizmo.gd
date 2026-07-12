@@ -18,8 +18,10 @@ func _get_gizmo_name() -> String:
 	return "ScatterRegion"
 
 
+# Keyed on footprint_polygon, not is_carlito_scatter: only ScatterRegion has a footprint to
+# draw — the hand-painted ScatterCanvas (also a scatter node) has none.
 func _has_gizmo(node: Node3D) -> bool:
-	return node.has_method("is_carlito_scatter")
+	return node.has_method("footprint_polygon")
 
 
 func _redraw(gizmo: EditorNode3DGizmo) -> void:
