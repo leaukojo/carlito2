@@ -180,20 +180,20 @@ static func split_arrays_by_chunk(arrays: Array, world_xform: Transform3D,
 
 	var out := {}
 	for key: Vector2i in tri_lists:
-		var remap := {}   # source index -> chunk-local index
+		var idx_remap := {}   # source index -> chunk-local index
 		var cpos := PackedVector3Array()
 		var cnrm := PackedVector3Array()
 		var cuv := PackedVector2Array()
 		var cidx := PackedInt32Array()
 		for si: int in tri_lists[key]:
-			if not remap.has(si):
-				remap[si] = cpos.size()
+			if not idx_remap.has(si):
+				idx_remap[si] = cpos.size()
 				cpos.append(pos[si])
 				if has_n:
 					cnrm.append((src_n as PackedVector3Array)[si])
 				if has_uv:
 					cuv.append((src_uv as PackedVector2Array)[si])
-			cidx.append(remap[si])
+			cidx.append(idx_remap[si])
 		var carrays := []
 		carrays.resize(Mesh.ARRAY_MAX)
 		carrays[Mesh.ARRAY_VERTEX] = cpos
@@ -826,7 +826,7 @@ class BakeContext:
 			"vertices": total_vertices,
 			"bodies": body_shapes.size(),
 			"shapes": shape_count,
-			"drivable_triangles": weld_pool.size() / 3,
+			"drivable_triangles": weld_pool.size() / 3.0 as int,
 			"scatter_instances": scatter_instances,
 			"scatter_multimeshes": multimesh_count,
 			"roads": roads,

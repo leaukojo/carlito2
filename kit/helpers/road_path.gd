@@ -270,7 +270,7 @@ func _drape_curve() -> void:
 		return
 	var curve := path.curve
 	var to_world := global_transform * path.transform
-	var to_local := to_world.affine_inverse()
+	var world_to_local := to_world.affine_inverse()
 	var before := PackedVector3Array()
 	var after := PackedVector3Array()
 	var missed := 0
@@ -278,14 +278,14 @@ func _drape_curve() -> void:
 		var p := curve.get_point_position(i)
 		before.append(p)
 		var w := to_world * p
-		var snapped := false
+		var did_snap := false
 		for t in terrains:
 			if t.contains_xz(w):
 				w.y = float(t.height_at(w)) + draw_clearance
-				snapped = true
+				did_snap = true
 				break
-		if snapped:
-			p = to_local * w
+		if did_snap:
+			p = world_to_local * w
 		else:
 			missed += 1
 		after.append(p)

@@ -118,12 +118,12 @@ func _ready() -> void:
 ## baker all go through it.
 static func stored_transform(flat: PackedFloat32Array, index: int) -> Transform3D:
 	var o := index * STRIDE
-	var basis := Basis(Vector3.UP, flat[o + 3]).scaled(Vector3.ONE * flat[o + 4])
-	return Transform3D(basis, Vector3(flat[o], flat[o + 1], flat[o + 2]))
+	var xf_basis := Basis(Vector3.UP, flat[o + 3]).scaled(Vector3.ONE * flat[o + 4])
+	return Transform3D(xf_basis, Vector3(flat[o], flat[o + 1], flat[o + 2]))
 
 
 static func stored_count(flat: PackedFloat32Array) -> int:
-	return flat.size() / STRIDE
+	return flat.size() / STRIDE as int
 
 
 ## Min-spacing test against a spatial hash keyed by `spacing`-sized XZ cells: a point closer
@@ -343,7 +343,7 @@ func _resnap_to_ground() -> void:
 	find_terrains_under(root, terrains)
 	var space := get_world_3d().direct_space_state
 	var to_world := global_transform
-	var to_local := to_world.affine_inverse()
+	var world_to_local := to_world.affine_inverse()
 	# Snapshot by reference: nothing below mutates the stored packed arrays in place
 	# (kept rows are rebuilt), so the old Array is a valid undo value.
 	var before := stored_transforms
@@ -359,7 +359,7 @@ func _resnap_to_ground() -> void:
 				dropped += 1
 				continue
 			var entry := flat.slice(o, o + STRIDE)
-			var local := to_local * (hit.position as Vector3)
+			var local := world_to_local * (hit.position as Vector3)
 			entry[0] = local.x
 			entry[1] = local.y
 			entry[2] = local.z
