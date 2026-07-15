@@ -427,4 +427,3 @@ func _get_configuration_warnings() -> PackedStringArray:
 ## Subclass hook for front-end-specific warnings (empty by default).
 func _extra_warnings() -> PackedStringArray:
 	return PackedStringArray()
-

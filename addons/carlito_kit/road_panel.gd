@@ -8,12 +8,14 @@ extends VBoxContainer
 
 signal mode_changed(mode: int)
 signal close_requested
+signal smooth_corners_changed(on: bool)
 
 const MODE_LABELS := ["Off", "Draw"]
 
 var _status: Label
 var _mode_group := ButtonGroup.new()
 var _mode_buttons: Array[Button] = []
+var _smooth: CheckBox
 var _close: Button
 
 
@@ -48,6 +50,14 @@ func _build() -> void:
 		_mode_buttons.append(b)
 		row.add_child(b)
 
+	_smooth = CheckBox.new()
+	_smooth.text = "Smooth corners"
+	_smooth.button_pressed = true
+	_smooth.tooltip_text = "Give each drawn point Catmull-Rom handles. Off: the road " \
+			+ "follows the clicks exactly, with angled connections at the corners."
+	_smooth.toggled.connect(func(on: bool): smooth_corners_changed.emit(on))
+	add_child(_smooth)
+
 	_close = Button.new()
 	_close.text = "Close loop"
 	_close.tooltip_text = "Append a point on the first point with a smooth seam, then exit Draw."
@@ -78,6 +88,7 @@ func show_off() -> void:
 func set_has_road(has: bool) -> void:
 	for b in _mode_buttons:
 		b.disabled = not has
+	_smooth.disabled = not has
 	_close.disabled = not has
 	if has:
 		_status.text = "RoadPath selected — ready to draw."

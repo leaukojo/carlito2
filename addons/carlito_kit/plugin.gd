@@ -68,6 +68,7 @@ func _enter_tree() -> void:
 	_road_panel = RoadPanel.new()
 	_road_panel.mode_changed.connect(_on_road_mode)
 	_road_panel.close_requested.connect(func(): _road_tool.close_loop())
+	_road_panel.smooth_corners_changed.connect(func(on): _road_tool.smooth_corners = on)
 	_road_tool.deactivated.connect(func(): _road_panel.show_off())
 	add_control_to_dock(DOCK_SLOT_RIGHT_BL, _road_panel)
 

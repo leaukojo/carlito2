@@ -68,9 +68,9 @@ const ASPHALT_PROFILE_PATH := "res://kit/roads/asphalt_profile.tres"
 @warning_ignore("unused_private_class_variable")
 @export_tool_button("Drape curve onto terrain") var _drape_action := _drape_curve
 ## Give every interior curve point Catmull-Rom handles (RoadBuilder.smooth_handles):
-## hand-clicked polyline corners fold the extruded ribbon over itself, smoothing
-## turns them into clean arcs. Endpoints keep their handles. Editor-only, one
-## undoable action.
+## turns hand-clicked polyline corners into clean arcs (angled corners render fine —
+## the extruder fold-clamps the inside edge — this is a look choice). Endpoints keep
+## their handles. Editor-only, one undoable action.
 @warning_ignore("unused_private_class_variable")
 @export_tool_button("Smooth curve (Catmull-Rom)") var _smooth_action := _smooth_curve
 

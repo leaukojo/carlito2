@@ -24,6 +24,12 @@ const STUB_B := Vector3(0, 0, 12)
 
 signal deactivated  # RMB/Escape exit -> the panel flips its toggle back to Off
 
+## Panel checkbox (default ON): each click gives the PREVIOUS point Catmull-Rom
+## handles. OFF draws a zero-handle polyline — the road follows the clicks exactly;
+## the extruder's corner miter rings + inside-edge fold clamp render the angled
+## connections cleanly.
+var smooth_corners := true
+
 var _undo: EditorUndoRedoManager
 var _road: Node3D = null
 var _active := false
@@ -110,9 +116,9 @@ func _snap(camera: Camera3D, mouse_pos: Vector2) -> Vector3:
 
 ## One undoable action per click (the placement_tool undo-context pattern). When the
 ## curve is still the untouched default stub, the same action swaps it for the first
-## drawn point. Each click also gives the PREVIOUS point Catmull-Rom handles
-## (RoadBuilder.smooth_handles): a zero-handle polyline corner folds the extruded
-## ribbon over itself, so drawn roads must come out C1-smooth.
+## drawn point. With smooth_corners on, each click also gives the PREVIOUS point
+## Catmull-Rom handles (RoadBuilder.smooth_handles) so drawn roads come out C1-smooth;
+## off skips them for an exact angled polyline.
 func _commit_point(world: Vector3) -> void:
 	var path := _road.get_node_or_null(^"Path") as Path3D
 	if path == null or path.curve == null:
@@ -135,7 +141,7 @@ func _commit_point(world: Vector3) -> void:
 	else:
 		var idx := curve.point_count   # index the new point will take
 		_undo.add_do_method(curve, "add_point", local)
-		if idx >= 2:
+		if smooth_corners and idx >= 2:
 			var h: Dictionary = RoadBuilderScript.smooth_handles(
 					curve.get_point_position(idx - 2),
 					curve.get_point_position(idx - 1), local)
@@ -149,13 +155,14 @@ func _commit_point(world: Vector3) -> void:
 	_undo.commit_action()
 
 
-## Close the loop (panel button): append a point AT the first point's position and
-## give the seam matching Catmull-Rom tangents — the first point's out-handle and the
-## new end point's in-handle both follow the last->second chord (smooth_handles with
-## the seam treated as an interior point), so the ribbon is C1 through the seam. The
-## extruder needs no special-casing (the duplicated seam ring welds at bake). The
-## previous point is smoothed like any other click, and Draw mode exits — clicking
-## past a closed loop makes no sense. One undoable action.
+## Close the loop (panel button): append a point AT the first point's position. With
+## smooth_corners on, the seam gets matching Catmull-Rom tangents — the first point's
+## out-handle and the new end point's in-handle both follow the last->second chord
+## (smooth_handles with the seam treated as an interior point), so the ribbon is C1
+## through the seam, and the previous point is smoothed like any other click. Off, the
+## seam point lands with NO handles (the extruder's closed-loop bisector frame miters
+## the angled seam). The duplicated seam ring welds at bake. Draw mode exits —
+## clicking past a closed loop makes no sense. One undoable action.
 func close_loop() -> void:
 	if not _target_valid():
 		return
@@ -175,22 +182,22 @@ func close_loop() -> void:
 	var scene_root := EditorInterface.get_edited_scene_root()
 	if scene_root == null:
 		return
-	var seam: Dictionary = RoadBuilderScript.smooth_handles(
-			last, first, curve.get_point_position(1))
-	var prev_h: Dictionary = RoadBuilderScript.smooth_handles(
-			curve.get_point_position(n - 2), last, first)
-
 	_undo.create_action("Close road loop", UndoRedo.MERGE_DISABLE, scene_root)
 	_undo.add_do_method(curve, "add_point", first)
-	_undo.add_do_method(curve, "set_point_in", n, seam["in"])
-	_undo.add_do_method(curve, "set_point_out", 0, seam["out"])
-	_undo.add_do_method(curve, "set_point_in", n - 1, prev_h["in"])
-	_undo.add_do_method(curve, "set_point_out", n - 1, prev_h["out"])
-	# undo runs in reverse registration order: the seam point goes first, then the
-	# handle restores
-	_undo.add_undo_method(curve, "set_point_out", n - 1, curve.get_point_out(n - 1))
-	_undo.add_undo_method(curve, "set_point_in", n - 1, curve.get_point_in(n - 1))
-	_undo.add_undo_method(curve, "set_point_out", 0, curve.get_point_out(0))
+	if smooth_corners:
+		var seam: Dictionary = RoadBuilderScript.smooth_handles(
+				last, first, curve.get_point_position(1))
+		var prev_h: Dictionary = RoadBuilderScript.smooth_handles(
+				curve.get_point_position(n - 2), last, first)
+		_undo.add_do_method(curve, "set_point_in", n, seam["in"])
+		_undo.add_do_method(curve, "set_point_out", 0, seam["out"])
+		_undo.add_do_method(curve, "set_point_in", n - 1, prev_h["in"])
+		_undo.add_do_method(curve, "set_point_out", n - 1, prev_h["out"])
+		# undo runs in reverse registration order: the seam point goes first, then the
+		# handle restores
+		_undo.add_undo_method(curve, "set_point_out", n - 1, curve.get_point_out(n - 1))
+		_undo.add_undo_method(curve, "set_point_in", n - 1, curve.get_point_in(n - 1))
+		_undo.add_undo_method(curve, "set_point_out", 0, curve.get_point_out(0))
 	_undo.add_undo_method(curve, "remove_point", n)
 	_undo.commit_action()
 	if _active:

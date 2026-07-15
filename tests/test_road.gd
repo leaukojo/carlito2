@@ -231,6 +231,105 @@ func test_faces_from_surfaces_flattens_all_triangles() -> void:
 	assert_bool(Array(faces).has(pos[0])).is_true()
 
 
+# ------------------------------------------------------- extrusion: fold clamp / seam
+
+
+## Quarter arc of radius 3 in the XZ plane — tighter than the 4.75 m asphalt
+## half-width, so the inside-edge fold clamp must engage.
+func _tight_arc() -> Curve3D:
+	var c := Curve3D.new()
+	var h := 3.0 * 0.5523
+	c.add_point(Vector3.ZERO, Vector3.ZERO, Vector3(0, 0, h))
+	c.add_point(Vector3(3, 0, 3), Vector3(-h, 0, 0), Vector3.ZERO)
+	return c
+
+
+## Single full-width strip: surfaces[0] verts come in rings of (left, right) pairs, so
+## edge progression is directly checkable.
+func _edge_cross_section() -> Dictionary:
+	return {"points": PackedVector2Array([Vector2(-4.75, 0), Vector2(4.75, 0)]),
+			"mats": PackedInt32Array([0])}
+
+
+## The fold clamp: on a turn tighter than the half-width, neither ribbon edge may
+## sweep backwards between adjacent rings (unclamped, the inside edge folds).
+func test_extrude_tight_arc_inside_edge_never_reverses() -> void:
+	var arc := _tight_arc()
+	var length := arc.get_baked_length()
+	var cs := _edge_cross_section()
+	var offsets := Builder.adaptive_offsets(arc, 6.0, 6.0)
+	var surfaces := Builder.extrude(arc, cs.points, cs.mats, offsets, false)
+	var pos: PackedVector3Array = surfaces[0][Mesh.ARRAY_VERTEX]
+	assert_int(pos.size()).is_equal(offsets.size() * 2)
+	for i in offsets.size() - 1:
+		var t_avg := (Builder.tangent_at(arc, offsets[i], length)
+				+ Builder.tangent_at(arc, offsets[i + 1], length)).normalized()
+		for side in 2:
+			var d := pos[(i + 1) * 2 + side] - pos[i * 2 + side]
+			assert_bool(d.dot(t_avg) >= -1e-6).is_true()
+	# the clamp actually engaged: some rings are narrower than the full 9.5 m
+	var narrowed := false
+	for i in offsets.size():
+		if pos[i * 2].distance_to(pos[i * 2 + 1]) < 9.5 - 0.01:
+			narrowed = true
+	assert_bool(narrowed).is_true()
+	# UVs keep the profile lateral, not the clamped one
+	for v: Vector2 in (surfaces[0][Mesh.ARRAY_TEX_UV] as PackedVector2Array):
+		assert_float(absf(v.x)).is_equal_approx(4.75, 0.0001)
+
+
+## A wide arc (radius 20 >> half-width) is untouched by the clamp: every ring keeps
+## the full profile width. (Straights are covered by the exact-width tests above.)
+func test_extrude_wide_arc_is_not_clamped() -> void:
+	var arc := _quarter_arc()
+	var cs := _edge_cross_section()
+	var offsets := Builder.adaptive_offsets(arc, 6.0, 6.0)
+	var surfaces := Builder.extrude(arc, cs.points, cs.mats, offsets, false)
+	var pos: PackedVector3Array = surfaces[0][Mesh.ARRAY_VERTEX]
+	for i in offsets.size():
+		assert_float(pos[i * 2].distance_to(pos[i * 2 + 1])).is_equal_approx(9.5, 0.0001)
+
+
+func test_extrude_tight_arc_is_deterministic() -> void:
+	var cs := _edge_cross_section()
+	var a_arc := _tight_arc()
+	var b_arc := _tight_arc()
+	var a := Builder.extrude(a_arc, cs.points, cs.mats,
+			Builder.adaptive_offsets(a_arc, 6.0, 6.0), false)
+	var b := Builder.extrude(b_arc, cs.points, cs.mats,
+			Builder.adaptive_offsets(b_arc, 6.0, 6.0), false)
+	assert_that(a[0][Mesh.ARRAY_VERTEX]).is_equal(b[0][Mesh.ARRAY_VERTEX])
+	assert_that(a[0][Mesh.ARRAY_INDEX]).is_equal(b[0][Mesh.ARRAY_INDEX])
+
+
+## Closed loop (first == last control position): both end rings get the bisector of
+## the two end tangents, so they share one frame — identical verts, identical right
+## vectors — instead of a crease/wedge at the seam.
+func test_extrude_closed_square_loop_seam_rings_coincide() -> void:
+	var c := Curve3D.new()
+	c.add_point(Vector3.ZERO)
+	c.add_point(Vector3(20, 0, 0))
+	c.add_point(Vector3(20, 0, 20))
+	c.add_point(Vector3(0, 0, 20))
+	c.add_point(Vector3.ZERO)
+	# half-width 1 m: well inside the corner fold limits, so the seam comparison is
+	# pure frame math
+	var points := PackedVector2Array([Vector2(-1.0, 0), Vector2(1.0, 0)])
+	var offsets := Builder.adaptive_offsets(c, 6.0, 6.0)
+	var surfaces := Builder.extrude(c, points, PackedInt32Array([0]), offsets, false)
+	var pos: PackedVector3Array = surfaces[0][Mesh.ARRAY_VERTEX]
+	var last := (offsets.size() - 1) * 2
+	assert_vector(pos[0]).is_equal_approx(pos[last], Vector3.ONE * 0.001)
+	assert_vector(pos[1]).is_equal_approx(pos[last + 1], Vector3.ONE * 0.001)
+	var r_first := (pos[1] - pos[0]).normalized()
+	var r_last := (pos[last + 1] - pos[last]).normalized()
+	assert_vector(r_first).is_equal_approx(r_last, Vector3.ONE * 0.001)
+	# the shared frame is the seam bisector: right = perpendicular of (t_in + t_out)/2
+	# = perpendicular of (1,0,-1)/sqrt(2) in the XZ plane... derive: r = t x UP
+	var t_seam := (Vector3(1, 0, 0) + Vector3(0, 0, -1)).normalized()
+	assert_vector(r_first).is_equal_approx(t_seam.cross(Vector3.UP), Vector3.ONE * 0.01)
+
+
 func test_extrude_climbing_straight_has_no_roll() -> void:
 	# a road up a slope: the right vector stays horizontal, so each cross-section
 	# vertex pair of the flat surface strip shares one world Y

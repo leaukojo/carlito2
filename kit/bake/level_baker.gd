@@ -21,7 +21,9 @@ extends RefCounted
 ## Bump when bake semantics change: stale-bake checks treat old-version manifests
 ## as stale, forcing a re-bake after tool upgrades.
 ## v4: road extrusion anchors a ring at every interior curve control point (corner miters).
-const BAKER_VERSION := 4
+## v5: road extrusion fold-clamps the inside edge below the local turn radius and gives
+## closed loops one shared bisector frame at the seam.
+const BAKER_VERSION := 5
 
 ## Scatter: items with at least this many stored instances bake as one
 ## MultiMeshInstance3D per chunk x item (geometry stored once) instead of merging

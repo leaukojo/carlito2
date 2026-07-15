@@ -52,6 +52,10 @@
 [ext_resource type="Script" uid="uid://bwvw8p2jvnjnw" path="res://kit/helpers/scatter_canvas.gd" id="51_4mmy1"]
 [ext_resource type="Script" uid="uid://cpl5vh8pdc04w" path="res://kit/helpers/road_path.gd" id="52_7iofg"]
 [ext_resource type="Resource" uid="uid://3r6iaciwp2fk" path="res://kit/roads/asphalt_profile.tres" id="53_0e8c1"]
+[ext_resource type="MeshLibrary" path="res://kit/palettes/racing.meshlib" id="53_jm8ie"]
+[ext_resource type="Script" uid="uid://81gx7eh4vwms" path="res://kit/helpers/kit_piece.gd" id="54_8hbdd"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/fence_simple.tscn" id="72_72po1"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/fence_bendCenter.tscn" id="73_npqul"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_ptt6x"]
 
@@ -147,15 +151,13 @@ cell_center_y = false
 data = {
 "cells": PackedInt32Array(0, 1, 49, 0, 65535, 49, 1, 0, 1048625, 65535, 0, 1048625, 1, 1, 1441792, 1, 65535, 0, 65535, 65535, 1048576, 65535, 1, 655360)
 }
+metadata/_editor_floor_ = Vector3(0, 0, 0)
 
 [node name="Grass" parent="Authoring" unique_id=457950076 instance=ExtResource("8_50r16")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28, 0, 0)
 
 [node name="BuildingTypeA" parent="Authoring" unique_id=716599060 instance=ExtResource("10_kahsh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -28, 0, 0)
-
-[node name="TreeDefault" parent="Authoring" unique_id=800337657 instance=ExtResource("11_7al81")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, 0, 22)
 
 [node name="LightSquare" parent="Authoring" unique_id=364681286 instance=ExtResource("12_qpmkh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26, 0, 22)
@@ -305,6 +307,23 @@ profile = ExtResource("53_0e8c1")
 
 [node name="Path" type="Path3D" parent="Authoring/SplineRoad" unique_id=1160495661]
 curve = SubResource("Curve3D_d2sbm")
+
+[node name="RacingTiles" type="GridMap" parent="Authoring" unique_id=1120029194]
+mesh_library = ExtResource("53_jm8ie")
+cell_size = Vector3(12, 12, 12)
+cell_center_y = false
+data = {
+"cells": PackedInt32Array(2, 65534, 1048594, 2, 65533, 18, 3, 65533, 1441810, 3, 65534, 29)
+}
+metadata/_editor_floor_ = Vector3(0, 0, 0)
+
+[node name="FenceSimple" type="Node3D" parent="Authoring" unique_id=701573764 instance=ExtResource("72_72po1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.6620116, 9.536743e-07, 1.7685738)
+script = ExtResource("54_8hbdd")
+
+[node name="FenceBendCenter" type="Node3D" parent="Authoring" unique_id=932741338 instance=ExtResource("73_npqul")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.312356, 0, 4.0933785)
+script = ExtResource("54_8hbdd")
 
 [node name="ShowcaseLabels" type="Node3D" parent="." unique_id=833851642]
 

@@ -191,8 +191,12 @@ junctions, lane markings, traffic.
   frame is custom (NOT `sample_baked_with_rotation` — parallel transport accumulates
   roll). Conform flattens the **full half-width incl. skirt**, targets projected onto the
   nearest centerline **segment** (nearest-sample is wrong on grades), floor-quantized to
-  8-bit; `edge_drop` must absorb ε + height/255 (conform warns). Corners self-overlap
-  below ~5 m turn radius — geometric, space points wider.
+  8-bit; `edge_drop` must absorb ε + height/255 (conform warns). Turns tighter than the
+  ribbon half-width fold-clamp the inside edge (extrude's `FOLD_MARGIN`, pinches — never
+  self-overlaps; UVs keep the profile lateral); closed loops (first == last control
+  position) give both end rings one shared bisector frame. The draw panel's "Smooth
+  corners" checkbox (default on) toggles the per-click Catmull-Rom handles; off draws an
+  exact angled polyline, which the corner miter rings + fold clamp render cleanly.
 - Authoring order: terrain → roads + conform → splat → scatter (conform trips the scatter
   stale guard by design).
 - Bake-adjacent CODE (RoadBuilder, ScatterBase) is invisible to the file-hash net — bump

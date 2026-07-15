@@ -17,15 +17,21 @@ extends RefCounted
 ## accumulates roll on climbing turns. Because the right vector flips WITH the tangent,
 ## reversing a curve's direction preserves the winding (still up-facing).
 ##
-## Closed loops need no special-casing: offsets span [0, length], so the seam duplicates
-## one cross-section ring — render is fine (flat colors) and the bake's 1 mm weld snap
-## fuses the coincident verts.
+## Closed loops (first control position == last): the two end rings share an origin, so
+## extrude gives BOTH the bisector of the two end tangents — a smooth seam loses its
+## residual crease, an angled seam gets a proper miter — and the duplicated ring welds
+## at bake (1 mm snap).
 
 ## Subdivision floor (m): a segment this short is never bisected, so a hard kink in the
 ## curve terminates the recursion instead of recursing forever.
 const MIN_SEG := 0.5
 ## Finite-difference half-step (m) for tangents.
 const TANGENT_H := 0.1
+## Inside-edge fold clamp: between two rings, a cross-section point at |x| beyond the
+## local turn radius (ds / tangent swing) sweeps BACKWARDS and the ribbon self-overlaps.
+## Extrude clamps the inside lateral to this fraction of the local radius, so any curve
+## — hairpins, zero-handle corners — renders fold-free (the inner edge pinches instead).
+const FOLD_MARGIN := 0.95
 
 
 # ------------------------------------------------------------ adaptive sampling
@@ -40,9 +46,9 @@ const TANGENT_H := 0.1
 ## The control-point anchors are the corner miter: a zero-handle kink gets a ring
 ## exactly AT the corner, whose central-difference tangent is the angle bisector —
 ## without it the nearest rings sit up to MIN_SEG away on either side and the edge
-## notches/overlaps even at small angles. (Sharp corners still self-overlap on the
-## inside when the local turn radius drops below the ribbon half-width — that is
-## geometric; smooth the curve instead, see smooth_handles.)
+## notches/overlaps even at small angles. (When the local turn radius drops below the
+## ribbon half-width, extrude's FOLD_MARGIN clamp pinches the inside edge instead of
+## letting it self-overlap.)
 ## Empty for a null / <2-point / ~zero-length curve.
 static func adaptive_offsets(curve: Curve3D, max_seg_len: float,
 		max_angle_deg: float) -> PackedFloat32Array:
@@ -77,8 +83,8 @@ static func adaptive_offsets(curve: Curve3D, max_seg_len: float,
 ## handles share the neighbour-chord direction; each is a third of the distance to
 ## its own neighbour, so closely spaced points stay tight and long spans arc wide.
 ## The draw tool applies this to the previous point per click and RoadPath's Smooth
-## button to every interior point — hand-clicked polylines become C1 curves, which
-## is what keeps the extruded ribbon from folding over itself at corners.
+## button to every interior point — hand-clicked polylines become C1 curves. (C1 does
+## NOT guarantee a minimum turn radius; extrude's fold clamp covers what remains.)
 ## Coincident neighbours degenerate to zero handles.
 static func smooth_handles(prev: Vector3, point: Vector3, next: Vector3) -> Dictionary:
 	var chord := next - prev
@@ -119,7 +125,14 @@ static func tangent_at(curve: Curve3D, offset: float, length: float) -> Vector3:
 ## right vector through as the fallback (Vector3.RIGHT for the first ring).
 static func frame_at(curve: Curve3D, offset: float, length: float, tilt: float,
 		prev_right: Vector3) -> Transform3D:
-	var t := tangent_at(curve, offset, length)
+	return frame_from_tangent(tangent_at(curve, offset, length),
+			curve.sample_baked(offset), tilt, prev_right)
+
+
+## frame_at with an explicit tangent — extrude overrides the two end tangents of a
+## closed loop with their bisector so the seam rings coincide exactly.
+static func frame_from_tangent(t: Vector3, origin: Vector3, tilt: float,
+		prev_right: Vector3) -> Transform3D:
 	var r := t.cross(Vector3.UP)
 	if r.length_squared() < 1e-8:
 		r = prev_right
@@ -128,7 +141,7 @@ static func frame_at(curve: Curve3D, offset: float, length: float, tilt: float,
 	if absf(tilt) > 1e-6:
 		r = r.rotated(t, tilt)
 		u = u.rotated(t, tilt)
-	return Transform3D(Basis(r, u, r.cross(u)), curve.sample_baked(offset))
+	return Transform3D(Basis(r, u, r.cross(u)), origin)
 
 
 # ------------------------------------------------------------------ banking LUT
@@ -168,7 +181,7 @@ static func tilt_at(lut: Array, offset: float) -> float:
 ## {material slot (int): Mesh.ARRAY_MAX-sized arrays} — one indexed triangle surface
 ## per slot that has strips. Strips do NOT share verts across breakpoints (crisp
 ## low-poly hard edges at material changes and the drop crease). Per vertex:
-##   position = origin + R * p.x + U * p.y
+##   position = origin + R * x' + U * p.y, x' = p.x fold-clamped (see FOLD_MARGIN)
 ##   normal   = R * n2.x + U * n2.y, n2 = perp of the 2D strip edge (flat strip -> +U)
 ##   uv       = (lateral meters, arc-length meters)
 ## Winding per quad is clockwise seen from above (Godot's front-face order, same as
@@ -183,13 +196,56 @@ static func extrude(curve: Curve3D, points: PackedVector2Array, mats: PackedInt3
 	var length := curve.get_baked_length()
 	var lut: Array = tilt_lut(curve) if banked else []
 
+	# Closed loop: the two end rings share an origin, so both get the bisector of the
+	# two end tangents — one shared frame instead of a crease/wedge at the seam.
+	var seam_tangent := Vector3.ZERO
+	if curve.point_count >= 3 and curve.get_point_position(0).is_equal_approx(
+			curve.get_point_position(curve.point_count - 1)):
+		var bis := tangent_at(curve, 0.0, length) + tangent_at(curve, length, length)
+		if bis.length_squared() > 1e-12:
+			seam_tangent = bis.normalized()
+
 	var frames: Array[Transform3D] = []
 	var prev_right := Vector3.RIGHT
-	for o in offsets:
+	for i in offsets.size():
+		var o := offsets[i]
 		var tilt := tilt_at(lut, o) if banked else 0.0
-		var f := frame_at(curve, o, length, tilt, prev_right)
+		var t := tangent_at(curve, o, length)
+		if seam_tangent != Vector3.ZERO and (i == 0 or i == offsets.size() - 1):
+			t = seam_tangent
+		var f := frame_from_tangent(t, curve.sample_baked(o), tilt, prev_right)
 		prev_right = f.basis.x
 		frames.append(f)
+
+	# Inside-edge fold clamp, once per ring (strips share frames): per adjacent ring
+	# pair the local turn radius is ds / tangent swing, and the INSIDE of the turn is
+	# the side the tangent rotates toward — (t_a x t_b).UP > 0 turns toward the
+	# negative-lateral side (r = t x UP). A ring's clamp is the min over its adjacent
+	# pairs of FOLD_MARGIN * radius; straights and the outside stay INF (unclamped),
+	# a zero-handle corner's miter ring clamps to ~0 (the inside edge meets AT the
+	# corner and fans — the clean angled connection).
+	var clamp_neg := PackedFloat32Array()   # lateral p.x < 0 side
+	var clamp_pos := PackedFloat32Array()   # lateral p.x > 0 side
+	clamp_neg.resize(frames.size())
+	clamp_neg.fill(INF)
+	clamp_pos.resize(frames.size())
+	clamp_pos.fill(INF)
+	for i in frames.size() - 1:
+		var t_a := -frames[i].basis.z
+		var t_b := -frames[i + 1].basis.z
+		var swing := t_a.angle_to(t_b)
+		if swing < 1e-4:
+			continue
+		var turn := t_a.cross(t_b).dot(Vector3.UP)
+		if absf(turn) < 1e-8:
+			continue   # pure pitch kink (crest/dip): no lateral turn, no lateral fold
+		var limit := FOLD_MARGIN * (offsets[i + 1] - offsets[i]) / swing
+		if turn > 0.0:
+			clamp_neg[i] = minf(clamp_neg[i], limit)
+			clamp_neg[i + 1] = minf(clamp_neg[i + 1], limit)
+		else:
+			clamp_pos[i] = minf(clamp_pos[i], limit)
+			clamp_pos[i + 1] = minf(clamp_pos[i + 1], limit)
 
 	# insertion-ordered slot list (deterministic: strip order)
 	var slots: Array[int] = []
@@ -213,8 +269,12 @@ static func extrude(curve: Curve3D, points: PackedVector2Array, mats: PackedInt3
 				var f := frames[ri]
 				var r := f.basis.x
 				var u := f.basis.y
-				pos.append(f.origin + r * p0.x + u * p0.y)
-				pos.append(f.origin + r * p1.x + u * p1.y)
+				# fold clamp collapses the inside lateral toward the fold point; the UV
+				# keeps the profile p.x so material mapping is untouched, y unchanged
+				var x0 := _clamp_lateral(p0.x, clamp_neg[ri], clamp_pos[ri])
+				var x1 := _clamp_lateral(p1.x, clamp_neg[ri], clamp_pos[ri])
+				pos.append(f.origin + r * x0 + u * p0.y)
+				pos.append(f.origin + r * x1 + u * p1.y)
 				var n := (r * n2.x + u * n2.y).normalized()
 				nrm.append(n)
 				nrm.append(n)
@@ -231,6 +291,13 @@ static func extrude(curve: Curve3D, points: PackedVector2Array, mats: PackedInt3
 		arrays[Mesh.ARRAY_INDEX] = idx
 		result[slot] = arrays
 	return result
+
+
+## Signed lateral clamped to its side's fold limit (INF = untouched).
+static func _clamp_lateral(x: float, c_neg: float, c_pos: float) -> float:
+	if x < 0.0:
+		return -minf(-x, c_neg)
+	return minf(x, c_pos)
 
 
 ## Flatten extruded surfaces into an unindexed triangle soup (same verts, same winding,
