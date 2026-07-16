@@ -11,6 +11,15 @@ signal channel_changed(channel: int)
 signal params_changed(radius: float, strength: float, falloff: float)
 
 const MODE_LABELS := ["Off", "Raise", "Lower", "Smooth", "Flatten", "Paint"]
+const MODE_TOOLTIPS := [
+	"Brush disabled. Click another mode to start editing.",
+	"Drag in the 3D view to pull the ground up.",
+	"Drag in the 3D view to push the ground down.",
+	"Averages out bumps and jaggies. Use it to soften an area you overdid.",
+	"Levels the ground to the height where your drag STARTED — good for building pads " \
+			+ "and fields. (Smooth rounds things; Flatten makes them level.)",
+	"Colors the ground with the selected channel instead of changing its shape.",
+]
 const CHANNEL_LABELS := ["Grass", "Dirt", "Sand", "Rock"]
 
 var _status: Label
@@ -45,6 +54,7 @@ func _build() -> void:
 		b.toggle_mode = true
 		b.button_group = _mode_group
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.tooltip_text = MODE_TOOLTIPS[i]
 		if i == 0:
 			b.button_pressed = true
 		b.pressed.connect(func(): mode_changed.emit(i))
@@ -55,9 +65,11 @@ func _build() -> void:
 	add_child(_channel_row)
 	var ch_label := Label.new()
 	ch_label.text = "Channel"
+	ch_label.tooltip_text = "Which ground color to paint."
 	_channel_row.add_child(ch_label)
 	_channel_box = OptionButton.new()
 	_channel_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_channel_box.tooltip_text = "Which ground color to paint."
 	for name in CHANNEL_LABELS:
 		_channel_box.add_item(name)
 	_channel_box.item_selected.connect(func(i): channel_changed.emit(i))
@@ -65,9 +77,14 @@ func _build() -> void:
 	_channel_row.visible = false
 
 	add_child(HSeparator.new())
-	_radius = _spinner("Radius", 0.5, 512.0, 0.5, 8.0)
-	_strength = _spinner("Strength", 0.0, 1.0, 0.05, 0.5)
-	_falloff = _spinner("Falloff", 0.0, 1.0, 0.05, 0.5)
+	_radius = _spinner("Radius", 0.5, 512.0, 0.5, 8.0,
+			"Brush size in meters. The car is 1.8 m long; a two-lane road is ~12 m wide. " \
+			+ "[ and ] change it while brushing.")
+	_strength = _spinner("Strength", 0.0, 1.0, 0.05, 0.5,
+			"How much each stroke changes things. Low = gentle passes, high = fast.")
+	_falloff = _spinner("Edge softness", 0.0, 1.0, 0.05, 0.5,
+			"How the effect fades toward the brush rim. 0 = hard-edged stamp, " \
+			+ "1 = smooth dome that fades from the center.")
 
 	var hint := Label.new()
 	hint.text = "Select a HeightmapTerrain, pick a mode, then drag in the 3D view.\n" \
@@ -85,11 +102,13 @@ func _heading(text: String) -> Label:
 	return l
 
 
-func _spinner(label: String, lo: float, hi: float, step: float, value: float) -> SpinBox:
+func _spinner(label: String, lo: float, hi: float, step: float, value: float,
+		tooltip: String) -> SpinBox:
 	var row := HBoxContainer.new()
 	add_child(row)
 	var l := Label.new()
 	l.text = label
+	l.tooltip_text = tooltip
 	l.custom_minimum_size = Vector2(70, 0)
 	row.add_child(l)
 	var sb := SpinBox.new()
@@ -97,6 +116,7 @@ func _spinner(label: String, lo: float, hi: float, step: float, value: float) ->
 	sb.max_value = hi
 	sb.step = step
 	sb.value = value
+	sb.tooltip_text = tooltip
 	sb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sb.value_changed.connect(func(_v): _emit_params())
 	row.add_child(sb)

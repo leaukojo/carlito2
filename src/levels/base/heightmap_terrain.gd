@@ -24,6 +24,7 @@ extends StaticBody3D
 
 const SPLAT_SHADER_PATH := "res://kit/terrain/terrain_splat.gdshader"
 
+## Grayscale image that IS the terrain: white = high, black = low.
 @export var heightmap: Texture2D:
 	set(value):
 		heightmap = value
@@ -33,7 +34,7 @@ const SPLAT_SHADER_PATH := "res://kit/terrain/terrain_splat.gdshader"
 	set(value):
 		terrain_size = value
 		_rebuild_if_ready()
-## World-unit Y of a fully white pixel (black = 0). The hill's peak height — and
+## How tall a fully white pixel is, in meters. The overall vertical scale — and
 ## therefore the generator's amplitude knob (presets peak at a fraction of it).
 @export var height := 8.0:
 	set(value):
@@ -53,36 +54,49 @@ const SPLAT_SHADER_PATH := "res://kit/terrain/terrain_splat.gdshader"
 
 @export_group("Generation")
 @export var preset: TerrainGen.Preset = TerrainGen.Preset.ISLAND
+## The terrain's fingerprint: the same seed always regenerates the exact same landscape.
+## Change it (or use the random button) for a different one.
 @export var gen_seed := 0
-## Meters per noise feature (grid cells are 1 m).
+## Size of hills/valleys in meters. Bigger = broader, calmer shapes.
 @export var feature_scale := 60.0
+## Detail layers stacked on the base shape: 1 = smooth blobs, 8 = lots of fine crinkly
+## detail. More octaves = slower generation, bumpier ground.
 @export_range(1, 8) var gen_octaves := 4
-## Island preset only: fraction of the radius where the descent to sea level starts/ends.
+## Island preset only: where the land starts descending to sea level, as a fraction of
+## the map radius.
 @export_range(0.0, 1.0) var falloff_start := 0.55
+## Island preset only: where the descent reaches sea level, as a fraction of the map
+## radius.
 @export_range(0.0, 1.0) var falloff_end := 0.95
-## Plateau bands (buildable flats for villages/farms). < 2 disables terracing.
+## Number of plateau bands — buildable flats for villages/farms. < 2 disables terracing.
 @export_range(0, 12) var terrace_steps := 4
 ## Portion of each terrace band that stays dead flat; the rest ramps between plateaus.
 @export_range(0.0, 0.9) var terrace_flat := 0.6
+## Runs the noise generator from the current gen_seed. Same generator as "Generate new
+## random terrain" — that button just rolls a fresh gen_seed first (written back, so the
+## result stays reproducible and undoable).
 @warning_ignore("unused_private_class_variable")
-@export_tool_button("Generate heightmap") var _generate_action := _generate
-## Same generator, fresh random seed (written back to gen_seed, so the result stays
-## reproducible — and undo restores the old seed with the old image).
+@export_tool_button("Generate terrain (from seed)") var _generate_action := _generate
+## Rolls a new gen_seed and runs the same generator as "Generate terrain (from seed)".
+## The new seed is written back, so the result stays reproducible and undo restores the
+## old seed with the old image.
 @warning_ignore("unused_private_class_variable")
-@export_tool_button("Generate random") var _generate_random_action := _generate_random
+@export_tool_button("Generate new random terrain") var _generate_random_action := _generate_random
 
 @export_group("Splat")
 @export var splatmap: Texture2D:
 	set(value):
 		splatmap = value
 		_push_splat_param()
-## Below this world height the flat ground splats as sand (the beach band fades out
-## over another half of it); above, grass.
+## Beaches appear below this world height (the band fades out over another half of it);
+## above, grass.
 @export var sand_height := 2.0
-## Slope (degrees) where dirt fully takes over from flat ground.
+## Ground steeper than this becomes dirt.
 @export var dirt_slope_deg := 22.0
-## Slope (degrees) where rock fully takes over from dirt.
+## Ground steeper than this becomes rock.
 @export var rock_slope_deg := 38.0
+## Colors the terrain automatically from height and slope: beaches low, grass flat, dirt
+## on slopes, rock on cliffs. Overwrites hand painting (undoable).
 @warning_ignore("unused_private_class_variable")
 @export_tool_button("Auto-splat") var _auto_splat_action := _auto_splat
 

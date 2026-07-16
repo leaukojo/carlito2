@@ -164,10 +164,10 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   applied last so island coasts step into concentric rings — the buildable flats
   villages/farms need; band centres are preserved so relief is unchanged). **World
   amplitude is the `height` export** — generated pixels stay normalized [0,1] (8-bit
-  greyscale PNG). Two buttons: **Generate** (editor-only, destructive-by-button, never
-  per-frame) writes the current texture's source PNG, else
-  `<scene>_<node>_height.png` beside the scene; **Generate random** rolls a fresh seed
-  into `gen_seed` (still reproducible). Both are one `EditorUndoRedoManager` action
+  greyscale PNG). Two buttons: **Generate terrain (from seed)** (editor-only,
+  destructive-by-button, never per-frame) writes the current texture's source PNG, else
+  `<scene>_<node>_height.png` beside the scene; **Generate new random terrain** rolls a
+  fresh seed into `gen_seed` (still reproducible). Both are one `EditorUndoRedoManager` action
   snapshotting the prior image + any property change (seed, material swap) — a stray
   click must not destroy sculpt work.
 - **Splat ground:** `kit/terrain/terrain_splat.gdshader` (ships — `kit/terrain/` is not
@@ -226,7 +226,8 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   (re-derives the session).
 - **Panel** (`addons/carlito_kit/brush_panel.gd`, right dock `DOCK_SLOT_RIGHT_BL`): mode
   buttons (index-matched to the brush enum, 0 = Off), a Paint-only channel picker,
-  radius/strength/falloff spinners. The plugin tracks `selection_changed` → sets the
+  radius/strength/edge-softness spinners (labeled "Edge softness" in the UI; the param
+  stays `falloff` in code). The plugin tracks `selection_changed` → sets the
   brush target to any selected `HeightmapTerrain`; picking a mode disarms the placement
   ghost. Terrain needs **no AuthoringRoot** for brushing (unlike prop placement).
 
