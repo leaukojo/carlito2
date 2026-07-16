@@ -55,7 +55,15 @@ func _enter_tree() -> void:
 		_brush.radius = r
 		_brush.strength = s
 		_brush.falloff = f)
+	_panel.flatten_changed.connect(func(fixed, height, step):
+		_brush.flatten_fixed = fixed
+		_brush.flatten_height = height
+		_brush.snap_step = step)
+	_panel.shape_changed.connect(func(square): _brush.square = square)
+	_panel.pick_requested.connect(func(): _brush.arm_pick())
+	_panel.fill_requested.connect(func(): _brush.fill_terrain())
 	_brush.radius_display.connect(func(r): _panel.set_radius_display(r))
+	_brush.height_picked.connect(func(y): _panel.set_picked_height(y))
 
 	_scatter_brush = ScatterBrush.new(get_undo_redo())
 	_scatter_panel = ScatterPanel.new()

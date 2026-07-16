@@ -207,18 +207,26 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
 
 - **Reusable brush chassis** (`addons/carlito_kit/brush_chassis.gd`, `RefCounted`,
   shared by the terrain and scatter brushes): owns the radius/strength/falloff params,
-  the circular ground cursor (an `ImmediateMesh` line loop, unowned child of the target,
-  no-depth-test so it's always visible), and the input loop (LMB press → stroke,
+  the ground cursor (an `ImmediateMesh`, unowned child of the target, no-depth-test so it's
+  always visible), and the input loop (LMB press → stroke,
   motion → **spacing-throttled** samples at `radius * 0.35`, release → stroke end,
   `[`/`]` resize). Brush-specific work is delegated to virtuals (`_target_valid`,
-  `_project`, `_cursor_parent/_points/_color`, `_stroke_begin/apply/end`); the chassis
-  is inert (returns false, doesn't touch the viewport) until a subclass reports a valid
-  target.
-- **`terrain_brush.gd`**: sculpt **raise/lower/smooth/flatten** on the heightmap,
+  `_project`, `_cursor_parent/_points/_strips/_color`, `_stroke_begin/apply/end`,
+  `_click_mode/_click`); the chassis is inert (returns false, doesn't touch the viewport)
+  until a subclass reports a valid target. Three seams the terrain brush needs and the
+  scatter brush ignores (they are inert by default): live `ctrl_pressed`/`shift_pressed`
+  recorded off every `InputEventWithModifiers`; **click mode**, where a press is a discrete
+  `_click` instead of opening a drag (a press consumed this way **latches**, so its release
+  is swallowed too — a one-shot click disarms itself, and letting the release through would
+  hand it to the editor, which selects on release and would change the selection out from
+  under the brush); and `_cursor_strips`, which draws the cursor as *several* line strips
+  (one `LINE_STRIP` could not hold a detached second marker without a stray joining chord).
+- **`terrain_brush.gd`**: sculpt **raise/lower/smooth/flatten**, cut a **ramp**, and
   **paint** any of the 8 splat channels. The pure per-pixel stamp math lives in
-  `kit/helpers/brush_ops.gd` (radial `weight` curve, `sculpt_value`,
-  `stamp_height`/`stamp_splat` returning the dirty Rect2i) — editor-free, unit-tested in
-  `tests/test_brush_ops.gd`. Paint is a lerp toward the unit 8-vector, **split across both
+  `kit/helpers/brush_ops.gd` (radial `weight` curve, the `brush_dist` metric,
+  `sculpt_value`, `stamp_height`/`stamp_splat`/`stamp_ramp`/`fill_splat` returning the
+  dirty Rect2i) — editor-free, unit-tested in `tests/test_brush_ops.gd`. Paint is a lerp
+  toward the unit 8-vector, **split across both
   weight images**: each takes the same kernel with its `BrushOps.unit_slice(channel,
   image_index)` — all-zero for the image the channel doesn't live in, which is exactly the
   fade the other seven channels need, so sums stay normalized with no cross-image
@@ -229,6 +237,34 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   ray-vs-heightfield** (no physics — editor space isn't reliably populated, and we want
   the terrain surface, not a placed prop), sampling the **live working image** so the
   cursor tracks in-progress sculpting.
+- **Brush tools beyond the basic stroke.** All of them reuse the stroke path's
+  snapshot → dirty-rect → region-undo machinery, so each lands as one undoable action:
+  - **Ctrl inverts, Shift smooths.** `_effective_mode()` folds the modifiers in: Shift ⇒
+    SMOOTH from any sculpt mode, Ctrl swaps RAISE↔LOWER (paint and ramp pass through).
+    It is **frozen into `_eff_mode` at `_stroke_begin`**, so releasing a key mid-drag can't
+    switch tools under the author; the cursor tint reads the live value while idle and the
+    frozen one while stroking.
+  - **Flatten to a height.** `flatten_fixed` + `flatten_height` (world Y) level to a typed
+    height instead of the drag's start; the **eyedropper** (`arm_pick()`) makes the next
+    click sample `_surface_y` into that field rather than edit. `snap_step` quantizes the
+    target — in **world metres**, for both the typed and the drag-sampled height, so
+    "level to the nearest 3 m" means the same thing either way. 8-bit heightmaps still
+    quantize the result to `height / 255`.
+  - **Ramp** — a two-click tool (`_click_mode`), not a drag: the first click stores A plus
+    its normalized height and shows a marker ring, the second lays the whole ramp in one
+    `stamp_ramp`. Esc cancels and is consumed; **right-click cancels but is deliberately
+    NOT consumed**, so the editor keeps it for freelook. `stamp_ramp` works in "brush
+    units" (pixel offset ÷ per-axis half-width) — that is the world metric scaled uniformly
+    by 1/radius, so projecting onto the segment and measuring across is metrically honest
+    even on a non-square terrain, where a world-circular brush is an image-space ellipse.
+    Projection clamps to the **segment** (t ∈ [0,1]), giving round caps; A == B degenerates
+    to a flatten disk rather than dividing by zero.
+  - **Fill bucket** (`fill_terrain()`): floods both weight images with the channel's
+    `unit_slice`, dirty rect = the whole image. Strength/falloff have no say.
+  - **Square brush** (`square`): swaps `brush_dist` from Euclidean to **Chebyshev**,
+    axis-aligned in image space (= world axes for our unrotated terrains). Sculpt and paint
+    honour it; the ramp has its own swept shape. Note `weight(1.0) == 0`, so a footprint
+    corner only lands when it is strictly inside the rim.
 - **Editor-only; PNGs stay the sole artifact.** A brush never swaps the terrain's
   exported `heightmap`/`splatmap` Texture2D, so the scene always serializes the PNG
   reference (sole exception: the lazily created `splatmap2`, which has no PNG to point at
@@ -254,14 +290,20 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   `get_region`, `commit_action(false)` since edits are already live); `_apply_region`
   blits back and refreshes the visual, robust to the terrain no longer being selected
   (re-derives the session).
-- **Panel** (`addons/carlito_kit/brush_panel.gd`, right dock `DOCK_SLOT_RIGHT_BL`): mode
-  buttons (index-matched to the brush enum, 0 = Off), a Paint-only channel picker (8
-  entries, refilled per selection from the terrain's `channel_names` + a color swatch per
-  channel; the selection survives the refill),
-  radius/strength/edge-softness spinners (labeled "Edge softness" in the UI; the param
-  stays `falloff` in code). The plugin tracks `selection_changed` → sets the
-  brush target to any selected `HeightmapTerrain`; picking a mode disarms the placement
-  ghost. Terrain needs **no AuthoringRoot** for brushing (unlike prop placement).
+- **Panel** (`addons/carlito_kit/brush_panel.gd`, in the shared "Kit Tools" bottom panel):
+  mode buttons (**index-matched to the brush enum**, 0 = Off … 5 = Ramp, 6 = Paint — adding
+  a mode shifts every index after it, so the panel names the ones it tests: `MODE_OFF`,
+  `MODE_FLATTEN`, `MODE_RAMP`, `MODE_PAINT`), radius/strength/edge-softness spinners
+  (labeled "Edge softness" in the UI; the param stays `falloff` in code), and a Shape
+  picker + "12 m (GridMap cell)" preset (12 m square = one roads-palette cell, which is
+  12×3×12). Mode-specific controls live in rows `_show_rows()` reveals only in their mode,
+  which is what keeps the panel scannable: the flatten target box, the ramp hint, and the
+  channel picker (8 entries, refilled per selection from the terrain's `channel_names` +
+  a color swatch per channel; the selection survives the refill) + fill button. Shape is
+  the exception — it shows in every stamping mode (all but Off and Ramp). The plugin tracks
+  `selection_changed` → sets the brush target to any selected `HeightmapTerrain`; picking a
+  mode disarms the placement ghost. Terrain needs **no AuthoringRoot** for brushing (unlike
+  prop placement).
 
 ## Scatter
 

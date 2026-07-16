@@ -21,6 +21,16 @@ enum { RAISE, LOWER, SMOOTH, FLATTEN }
 const RATE := 0.05
 
 
+## Normalized distance from the brush centre for a pixel offset already divided by the
+## per-axis pixel radii (so 1 = the rim on either axis). Euclidean gives the round brush;
+## Chebyshev (the larger of the two) gives the square one — axis-aligned in image space,
+## which is world-axis-aligned for our unrotated terrains.
+static func brush_dist(dx: float, dz: float, square: bool) -> float:
+	if square:
+		return maxf(absf(dx), absf(dz))
+	return sqrt(dx * dx + dz * dz)
+
+
 ## Radial brush weight for a normalized distance t (0 at centre, 1 at the rim). `falloff`
 ## in [0,1] is the softness: 0 = a hard disk (weight 1 out to the rim), 1 = a smooth dome
 ## from the centre. The solid inner fraction is (1 - falloff); beyond it the weight
@@ -55,12 +65,13 @@ static func sculpt_value(mode: int, value: float, avg: float, target: float,
 
 
 ## Stamp a sculpt op into the greyscale height image, centred on pixel (cx, cy) with pixel
-## radii (rx, rz). Reads base + neighbour heights from a snapshot of the touched region (so
-## smooth is unbiased by the write order) and writes new heights back. Returns the tight
-## dirty Rect2i in pixels (empty when nothing changed), which the brush unions for the undo
-## snapshot and the incremental remesh.
+## radii (rx, rz). `square` swaps the round footprint for an axis-aligned square one. Reads
+## base + neighbour heights from a snapshot of the touched region (so smooth is unbiased by
+## the write order) and writes new heights back. Returns the tight dirty Rect2i in pixels
+## (empty when nothing changed), which the brush unions for the undo snapshot and the
+## incremental remesh.
 static func stamp_height(img: Image, cx: int, cy: int, rx: float, rz: float,
-		mode: int, strength: float, falloff: float, target: float) -> Rect2i:
+		mode: int, strength: float, falloff: float, target: float, square := false) -> Rect2i:
 	var iw := img.get_width()
 	var ih := img.get_height()
 	var x0 := clampi(cx - int(ceil(rx)) - 1, 0, iw - 1)
@@ -79,7 +90,7 @@ static func stamp_height(img: Image, cx: int, cy: int, rx: float, rz: float,
 		for px in range(x0, x1 + 1):
 			var dx := float(px - cx) / maxf(rx, 1e-4)
 			var dz := float(py - cy) / maxf(rz, 1e-4)
-			var t := sqrt(dx * dx + dz * dz)
+			var t := brush_dist(dx, dz, square)
 			if t > 1.0:
 				continue
 			var w := weight(t, falloff)
@@ -115,11 +126,11 @@ static func unit_slice(channel: int, image_index: int) -> Color:
 
 ## Stamp a splat-channel paint into an RGBA weight image: pulls each touched pixel toward
 ## `unit` (a unit_slice) by strength*weight. The splat shader renormalizes, so lerping toward
-## the unit colour reads as "painting grass over dirt". Returns the dirty Rect2i in pixels —
-## geometry depends only on the kernel, so the two images of a paint stroke always report the
-## same rect.
+## the unit colour reads as "painting grass over dirt". `square` swaps the round footprint for
+## an axis-aligned square one. Returns the dirty Rect2i in pixels — geometry depends only on
+## the kernel, so the two images of a paint stroke always report the same rect.
 static func stamp_splat(img: Image, cx: int, cy: int, rx: float, rz: float,
-		unit: Color, strength: float, falloff: float) -> Rect2i:
+		unit: Color, strength: float, falloff: float, square := false) -> Rect2i:
 	var iw := img.get_width()
 	var ih := img.get_height()
 	var x0 := clampi(cx - int(ceil(rx)) - 1, 0, iw - 1)
@@ -135,7 +146,7 @@ static func stamp_splat(img: Image, cx: int, cy: int, rx: float, rz: float,
 		for px in range(x0, x1 + 1):
 			var dx := float(px - cx) / maxf(rx, 1e-4)
 			var dz := float(py - cy) / maxf(rz, 1e-4)
-			var t := sqrt(dx * dx + dz * dz)
+			var t := brush_dist(dx, dz, square)
 			if t > 1.0:
 				continue
 			var w := weight(t, falloff)
@@ -147,6 +158,71 @@ static func stamp_splat(img: Image, cx: int, cy: int, rx: float, rz: float,
 	if maxx < 0:
 		return Rect2i()
 	return Rect2i(minx, miny, maxx - minx + 1, maxy - miny + 1)
+
+
+## Lay a straight ramp between two points: every pixel within half-width of the SEGMENT a->b
+## is pulled toward the height linearly interpolated along that segment, so the result is a
+## constant-grade surface a vehicle can drive. `a_h`/`b_h` are normalized heights; the pixel
+## half-widths (rx, rz) are the brush radius mapped to each image axis.
+##
+## All the geometry is done in "brush units" — the pixel offset divided by the per-axis half-
+## width. That is the world metric scaled uniformly by 1/radius (rx = radius/metres_per_px_x
+## and likewise for z), so projecting and measuring across in those units is metrically
+## honest even on a non-square terrain, where a world-circular brush is an image-space
+## ellipse. Clamping the projection to [0,1] rounds the ends into caps instead of letting the
+## ramp run to infinity. Unlike a sculpt stamp there are no neighbour reads, so no region
+## snapshot is needed. Returns the tight dirty Rect2i (empty when nothing changed).
+static func stamp_ramp(img: Image, a_px: Vector2i, a_h: float, b_px: Vector2i, b_h: float,
+		rx: float, rz: float, strength: float, falloff: float) -> Rect2i:
+	var iw := img.get_width()
+	var ih := img.get_height()
+	var pad_x := int(ceil(rx)) + 1
+	var pad_z := int(ceil(rz)) + 1
+	var x0 := clampi(mini(a_px.x, b_px.x) - pad_x, 0, iw - 1)
+	var x1 := clampi(maxi(a_px.x, b_px.x) + pad_x, 0, iw - 1)
+	var y0 := clampi(mini(a_px.y, b_px.y) - pad_z, 0, ih - 1)
+	var y1 := clampi(maxi(a_px.y, b_px.y) + pad_z, 0, ih - 1)
+
+	# The segment vector in brush units, and its squared length (0 for a degenerate A == B
+	# ramp, which then behaves as a flatten disk at a_h rather than dividing by zero).
+	var bx := float(b_px.x - a_px.x) / maxf(rx, 1e-4)
+	var bz := float(b_px.y - a_px.y) / maxf(rz, 1e-4)
+	var len2 := bx * bx + bz * bz
+
+	var minx := iw
+	var miny := ih
+	var maxx := -1
+	var maxy := -1
+	for py in range(y0, y1 + 1):
+		for px in range(x0, x1 + 1):
+			var ax := float(px - a_px.x) / maxf(rx, 1e-4)
+			var az := float(py - a_px.y) / maxf(rz, 1e-4)
+			var t := 0.0 if len2 < 1e-12 else clampf((ax * bx + az * bz) / len2, 0.0, 1.0)
+			var ox := ax - bx * t
+			var oz := az - bz * t
+			var across := sqrt(ox * ox + oz * oz)
+			if across > 1.0:
+				continue
+			var w := weight(across, falloff)
+			if w <= 0.0:
+				continue
+			var value := img.get_pixel(px, py).r
+			var nv := clampf(lerpf(value, lerpf(a_h, b_h, t), clampf(strength * w, 0.0, 1.0)),
+					0.0, 1.0)
+			img.set_pixel(px, py, Color(nv, nv, nv))
+			minx = mini(minx, px); miny = mini(miny, py)
+			maxx = maxi(maxx, px); maxy = maxi(maxy, py)
+	if maxx < 0:
+		return Rect2i()
+	return Rect2i(minx, miny, maxx - minx + 1, maxy - miny + 1)
+
+
+## Flood a whole weight image with one unit_slice — the bucket fill. Strength and falloff
+## have no say (a fill is a fill), so this is just Image.fill with the stamp's dirty-rect
+## contract, which lets the brush push it through the same region-undo path as a stroke.
+static func fill_splat(img: Image, unit: Color) -> Rect2i:
+	img.fill(unit)
+	return Rect2i(0, 0, img.get_width(), img.get_height())
 
 
 ## Average of a pixel and its 4 clamped neighbours (the smooth kernel), read from the region

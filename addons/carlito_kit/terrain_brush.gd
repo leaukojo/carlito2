@@ -16,16 +16,28 @@ extends "res://addons/carlito_kit/brush_chassis.gd"
 ## never reimported per stroke. The heightmap/splat PNGs stay the sole artifact the runtime
 ## and baker already read.
 
+## The height an eyedropper click sampled (world Y) -> the panel's fixed-height field.
+signal height_picked(y: float)
+
 const BrushOps := preload("res://kit/helpers/brush_ops.gd")
 const TerrainGen := preload("res://kit/terrain/terrain_gen.gd")
 
-# Brush modes (index-matched to the panel's buttons: 0 = Off .. 5 = Paint).
-enum { OFF, RAISE, LOWER, SMOOTH, FLATTEN, PAINT }
+# Brush modes (index-matched to the panel's buttons: 0 = Off .. 6 = Paint).
+enum { OFF, RAISE, LOWER, SMOOTH, FLATTEN, RAMP, PAINT }
 
 var mode := OFF
 ## Splat channel to paint, 0..7: 0..3 live in the splatmap (grass/dirt/sand/rock), 4..7 in
 ## the optional splatmap2. Names and colors are the terrain's (see HeightmapTerrain).
 var channel := 0
+## Square (Chebyshev) footprint instead of the round one — for pads that meet flush. Sculpt
+## and paint honour it; the ramp has its own swept shape and ignores it.
+var square := false
+## Flatten target: off = level to the height the drag started at (the default), on = level to
+## `flatten_height` (world Y) regardless of where the drag starts.
+var flatten_fixed := false
+var flatten_height := 0.0
+## Quantize the flatten target to multiples of this many metres (0 = off).
+var snap_step := 0.0
 
 var _undo: EditorUndoRedoManager
 var _terrain: HeightmapTerrain = null
@@ -41,11 +53,22 @@ var _sessions := {}
 # fade the seven others, which straddle the two), so the snapshots come in pairs; a sculpt
 # stroke only fills the first.
 var _stroke_kind := "height"
+var _stroke_action := "Sculpt terrain"  # undo label; also names the ramp and the fill
 var _stroke_before: Image = null   # full snapshot at stroke begin (dirty region carved out at end)
 var _stroke_before2: Image = null  # ditto for splat2 (paint strokes only)
 var _dirty := Rect2i()
 var _dirty_any := false
 var _flatten_target := 0.0
+# The mode the running stroke actually applies (modifiers folded in), frozen at _stroke_begin.
+var _eff_mode := OFF
+
+# Two-click ramp state: the stored start point and its normalized height, live between the
+# first and second click.
+var _ramp_armed := false
+var _ramp_a := Vector3.ZERO
+var _ramp_a_h := 0.0
+# One-shot eyedropper: the next click samples a height instead of stroking.
+var _pick_armed := false
 
 
 func _init(undo: EditorUndoRedoManager) -> void:
@@ -58,13 +81,27 @@ func set_target(terrain: HeightmapTerrain) -> void:
 	if terrain == _terrain:
 		return
 	_free_cursor()  # cursor lives under the terrain; a new target needs a new one
+	_cancel_pending()  # a stored ramp point belongs to the terrain it was clicked on
 	_terrain = terrain
 
 
 func set_mode(m: int) -> void:
 	mode = m
+	_cancel_pending()
 	if mode == OFF:
 		_hide_cursor()
+
+
+## Arm the eyedropper: the next viewport click reports the surface height it hits instead of
+## editing. One-shot — it disarms whether it fires or gets cancelled.
+func arm_pick() -> void:
+	_pick_armed = true
+
+
+## Drop any half-finished click interaction (a stored ramp start, an armed eyedropper).
+func _cancel_pending() -> void:
+	_ramp_armed = false
+	_pick_armed = false
 
 
 ## Write every dirty session's working image back to its PNG and reimport once (PNGs are
@@ -107,12 +144,46 @@ func _target_valid() -> bool:
 	return Engine.is_editor_hint() and mode != OFF and is_instance_valid(_terrain)
 
 
+## Ramp cancel rides on top of the chassis loop. Esc drops the stored start point (or an armed
+## eyedropper) and is consumed; right-click does the same but is deliberately NOT consumed, so
+## the editor still gets it for freelook — swallowing right-click would trade the camera
+## control the author uses constantly for a cancel they need rarely.
+func handle_input(camera: Camera3D, event: InputEvent) -> bool:
+	if (_ramp_armed or _pick_armed) and _target_valid():
+		if event is InputEventKey and event.pressed \
+				and (event as InputEventKey).keycode == KEY_ESCAPE:
+			_cancel_pending()
+			return true
+		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
+				and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT:
+			_cancel_pending()
+	return super(camera, event)
+
+
+## The mode a stroke actually runs in: Shift smooths from any sculpt mode, Ctrl swaps raise
+## and lower. Paint and ramp have no modifier meaning and pass through. Frozen into _eff_mode
+## at _stroke_begin so letting go of a key mid-drag can't switch tools under the author.
+func _effective_mode() -> int:
+	if mode == OFF or mode == PAINT or mode == RAMP:
+		return mode
+	if shift_pressed:
+		return SMOOTH
+	if ctrl_pressed:
+		if mode == RAISE:
+			return LOWER
+		if mode == LOWER:
+			return RAISE
+	return mode
+
+
 func _cursor_parent() -> Node3D:
 	return _terrain
 
 
+## Tints to the mode the next (or running) stroke will actually apply, so holding Ctrl/Shift
+## shows what it will do before the click.
 func _cursor_color() -> Color:
-	match mode:
+	match (_eff_mode if _stroking else _effective_mode()):
 		RAISE:
 			return Color(0.4, 1.0, 0.45)
 		LOWER:
@@ -121,22 +192,53 @@ func _cursor_color() -> Color:
 			return Color(0.45, 0.7, 1.0)
 		FLATTEN:
 			return Color(1.0, 0.9, 0.4)
+		RAMP:
+			return Color(0.85, 0.55, 1.0)
 		PAINT:
 			# The cursor wears the channel's own (per-level, editable) color.
 			return _terrain.channel_color(channel) if is_instance_valid(_terrain) else Color.GRAY
 	return Color.WHITE
 
 
-## Circular cursor that hugs the LIVE surface (the working image, not the stale PNG the node
-## still points at), so it tracks sculpting in progress.
+## The cursor plus, while a ramp start point is stored, a marker ring at it.
+func _cursor_strips(center: Vector3) -> Array[PackedVector3Array]:
+	var strips: Array[PackedVector3Array] = [_cursor_points(center)]
+	if _ramp_armed:
+		strips.append(_ring(_ramp_a.x, _ramp_a.z, maxf(radius * 0.25, 0.5), 16))
+	return strips
+
+
+## Cursor outline that hugs the LIVE surface (the working image, not the stale PNG the node
+## still points at), so it tracks sculpting in progress. Square mode walks the four edges with
+## the same vertex budget as the ring, so the outline drapes over bumps the same way.
 func _cursor_points(center: Vector3) -> PackedVector3Array:
+	if not square:
+		return _ring(center.x, center.z, radius, CURSOR_SEGMENTS)
 	var pts := PackedVector3Array()
-	for i in CURSOR_SEGMENTS + 1:
-		var a := TAU * float(i) / float(CURSOR_SEGMENTS)
-		var x := center.x + cos(a) * radius
-		var z := center.z + sin(a) * radius
-		pts.append(Vector3(x, _surface_y(x, z) + 0.05, z))
+	var corners := [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1),
+			Vector2(-1, -1)]
+	var per := maxi(roundi(CURSOR_SEGMENTS / 4.0), 1)  # same vertex budget as the ring
+	for i in 4:
+		for j in per:
+			var o: Vector2 = (corners[i] as Vector2).lerp(corners[i + 1], float(j) / float(per)) \
+					* radius
+			pts.append(_surface_point(center.x + o.x, center.z + o.y))
+	pts.append(_surface_point(center.x - radius, center.z - radius))  # close the loop
 	return pts
+
+
+## A surface-hugging ring of `segments` sides, centred on world XZ.
+func _ring(x: float, z: float, r: float, segments: int) -> PackedVector3Array:
+	var pts := PackedVector3Array()
+	for i in segments + 1:
+		var ang := TAU * float(i) / float(segments)
+		pts.append(_surface_point(x + cos(ang) * r, z + sin(ang) * r))
+	return pts
+
+
+## A world point sitting just above the live surface (the lift keeps the line off the mesh).
+func _surface_point(x: float, z: float) -> Vector3:
+	return Vector3(x, _surface_y(x, z) + 0.05, z)
 
 
 ## Ground point under the cursor by iterating ray vs. heightfield (no physics — editor space
@@ -158,10 +260,90 @@ func _project(camera: Camera3D, mouse: Vector2) -> Variant:
 	return p
 
 
+# ------------------------------------------------------------------ click tools (ramp, eyedropper)
+
+## Ramp and eyedropper are click tools, not drags, so they take the chassis's click seam
+## rather than the stroke loop.
+func _click_mode() -> bool:
+	return _pick_armed or mode == RAMP
+
+
+func _click(center: Vector3) -> void:
+	if _pick_armed:
+		_pick_armed = false
+		height_picked.emit(_surface_y(center.x, center.z))
+		return
+	if _ramp_armed:
+		_apply_ramp(center)
+		return
+	var work := _work_for(_terrain, "height")
+	if work == null:
+		push_warning("Kit brush: generate a heightmap first.")
+		return
+	_ramp_a = center
+	_ramp_a_h = _sample_work_red(work, center.x, center.z)
+	_ramp_armed = true
+
+
+## Second ramp click: lay the whole A->B ramp as ONE edit, then hand it to the stroke-end path
+## for the collision rebuild and the single undoable action a drag stroke gets.
+func _apply_ramp(b_center: Vector3) -> void:
+	_ramp_armed = false
+	var work := _work_for(_terrain, "height")
+	if work == null:
+		return
+	_stroke_kind = "height"
+	_stroke_action = "Ramp terrain"
+	_stroke_before = work.duplicate()
+	_stroke_before2 = null
+	_dirty_any = false
+	var r := _px_radii(work)
+	var dirty := BrushOps.stamp_ramp(work, _world_to_px(work, _ramp_a), _ramp_a_h,
+			_world_to_px(work, b_center), _sample_work_red(work, b_center.x, b_center.z),
+			r.x, r.y, strength, falloff)
+	if dirty.size == Vector2i.ZERO:
+		_stroke_before = null
+		return
+	_dirty = dirty
+	_dirty_any = true
+	_terrain.rebuild_region_world(work,
+			minf(_ramp_a.x, b_center.x) - radius, maxf(_ramp_a.x, b_center.x) + radius,
+			minf(_ramp_a.z, b_center.z) - radius, maxf(_ramp_a.z, b_center.z) + radius)
+	_repush_preview(_terrain)
+	_mark_dirty(_terrain, "height")
+	_stroke_end()
+
+
+## Flood the whole terrain with the selected channel (the panel's bucket). Strength and falloff
+## have no say — a fill is a fill. Reuses the stroke path's snapshot -> region-undo machinery,
+## with the dirty rect covering the whole image, so a fill undoes like any other paint.
+func fill_terrain() -> void:
+	if not is_instance_valid(_terrain):
+		return
+	var work := _work_for(_terrain, "splat")
+	if work == null:
+		push_warning("Kit brush: auto-splat the terrain first.")
+		return
+	var work2 := _work_for(_terrain, "splat2")
+	_stroke_kind = "splat"
+	_stroke_action = "Fill terrain"
+	_stroke_before = work.duplicate()
+	_stroke_before2 = work2.duplicate()
+	_dirty = BrushOps.fill_splat(work, BrushOps.unit_slice(channel, 0))
+	BrushOps.fill_splat(work2, BrushOps.unit_slice(channel, 1))
+	_dirty_any = true
+	_refresh_splat(_terrain)
+	_mark_dirty(_terrain, "splat")
+	_mark_dirty(_terrain, "splat2")
+	_stroke_end()
+
+
 # ------------------------------------------------------------------ stroke
 
 func _stroke_begin(center: Vector3) -> void:
-	_stroke_kind = "splat" if mode == PAINT else "height"
+	_eff_mode = _effective_mode()
+	_stroke_kind = "splat" if _eff_mode == PAINT else "height"
+	_stroke_action = "Paint terrain" if _eff_mode == PAINT else "Sculpt terrain"
 	var work := _work_for(_terrain, _stroke_kind)
 	_stroke_before = null
 	_stroke_before2 = null
@@ -171,10 +353,31 @@ func _stroke_begin(center: Vector3) -> void:
 				else "generate a heightmap"))
 		return
 	_stroke_before = work.duplicate()
-	if mode == PAINT:
+	if _eff_mode == PAINT:
 		_stroke_before2 = _work_for(_terrain, "splat2").duplicate()
-	if mode == FLATTEN:
-		_flatten_target = _sample_work_red(work, center.x, center.z)
+	if _eff_mode == FLATTEN:
+		_flatten_target = _flatten_target_for(center, work)
+
+
+## The normalized height a flatten stroke pulls toward: the fixed field or the height under
+## the drag's start, snapped to `snap_step` either way (so "level to the nearest 3 m" works
+## whether the author typed the height or picked it off the ground). Everything happens in
+## world Y — the metres the author thinks in — and converts to normalized at the end.
+func _flatten_target_for(center: Vector3, work: Image) -> float:
+	var base_y := _terrain.global_position.y
+	var y := flatten_height if flatten_fixed \
+			else base_y + _sample_work_red(work, center.x, center.z) * _terrain.height
+	if snap_step > 0.0:
+		y = snappedf(y, snap_step)
+	return clampf((y - base_y) / maxf(_terrain.height, 1e-3), 0.0, 1.0)
+
+
+## Brush radius in pixels on each image axis. A world-circular brush on a non-square terrain
+## is an ellipse in image space, so the two differ.
+func _px_radii(img: Image) -> Vector2:
+	var ts := _terrain.terrain_size
+	return Vector2(radius / maxf(ts.x, 1e-3) * float(img.get_width() - 1),
+			radius / maxf(ts.y, 1e-3) * float(img.get_height() - 1))
 
 
 func _stroke_apply(center: Vector3) -> void:
@@ -183,30 +386,26 @@ func _stroke_apply(center: Vector3) -> void:
 	var work := _work_for(_terrain, _stroke_kind)
 	if work == null:
 		return
-	var iw := work.get_width()
-	var ih := work.get_height()
 	var c := _world_to_px(work, center)
-	var ts := _terrain.terrain_size
-	var rx := radius / maxf(ts.x, 1e-3) * float(iw - 1)
-	var rz := radius / maxf(ts.y, 1e-3) * float(ih - 1)
+	var r := _px_radii(work)
 
 	var dirty: Rect2i
-	if mode == PAINT:
+	if _eff_mode == PAINT:
 		# Both images take the same kernel with their own slice of the unit vector, so the
 		# channel painted rises and every other channel — in either image — fades.
-		dirty = BrushOps.stamp_splat(work, c.x, c.y, rx, rz,
-				BrushOps.unit_slice(channel, 0), strength, falloff)
-		BrushOps.stamp_splat(_work_for(_terrain, "splat2"), c.x, c.y, rx, rz,
-				BrushOps.unit_slice(channel, 1), strength, falloff)
+		dirty = BrushOps.stamp_splat(work, c.x, c.y, r.x, r.y,
+				BrushOps.unit_slice(channel, 0), strength, falloff, square)
+		BrushOps.stamp_splat(_work_for(_terrain, "splat2"), c.x, c.y, r.x, r.y,
+				BrushOps.unit_slice(channel, 1), strength, falloff, square)
 	else:
-		dirty = BrushOps.stamp_height(work, c.x, c.y, rx, rz, mode - RAISE, strength, falloff,
-				_flatten_target)
+		dirty = BrushOps.stamp_height(work, c.x, c.y, r.x, r.y, _eff_mode - RAISE, strength,
+				falloff, _flatten_target, square)
 	if dirty.size == Vector2i.ZERO:
 		return
 	_dirty = dirty if not _dirty_any else _dirty.merge(dirty)
 	_dirty_any = true
 
-	if mode == PAINT:
+	if _eff_mode == PAINT:
 		_refresh_splat(_terrain)
 		_mark_dirty(_terrain, "splat")
 		_mark_dirty(_terrain, "splat2")
@@ -236,8 +435,7 @@ func _stroke_end() -> void:
 	_stroke_before2 = null
 	var pos := _dirty.position
 	var scene_root := EditorInterface.get_edited_scene_root()
-	_undo.create_action("Paint terrain" if _stroke_kind == "splat" else "Sculpt terrain",
-			UndoRedo.MERGE_DISABLE, scene_root)
+	_undo.create_action(_stroke_action, UndoRedo.MERGE_DISABLE, scene_root)
 	for i in kinds.size():
 		var kind: String = kinds[i]
 		var before_region := (befores[i] as Image).get_region(_dirty)
