@@ -123,7 +123,8 @@ static func stored_transform(flat: PackedFloat32Array, index: int) -> Transform3
 
 
 static func stored_count(flat: PackedFloat32Array) -> int:
-	return flat.size() / STRIDE as int
+	@warning_ignore("integer_division")
+	return flat.size() / STRIDE
 
 
 ## Min-spacing test against a spatial hash keyed by `spacing`-sized XZ cells: a point closer

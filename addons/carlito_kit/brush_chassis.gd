@@ -68,7 +68,15 @@ func handle_input(camera: Camera3D, event: InputEvent) -> bool:
 		return false
 
 	if event is InputEventMouseMotion:
-		var p: Variant = _project(camera, (event as InputEventMouseMotion).position)
+		var mm := event as InputEventMouseMotion
+		# Self-heal a stuck stroke: if the mouse-up happened outside the viewport (over a
+		# panel/dock), we never see the release event, and _stroking would stay true forever,
+		# swallowing every future motion event -> blocks editor freelook. The live button_mask
+		# on the motion event itself is authoritative.
+		if _stroking and not (mm.button_mask & MOUSE_BUTTON_MASK_LEFT):
+			_stroking = false
+			_stroke_end()
+		var p: Variant = _project(camera, mm.position)
 		if p == null:
 			_hide_cursor()
 			return _stroking

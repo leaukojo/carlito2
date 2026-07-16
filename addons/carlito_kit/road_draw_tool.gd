@@ -89,7 +89,10 @@ func handle_input(camera: Camera3D, event: InputEvent) -> bool:
 			return true
 
 	if event is InputEventMouseMotion:
-		_update_ghost(camera, (event as InputEventMouseMotion).position)
+		var mm := event as InputEventMouseMotion
+		if mm.button_mask & MOUSE_BUTTON_MASK_RIGHT:
+			return false  # editor freelook drag -> don't steal look motion
+		_update_ghost(camera, mm.position)
 		return true
 
 	return false

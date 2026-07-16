@@ -125,6 +125,8 @@ func handle_input(camera: Camera3D, event: InputEvent) -> bool:
 		return true
 
 	if event is InputEventMouseMotion:
+		if (event as InputEventMouseMotion).button_mask & MOUSE_BUTTON_MASK_RIGHT:
+			return false  # editor freelook drag -> don't steal look motion
 		_last_point = _ground_point(camera, event.position)
 		_update_ghost()
 		return true
