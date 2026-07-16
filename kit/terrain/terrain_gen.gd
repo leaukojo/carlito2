@@ -95,17 +95,41 @@ static func terrace(h: float, steps: int, flat_frac: float) -> float:
 ## cols x rows should be the terrain's vertex grid so 1 px = 1 vertex. Terracing (when
 ## terrace_steps >= 2) is applied last — after amplitude and falloff — so island coasts
 ## step into concentric plateau rings.
+##
+## coast_roughness [0,1] perturbs the island falloff's radial distance with a dedicated
+## coast noise, turning the perfect circle into bays and headlands (0 = round; higher =
+## raggeder). It only touches falloff presets, and a hard unperturbed guard past r=0.92
+## keeps every map-border pixel at sea level regardless of roughness. At coast_roughness
+## == 0 the output is byte-identical to the pre-roughness generator (back-compat pin).
 static func generate_heights(preset: Preset, seed_value: int, feature_scale: float,
 		octaves: int, falloff_start: float, falloff_end: float,
-		cols: int, rows: int, terrace_steps := 0, terrace_flat := 0.6) -> Image:
+		cols: int, rows: int, terrace_steps := 0, terrace_flat := 0.6,
+		coast_roughness := 0.0) -> Image:
 	var cfg: Dictionary = PRESETS[preset]
 	var noise := make_noise(preset, seed_value, feature_scale, octaves)
+	# Dedicated coast noise (derived seed) sampled at the grid cells, ~32 m per feature —
+	# roughly the falloff band width, so bays read at coastline scale, not per-pixel fuzz.
+	var coast_noise: FastNoiseLite = null
+	if cfg.falloff and coast_roughness > 0.0:
+		coast_noise = FastNoiseLite.new()
+		coast_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+		coast_noise.seed = seed_value + 1000003
+		coast_noise.frequency = 1.0 / 32.0
 	var img := Image.create(cols, rows, false, Image.FORMAT_L8)
 	for y in rows:
 		for x in cols:
 			var h := remap01(noise.get_noise_2d(float(x), float(y))) * float(cfg.amplitude)
 			if cfg.falloff:
-				h *= island_falloff(radius01(x, y, cols, rows), falloff_start, falloff_end)
+				var r := radius01(x, y, cols, rows)
+				if coast_noise != null:
+					var n := coast_noise.get_noise_2d(float(x), float(y))
+					var rp := r + coast_roughness * (falloff_end - falloff_start) * n
+					# Perturbed falloff shapes the coast; the unperturbed guard forces the
+					# outermost ring to 0 so a negative sample can never lift the border.
+					h *= island_falloff(rp, falloff_start, falloff_end) \
+							* island_falloff(r, 0.92, 1.0)
+				else:
+					h *= island_falloff(r, falloff_start, falloff_end)
 			h = terrace(h, terrace_steps, terrace_flat)
 			img.set_pixel(x, y, Color(h, h, h))
 	return img

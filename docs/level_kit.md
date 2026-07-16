@@ -160,7 +160,11 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
 - **Generator:** `TerrainGen` (`kit/terrain/terrain_gen.gd`, static pure fns, tested in
   `tests/test_terrain_gen.gd`). Preset = character (fractal type, relative amplitude,
   island radial falloff); knobs = `gen_seed` / `feature_scale` (m per feature) /
-  `gen_octaves` / falloff band / **terrace plateaus** (`terrace_steps` + `terrace_flat`,
+  `gen_octaves` / falloff band / **`coast_roughness`** (island only, 0 = perfectly round,
+  1 = ragged bays and headlands — perturbs the falloff radius with a derived-seed coast
+  noise; a hard unperturbed guard past r=0.92 keeps the map border at sea level, and
+  `coast_roughness == 0` is byte-identical to the pre-roughness output) / **terrace
+  plateaus** (`terrace_steps` + `terrace_flat`,
   applied last so island coasts step into concentric rings — the buildable flats
   villages/farms need; band centres are preserved so relief is unchanged). **World
   amplitude is the `height` export** — generated pixels stay normalized [0,1] (8-bit
@@ -263,8 +267,23 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
     `unit_slice`, dirty rect = the whole image. Strength/falloff have no say.
   - **Square brush** (`square`): swaps `brush_dist` from Euclidean to **Chebyshev**,
     axis-aligned in image space (= world axes for our unrotated terrains). Sculpt and paint
-    honour it; the ramp has its own swept shape. Note `weight(1.0) == 0`, so a footprint
-    corner only lands when it is strictly inside the rim.
+    honour it; the ramp has its own swept shape. The square passes `inclusive = true` to
+    `weight`, so its **exact rim (t == 1.0) is stamped** (round + ramp keep the rim excluded)
+    — without it two abutting 12 m pads each dropped their shared boundary column and left a
+    one-pixel seam. Rim inclusion only reaches the edge at **hard falloff** (edge softness 0);
+    a soft square still fades, so flush GridMap pads want edge softness 0.
+  - **Snap to grid** (`grid_snap`): locks the brush centre onto the road GridMap's cell
+    **centres** in `_project` (so cursor, drag, ramp endpoints and eyedropper all snap alike),
+    via `BrushOps.snap_to_grid`. Reads the found GridMap's `cell_size`/origin/`cell_center_*`
+    when the plugin hands one over (`set_grid`), else a **12 m centre-true lattice at world
+    origin** (what a `RoadsTiles` node would use) so pads can be sculpted before tiles exist.
+    The **half-cell offset matters**: a `(12,3,12)` centre-true GridMap centres cell 0 at
+    local 6, not 0, so `_snap_center` adds `cell_size*0.5` per centre-true axis to the lattice
+    origin (snapping to plain multiples of 12 would sit half a cell off the tiles). The plugin
+    finds the GridMap by the `RoadsTiles` name (else the first `GridMap`) on selection. Turning
+    it on also pushes the GridMap's vertical cell size (3 m default, `grid_cell_y()`) into
+    Flatten's `snap_step`; the **"12 m (GridMap cell)" preset** ticks it and drops edge
+    softness to 0 (flush pads in one click).
 - **Editor-only; PNGs stay the sole artifact.** A brush never swaps the terrain's
   exported `heightmap`/`splatmap` Texture2D, so the scene always serializes the PNG
   reference (sole exception: the lazily created `splatmap2`, which has no PNG to point at
@@ -300,7 +319,8 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   which is what keeps the panel scannable: the flatten target box, the ramp hint, and the
   channel picker (8 entries, refilled per selection from the terrain's `channel_names` +
   a color swatch per channel; the selection survives the refill) + fill button. Shape is
-  the exception — it shows in every stamping mode (all but Off and Ramp). The plugin tracks
+  the exception — it shows in every stamping mode (all but Off and Ramp), and the Snap-to-
+  grid checkbox shows in every mode but Off. The plugin tracks
   `selection_changed` → sets the brush target to any selected `HeightmapTerrain`; picking a
   mode disarms the placement ghost. Terrain needs **no AuthoringRoot** for brushing (unlike
   prop placement).

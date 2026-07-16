@@ -60,6 +60,10 @@ func _enter_tree() -> void:
 		_brush.flatten_height = height
 		_brush.snap_step = step)
 	_panel.shape_changed.connect(func(square): _brush.square = square)
+	_panel.grid_snap_changed.connect(func(on):
+		_brush.grid_snap = on
+		if on:
+			_panel.set_snap_step(_brush.grid_cell_y()))
 	_panel.pick_requested.connect(func(): _brush.arm_pick())
 	_panel.fill_requested.connect(func(): _brush.fill_terrain())
 	_brush.radius_display.connect(func(r): _panel.set_radius_display(r))
@@ -197,6 +201,7 @@ func _on_selection_changed() -> void:
 		elif node is RoadPath:
 			road = node
 	_brush.set_target(terrain)
+	_brush.set_grid(_find_road_gridmap())
 	_panel.set_has_terrain(terrain != null)
 	if terrain != null:
 		# Channel names and colors are the terrain's own data, so the picker is rebuilt per
@@ -211,6 +216,23 @@ func _on_selection_changed() -> void:
 	_road_panel.set_has_road(road != null)
 	if terrain != null or canvas != null or road != null:
 		make_bottom_panel_item_visible(_tools_root)
+
+
+## The road GridMap the brush snaps to (null if the level has none yet — the brush then falls
+## back to a 12 m lattice at origin). Prefers the conventional "RoadsTiles" node; else the
+## first GridMap found in the edited scene.
+func _find_road_gridmap() -> GridMap:
+	var root := EditorInterface.get_edited_scene_root()
+	if root == null:
+		return null
+	var found: GridMap = null
+	for node in root.find_children("*", "GridMap", true, false):
+		var gm := node as GridMap
+		if gm.name == "RoadsTiles":
+			return gm
+		if found == null:
+			found = gm
+	return found
 
 
 func _on_settings_changed(random_yaw: bool, snap_enabled: bool, snap_step: float,

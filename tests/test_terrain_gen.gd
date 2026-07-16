@@ -101,6 +101,45 @@ func test_island_border_is_sea_level() -> void:
 		assert_float(img.get_pixel(16, y).r).is_equal(0.0)
 
 
+func test_coast_roughness_zero_is_backcompat() -> void:
+	# The default-path output (no coast_roughness arg) must stay byte-identical to an
+	# explicit coast_roughness = 0 — the roughness code adds nothing when disabled.
+	var plain := Gen.generate_heights(Gen.Preset.ISLAND, 7, 20.0, 3, 0.55, 0.95, 33, 33)
+	var zero := Gen.generate_heights(Gen.Preset.ISLAND, 7, 20.0, 3, 0.55, 0.95, 33, 33,
+			0, 0.6, 0.0)
+	assert_bool(plain.get_data() == zero.get_data()).is_true()
+
+
+func test_coast_roughness_is_deterministic_and_changes_shape() -> void:
+	var a := Gen.generate_heights(Gen.Preset.ISLAND, 7, 20.0, 3, 0.55, 0.95, 33, 33,
+			0, 0.6, 0.6)
+	var b := Gen.generate_heights(Gen.Preset.ISLAND, 7, 20.0, 3, 0.55, 0.95, 33, 33,
+			0, 0.6, 0.6)
+	var plain := Gen.generate_heights(Gen.Preset.ISLAND, 7, 20.0, 3, 0.55, 0.95, 33, 33)
+	assert_bool(a.get_data() == b.get_data()).is_true()          # deterministic per seed
+	assert_bool(a.get_data() == plain.get_data()).is_false()     # roughness reshapes coast
+
+
+func test_coast_roughness_border_stays_sea_level() -> void:
+	# The unperturbed guard past r = 0.92 must zero every border pixel even with roughness.
+	var img := Gen.generate_heights(Gen.Preset.ISLAND, 7, 20.0, 3, 0.55, 0.95, 33, 33,
+			0, 0.6, 1.0)
+	for x in 33:
+		assert_float(img.get_pixel(x, 0).r).is_equal(0.0)
+		assert_float(img.get_pixel(x, 32).r).is_equal(0.0)
+	for y in 33:
+		assert_float(img.get_pixel(0, y).r).is_equal(0.0)
+		assert_float(img.get_pixel(32, y).r).is_equal(0.0)
+
+
+func test_coast_roughness_ignored_off_island() -> void:
+	# Non-falloff presets never build coast noise, so roughness is a no-op there.
+	var plain := Gen.generate_heights(Gen.Preset.ROLLING_HILLS, 7, 20.0, 3, 0.0, 1.0, 17, 17)
+	var rough := Gen.generate_heights(Gen.Preset.ROLLING_HILLS, 7, 20.0, 3, 0.0, 1.0, 17, 17,
+			0, 0.6, 1.0)
+	assert_bool(plain.get_data() == rough.get_data()).is_true()
+
+
 func test_presets_scale_amplitude() -> void:
 	# Preset amplitude bounds the image: hills never exceed 0.5, plains 0.15.
 	var hills := Gen.generate_heights(Gen.Preset.ROLLING_HILLS, 7, 20.0, 3, 0.0, 1.0, 9, 9)

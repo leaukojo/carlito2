@@ -102,6 +102,9 @@ static func default_channel_names() -> PackedStringArray:
 ## Island preset only: where the descent reaches sea level, as a fraction of the map
 ## radius.
 @export_range(0.0, 1.0) var falloff_end := 0.95
+## Island preset only: how ragged the coastline is. 0 = perfectly round island, 1 = deep
+## bays and jutting headlands. The map border always reaches sea level regardless.
+@export_range(0.0, 1.0) var coast_roughness := 0.5
 ## Number of plateau bands — buildable flats for villages/farms. < 2 disables terracing.
 @export_range(0, 12) var terrace_steps := 4
 ## Portion of each terrace band that stays dead flat; the rest ramps between plateaus.
@@ -428,7 +431,8 @@ func _generate_with_seed(seed_value: int) -> void:
 		return
 	var dims := _grid_dims()
 	var img := TerrainGen.generate_heights(preset, seed_value, feature_scale, gen_octaves,
-			falloff_start, falloff_end, dims.x, dims.y, terrace_steps, terrace_flat)
+			falloff_start, falloff_end, dims.x, dims.y, terrace_steps, terrace_flat,
+			coast_roughness)
 	var props := {}
 	if seed_value != gen_seed:
 		props[&"gen_seed"] = [gen_seed, seed_value]

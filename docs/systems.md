@@ -208,6 +208,13 @@ lock the rears — drift comes from the grip cut, not brake torque.
   physics flush). The region is an **axis-aligned rect** around the node origin
   (`contains_xz`) — don't rotate it. Water is a direct child of the level (like terrain),
   **never under `Authoring`** (not bakeable kit content).
+- **Depth-fade shading** (`water.gdshader`, fragment-only — physics untouched): the shader
+  samples `hint_depth_texture`, reconstructs the opaque scene's view distance behind each
+  water fragment, and fades `shallow_alpha`→`deep_alpha` / `water_color`→`deep_color` over
+  `depth_fade_m` of water column. Shallow water stays translucent (free shore gradient),
+  deep water goes opaque so the seafloor and the square map edge behind it disappear. NDC
+  z is reconstructed for **gl_compatibility** (`depth * 2.0 - 1.0`; Forward+ leaves depth
+  as-is) — the whole project runs Compatibility.
 - **`BoatVehicle extends BaseVehicle`** (`src/vehicles/boat/`) follows the tractor
   template exactly: only the two seams (`_make_telemetry()` → `BoatTelemetry`,
   `_tick_extras` = buoyancy/drag/thrust/rudder), `respawn()` = `super()` + trim reset.

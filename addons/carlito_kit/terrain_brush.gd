@@ -38,9 +38,16 @@ var flatten_fixed := false
 var flatten_height := 0.0
 ## Quantize the flatten target to multiples of this many metres (0 = off).
 var snap_step := 0.0
+## Snap the brush centre onto the road GridMap's cell lattice (XZ), so pads and ramps line up
+## with the tiles dropped on them. Uses `_grid` when set, else a 12 m lattice at world origin
+## (what a RoadsTiles node would use) so you can sculpt before placing tiles.
+var grid_snap := false
 
 var _undo: EditorUndoRedoManager
 var _terrain: HeightmapTerrain = null
+## The road GridMap to snap to (may be null — then the fallback lattice applies). Set by the
+## plugin when the terrain is selected. GridMap is a core type, safe to annotate here.
+var _grid: GridMap = null
 
 # Per-terrain edit session, kept until scene save (flush) or plugin exit — so deselecting
 # doesn't drop uncommitted work and undo stays coherent across reselection.
@@ -83,6 +90,17 @@ func set_target(terrain: HeightmapTerrain) -> void:
 	_free_cursor()  # cursor lives under the terrain; a new target needs a new one
 	_cancel_pending()  # a stored ramp point belongs to the terrain it was clicked on
 	_terrain = terrain
+
+
+## The road GridMap the grid-snap uses (may be null — the fallback lattice then applies).
+func set_grid(g: GridMap) -> void:
+	_grid = g
+
+
+## The GridMap's vertical cell size (metres) — the plugin pushes this into the flatten snap
+## step when grid-snap turns on. Falls back to the roads palette's 3 m cell when no GridMap.
+func grid_cell_y() -> float:
+	return _grid.cell_size.y if is_instance_valid(_grid) else 3.0
 
 
 func set_mode(m: int) -> void:
@@ -257,7 +275,36 @@ func _project(camera: Camera3D, mouse: Vector2) -> Variant:
 		if q == null:
 			break
 		p = q
+	if grid_snap and p != null:
+		p = _snap_center(p as Vector3)
 	return p
+
+
+## Snap a world point's XZ onto the GridMap cell CENTRES, keeping its Y (re-sampled by the
+## caller as needed). Reads the GridMap's own cell size / origin / centre flags when present,
+## else a 12 m centre-true lattice at world origin (what a RoadsTiles node would use). The
+## half-cell offset for a centre-true axis is baked into the lattice origin (verified: a
+## (12,3,12) GridMap centres cell 0 at local 6, not 0).
+func _snap_center(p: Vector3) -> Vector3:
+	var size_x := 12.0
+	var size_z := 12.0
+	var org_x := 0.0
+	var org_z := 0.0
+	var center_x := true
+	var center_z := true
+	if is_instance_valid(_grid):
+		size_x = _grid.cell_size.x
+		size_z = _grid.cell_size.z
+		org_x = _grid.global_position.x
+		org_z = _grid.global_position.z
+		center_x = _grid.cell_center_x
+		center_z = _grid.cell_center_z
+	if center_x:
+		org_x += size_x * 0.5
+	if center_z:
+		org_z += size_z * 0.5
+	var s := BrushOps.snap_to_grid(p.x, p.z, size_x, size_z, org_x, org_z)
+	return Vector3(s.x, p.y, s.y)
 
 
 # ------------------------------------------------------------------ click tools (ramp, eyedropper)

@@ -31,14 +31,34 @@ static func brush_dist(dx: float, dz: float, square: bool) -> float:
 	return sqrt(dx * dx + dz * dz)
 
 
+## Snap a world X/Z to the nearest point of a lattice with pitch `size` anchored at `origin`
+## (result = origin + size*round((v-origin)/size)). The caller bakes any half-cell offset into
+## `origin` — the road GridMap's `cell_center_x/z = true` puts cell centres at
+## `grid_origin + size*0.5 + size*k`, so passing `origin = grid_origin + size*0.5` lands on
+## them. Axis-aligned, matching our unrotated terrains and GridMaps.
+static func snap_to_grid(x: float, z: float, size_x: float, size_z: float,
+		origin_x: float, origin_z: float) -> Vector2:
+	var sx := roundi((x - origin_x) / maxf(size_x, 1e-3)) * size_x + origin_x
+	var sz := roundi((z - origin_z) / maxf(size_z, 1e-3)) * size_z + origin_z
+	return Vector2(sx, sz)
+
+
 ## Radial brush weight for a normalized distance t (0 at centre, 1 at the rim). `falloff`
 ## in [0,1] is the softness: 0 = a hard disk (weight 1 out to the rim), 1 = a smooth dome
 ## from the centre. The solid inner fraction is (1 - falloff); beyond it the weight
 ## smoothsteps down to 0 at t = 1.
-static func weight(t: float, falloff: float) -> float:
+##
+## `inclusive` decides the EXACT rim (t == 1.0): normally excluded (weight 0), which keeps
+## round-brush and ramp edges from double-covering. The square brush passes `inclusive = true`
+## so a hard 12 m pad covers its full footprint and abutting cells tile with no seam — the
+## rim then follows the falloff curve like any other point (so a soft square still fades, only
+## a hard one — edge softness 0 — reaches the rim). See `stamp_height` / `stamp_splat`.
+static func weight(t: float, falloff: float, inclusive := false) -> float:
 	if t <= 0.0:
 		return 1.0
-	if t >= 1.0:
+	if t > 1.0:
+		return 0.0
+	if t >= 1.0 and not inclusive:
 		return 0.0
 	var inner := clampf(1.0 - falloff, 0.0, 1.0)
 	if t <= inner:
@@ -93,7 +113,7 @@ static func stamp_height(img: Image, cx: int, cy: int, rx: float, rz: float,
 			var t := brush_dist(dx, dz, square)
 			if t > 1.0:
 				continue
-			var w := weight(t, falloff)
+			var w := weight(t, falloff, square)
 			if w <= 0.0:
 				continue
 			var lx := px - x0
@@ -149,7 +169,7 @@ static func stamp_splat(img: Image, cx: int, cy: int, rx: float, rz: float,
 			var t := brush_dist(dx, dz, square)
 			if t > 1.0:
 				continue
-			var w := weight(t, falloff)
+			var w := weight(t, falloff, square)
 			if w <= 0.0:
 				continue
 			img.set_pixel(px, py, img.get_pixel(px, py).lerp(unit, clampf(strength * w, 0.0, 1.0)))

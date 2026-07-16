@@ -53,6 +53,30 @@ func test_sculpt_flatten_moves_toward_target() -> void:
 			.is_equal_approx(0.5, 0.0001)
 
 
+# --- grid snap ---
+
+
+func test_snap_to_grid_pulls_to_nearest_cell_centre() -> void:
+	# 12 m cells at origin: cell centres at multiples of 12.
+	assert_vector(BrushOps.snap_to_grid(5.0, 7.0, 12.0, 12.0, 0.0, 0.0)) \
+			.is_equal(Vector2(0.0, 12.0))
+	assert_vector(BrushOps.snap_to_grid(-5.0, -7.0, 12.0, 12.0, 0.0, 0.0)) \
+			.is_equal(Vector2(0.0, -12.0))
+
+
+func test_snap_to_grid_cell_centre_is_a_fixed_point() -> void:
+	assert_vector(BrushOps.snap_to_grid(24.0, -12.0, 12.0, 12.0, 0.0, 0.0)) \
+			.is_equal(Vector2(24.0, -12.0))
+
+
+func test_snap_to_grid_offset_origin_shifts_the_lattice() -> void:
+	# Origin at (6, 6): centres land at 6 + 12k.
+	assert_vector(BrushOps.snap_to_grid(11.0, 1.0, 12.0, 12.0, 6.0, 6.0)) \
+			.is_equal(Vector2(6.0, 6.0))
+	assert_vector(BrushOps.snap_to_grid(13.0, 19.0, 12.0, 12.0, 6.0, 6.0)) \
+			.is_equal(Vector2(18.0, 18.0))
+
+
 # --- height stamp ---
 
 
@@ -242,6 +266,20 @@ func test_square_stamp_reaches_corners_a_circle_misses() -> void:
 	BrushOps.stamp_height(square_img, 4, 4, SQ_R, SQ_R, BrushOps.RAISE, 1.0, 0.0, 0.0, true)
 	assert_float(round_img.get_pixel(6, 6).r).is_equal(0.5)  # 1.13 radii out -> rejected
 	assert_float(square_img.get_pixel(6, 6).r).is_equal_approx(0.55, 0.0001)
+
+
+func test_square_hard_rim_is_inclusive_so_abutting_pads_tile() -> void:
+	# Radius 2 puts the footprint edge at exactly Chebyshev 1.0 — the rim `weight` normally
+	# zeroes, which left a one-column seam between abutting 12 m GridMap pads. A hard square
+	# includes its rim, so the shared boundary column is stamped by both cells.
+	var sq := _flat_rf(9, 0.5)
+	BrushOps.stamp_height(sq, 4, 4, 2.0, 2.0, BrushOps.RAISE, 1.0, 0.0, 0.0, true)
+	assert_float(sq.get_pixel(6, 4).r).is_equal_approx(0.55, 0.0001)  # +x rim column raised
+	assert_float(sq.get_pixel(2, 4).r).is_equal_approx(0.55, 0.0001)  # -x rim column too
+	# A round brush at the same radius still drops its exact rim (rim inclusion is square-only).
+	var rnd := _flat_rf(9, 0.5)
+	BrushOps.stamp_height(rnd, 4, 4, 2.0, 2.0, BrushOps.RAISE, 1.0, 0.0, 0.0, false)
+	assert_float(rnd.get_pixel(6, 4).r).is_equal(0.5)
 
 
 func test_square_stamp_hard_falloff_is_a_uniform_plateau() -> void:

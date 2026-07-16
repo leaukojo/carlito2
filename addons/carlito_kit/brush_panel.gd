@@ -13,6 +13,7 @@ signal params_changed(radius: float, strength: float, falloff: float)
 signal flatten_changed(fixed: bool, height: float, step: float)
 signal pick_requested()
 signal shape_changed(square: bool)
+signal grid_snap_changed(on: bool)
 signal fill_requested()
 
 const MODE_LABELS := ["Off", "Raise", "Lower", "Smooth", "Flatten", "Ramp", "Paint"]
@@ -55,6 +56,8 @@ var _snap_step: SpinBox
 var _ramp_hint: Label
 var _shape_row: HBoxContainer
 var _shape_box: OptionButton
+var _snap_grid_row: HBoxContainer
+var _snap_grid_check: CheckBox
 var _radius: SpinBox
 var _strength: SpinBox
 var _falloff: SpinBox
@@ -132,6 +135,7 @@ func _build() -> void:
 			"How the effect fades toward the brush rim. 0 = hard-edged stamp, " \
 			+ "1 = smooth dome that fades from the center.")
 	_build_shape_row()
+	_build_snap_grid_row()
 
 	var hint := Label.new()
 	hint.text = "Select a HeightmapTerrain, pick a mode, then drag in the 3D view.\n" \
@@ -221,11 +225,31 @@ func _build_shape_row() -> void:
 	_shape_row.add_child(preset)
 
 
-## The GridMap-cell preset: a square brush whose footprint is one 12 m cell.
+## Snap the brush onto the road GridMap's cell lattice — so you don't have to aim each stamp
+## onto a cell. Applies to every editing mode.
+func _build_snap_grid_row() -> void:
+	_snap_grid_row = HBoxContainer.new()
+	add_child(_snap_grid_row)
+	_snap_grid_check = CheckBox.new()
+	_snap_grid_check.text = "Snap to grid"
+	_snap_grid_check.tooltip_text = "Locks the brush centre onto the road GridMap's cells " \
+			+ "(12 m), so pads and ramps line up with the tiles you drop on them. With no " \
+			+ "road GridMap placed yet, it snaps to a 12 m grid at the origin. Also sets " \
+			+ "Flatten's snap step to the cell height."
+	_snap_grid_check.toggled.connect(func(on): grid_snap_changed.emit(on))
+	_snap_grid_row.add_child(_snap_grid_check)
+
+
+## The GridMap-cell preset: a square, hard-edged brush whose footprint is exactly one 12 m
+## cell, snapped to the lattice — the align-to-GridMap workflow in one click. Edge softness
+## goes to 0 so abutting cells tile flush (a soft rim fades to nothing and leaves a seam).
 func _use_gridmap_cell() -> void:
 	_shape_box.select(1)
 	shape_changed.emit(true)
-	_radius.value = GRIDMAP_CELL_M * 0.5  # value_changed re-emits params
+	_falloff.set_value_no_signal(0.0)
+	_radius.value = GRIDMAP_CELL_M * 0.5  # value_changed re-emits params (radius + the falloff)
+	_snap_grid_check.set_pressed_no_signal(true)
+	grid_snap_changed.emit(true)
 
 
 
@@ -274,6 +298,7 @@ func _show_rows(mode: int) -> void:
 	_channel_row.visible = mode == MODE_PAINT
 	_fill_row.visible = mode == MODE_PAINT
 	_shape_row.visible = mode != MODE_OFF and mode != MODE_RAMP
+	_snap_grid_row.visible = mode != MODE_OFF
 
 
 # ------------------------------------------------------------------ plugin API
@@ -317,6 +342,12 @@ func _swatch(color: Color) -> ImageTexture:
 	var img := Image.create(SWATCH_PX, SWATCH_PX, false, Image.FORMAT_RGBA8)
 	img.fill(color)
 	return ImageTexture.create_from_image(img)
+
+
+## Set the flatten vertical snap step (metres) and push it to the brush — called when snap-to-
+## grid turns on, so pads also land on the GridMap's height cells. Stays editable afterward.
+func set_snap_step(m: float) -> void:
+	_snap_step.value = m  # value_changed re-emits flatten_changed
 
 
 ## Reflect a bracket-key radius change without re-emitting params_changed.
