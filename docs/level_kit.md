@@ -425,7 +425,11 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   terrain keep their Y) and **Smooth curve (Catmull-Rom)** (handles for every interior
   point — the rescue for hand-kinked curves); each is one undoable action. Corners
   still self-overlap when the local turn radius drops below the ribbon half-width
-  (~5 m asphalt) — that is geometric; space clicks/points wider.
+  (~6 m asphalt) — that is geometric; the draw tool REFUSES clicks whose new/reshaped
+  segments would cross that floor (`RoadBuilder.min_turn_radius`, panel status line +
+  warning; only the changed segments are checked, so a pre-existing tight corner never
+  blocks drawing), and gizmo-made kinks still get extrude's fold-clamp pinch — space
+  clicks/points wider.
 - **Ports (tile ↔ spline sockets):** a *port* is the edge-center of an occupied
   roads-GridMap cell face that the tile actually carries road across AND whose neighbor
   cell is empty. Ports are fully computable from the lattice + a per-tile table —
@@ -451,10 +455,14 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   points to their nearest ports within 6 m + locks tangents, one undo step.
   **Height agreement:** put port cells on a flattened pad (terrain-brush grid-snap 12 m
   flatten); Conform's plateau meets the tile at road − ε and `edge_drop` absorbs the
-  quantization as usual. **Width:** the tiles' measured paved strip is 9.6 m;
-  `asphalt_profile.tres` sets `lane_width = 4.05` (4.05 + 0.15 edge line + 0.6 shoulder
-  = 4.8 half-width → 9.6 m paved) so the ribbon is flush with the tile
-  (`road_profile.gd` script defaults are unchanged — 7 m surface / 8.5 m paved).
+  quantization as usual. **Width:** the tiles' measured deck runs curb-to-curb ±4.8
+  (9.6 m) with the white curb line AT ±4.8, so `asphalt_profile.tres` sets
+  `lane_width = 4.8` — the ribbon's asphalt spans the full 9.6 m deck and its white
+  edge line sits at ±4.8 flush with the tile's; line + shoulder extend outside like the
+  curb strip (`road_profile.gd` script defaults are unchanged — 7 m surface /
+  8.5 m paved). **Seam squareness:** extrude gives open-end rings the EXACT endpoint
+  handle tangent (BAKER_VERSION v6) — the finite difference bends with immediate
+  curvature and yawed port-snapped ends against the tile face.
 - **Conform terrain is destructive-by-button** (the same discipline as terrain
   Generate): samples the curve every 0.5 m (deterministic,
   tessellation-independent), flattens every overlapping `HeightmapTerrain` to road

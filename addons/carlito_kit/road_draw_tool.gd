@@ -45,6 +45,9 @@ const STUB_A := Vector3.ZERO
 const STUB_B := Vector3(0, 0, 12)
 
 signal deactivated  # RMB/Escape exit -> the panel flips its toggle back to Off
+## Draw feedback for the panel status line: a refusal message, or "" after a
+## successful commit (restores the ready text).
+signal draw_status(msg: String)
 
 ## Panel checkbox (default ON): each click gives the PREVIOUS point Catmull-Rom
 ## handles. OFF draws a zero-handle polyline — the road follows the clicks exactly;
@@ -168,6 +171,10 @@ func _snap(camera: Camera3D, mouse_pos: Vector2) -> Vector3:
 ## A click within SNAP_RADIUS of an open port lands ON the port (exactly at the tile's
 ## asphalt surface — no draw_clearance, so the ribbon meets the deck flush) with the
 ## end tangent locked outward; arriving at a port also exits Draw mode.
+## Fold guard: a click whose new/reshaped segments would turn tighter than the ribbon
+## half-width is REFUSED (panel status + warning) — extrude would pinch the inside
+## edge to the fold point and the corner reads as a slit. Only the segments this click
+## changes are checked, so a pre-existing tight corner elsewhere never blocks drawing.
 func _commit_point(world: Vector3) -> void:
 	var path := _road.get_node_or_null(^"Path") as Path3D
 	if path == null or path.curve == null:
@@ -185,8 +192,19 @@ func _commit_point(world: Vector3) -> void:
 		port_handle = (inv.basis * (port["normal"] as Vector3)).normalized() * HANDLE_LEN
 	var local := inv * world
 
+	var stub := _is_default_stub(curve)
+	var idx := curve.point_count   # index the new point will take (non-stub)
+	var prev_handles := {}         # planned Catmull-Rom rewrite of the previous point
+	if not stub:
+		if smooth_corners and idx >= 2:
+			prev_handles = RoadBuilderScript.smooth_handles(
+					curve.get_point_position(idx - 2),
+					curve.get_point_position(idx - 1), local)
+		if not _fold_guard_ok(curve, idx, local, port_handle, prev_handles):
+			return
+
 	_undo.create_action("Add road point", UndoRedo.MERGE_DISABLE, scene_root)
-	if _is_default_stub(curve):
+	if stub:
 		_undo.add_do_method(curve, "remove_point", 1)
 		_undo.add_do_method(curve, "remove_point", 0)
 		_undo.add_do_method(curve, "add_point", local)
@@ -197,27 +215,55 @@ func _commit_point(world: Vector3) -> void:
 		_undo.add_undo_method(curve, "add_point", STUB_A)
 		_undo.add_undo_method(curve, "add_point", STUB_B)
 	else:
-		var idx := curve.point_count   # index the new point will take
 		_undo.add_do_method(curve, "add_point", local)
 		if not port.is_empty():
 			# arriving at the port: lock the end tangent perpendicular to the face
 			_undo.add_do_method(curve, "set_point_in", idx, port_handle)
-		if smooth_corners and idx >= 2:
-			var h: Dictionary = RoadBuilderScript.smooth_handles(
-					curve.get_point_position(idx - 2),
-					curve.get_point_position(idx - 1), local)
-			_undo.add_do_method(curve, "set_point_in", idx - 1, h["in"])
-			_undo.add_do_method(curve, "set_point_out", idx - 1, h["out"])
+		if not prev_handles.is_empty():
+			_undo.add_do_method(curve, "set_point_in", idx - 1, prev_handles["in"])
+			_undo.add_do_method(curve, "set_point_out", idx - 1, prev_handles["out"])
 			# undo runs in reverse registration order: the added point goes first,
 			# then these restore the previous point's handles
 			_undo.add_undo_method(curve, "set_point_in", idx - 1, curve.get_point_in(idx - 1))
 			_undo.add_undo_method(curve, "set_point_out", idx - 1, curve.get_point_out(idx - 1))
 		_undo.add_undo_method(curve, "remove_point", idx)
 	_undo.commit_action()
+	draw_status.emit("")
 	# after commit a snapped FIRST point leaves 1 point (keep drawing away from the
 	# tile); a snapped ARRIVAL leaves >= 2 and ends the road
 	if not port.is_empty() and curve.point_count >= 2:
 		_exit()
+
+
+## True when the click may commit: rebuild ONLY the segments the click changes (the
+## new one, plus the previous one when its handles get the Catmull-Rom rewrite) on a
+## scratch curve and check RoadBuilder.min_turn_radius against the ribbon's full
+## half-width. All positions/handles are path-local, matching what extrude sees.
+func _fold_guard_ok(curve: Curve3D, idx: int, local: Vector3, port_handle: Vector3,
+		prev_handles: Dictionary) -> bool:
+	var prof: RoadProfile = _road.get("profile")
+	if prof == null:
+		return true
+	var limit := prof.full_half_width()
+	var sim := Curve3D.new()
+	if prev_handles.is_empty():
+		sim.add_point(curve.get_point_position(idx - 1), Vector3.ZERO,
+				curve.get_point_out(idx - 1))
+	else:
+		sim.add_point(curve.get_point_position(idx - 2), Vector3.ZERO,
+				curve.get_point_out(idx - 2))
+		sim.add_point(curve.get_point_position(idx - 1),
+				prev_handles["in"], prev_handles["out"])
+	sim.add_point(local, port_handle, Vector3.ZERO)
+	var radius: float = RoadBuilderScript.min_turn_radius(sim,
+			_road.get("max_segment_length"), _road.get("max_segment_angle_deg"))
+	if radius >= limit:
+		return true
+	var msg := "Point refused: turn radius %.1f m is under the road's %.1f m " % [
+			radius, limit] + "half-width (the ribbon would pinch) — space points wider."
+	push_warning("Kit: " + msg)
+	draw_status.emit(msg)
+	return false
 
 
 ## Close the loop (panel button): append a point AT the first point's position. With

@@ -99,6 +99,17 @@ func _build() -> void:
 
 # ------------------------------------------------------------------ plugin API
 
+## Draw-tool feedback on the status line (refused clicks). Empty restores the ready
+## text — the tool emits "" after every successful commit.
+func show_warning(text: String) -> void:
+	if text.is_empty():
+		_status.text = "RoadPath selected — ready to draw."
+		_status.add_theme_color_override("font_color", Color(0.5, 0.9, 0.5))
+	else:
+		_status.text = text
+		_status.add_theme_color_override("font_color", Color(0.95, 0.6, 0.3))
+
+
 ## Reflect a tool-driven exit (RMB/Escape) without re-emitting mode_changed — the
 ## plugin already knows (programmatic button_pressed doesn't emit `pressed`).
 func show_off() -> void:

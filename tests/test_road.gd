@@ -29,6 +29,40 @@ func _quarter_arc() -> Curve3D:
 	return c
 
 
+# -------------------------------------------------------------- min turn radius
+
+
+func test_min_turn_radius_straight_is_infinite() -> void:
+	assert_bool(Builder.min_turn_radius(
+			_straight(Vector3.ZERO, Vector3(0, 0, 100)), 6.0, 6.0) == INF).is_true()
+
+
+func test_min_turn_radius_arc_matches_radius() -> void:
+	# quarter arc of radius 20: every local radius is ~20
+	assert_float(Builder.min_turn_radius(_quarter_arc(), 6.0, 6.0)) \
+			.is_equal_approx(20.0, 1.5)
+
+
+func test_min_turn_radius_pure_crest_is_infinite() -> void:
+	# vertical kink only (no lateral turn): the fold clamp ignores it, so does the guard
+	var c := Curve3D.new()
+	c.add_point(Vector3.ZERO, Vector3.ZERO, Vector3(0, 0, 5))
+	c.add_point(Vector3(0, 6, 12), Vector3(0, 0, -4), Vector3(0, 0, 4))
+	c.add_point(Vector3(0, 0, 24), Vector3(0, 0, -5), Vector3.ZERO)
+	assert_bool(Builder.min_turn_radius(c, 6.0, 6.0) == INF).is_true()
+
+
+func test_min_turn_radius_flags_hairpin_below_half_width() -> void:
+	# the terrain_demo pathology: two near-coincident clicks across a 4 m drop; the
+	# smoothed middle point hairpins the curve far under the ~6 m ribbon half-width
+	var c := Curve3D.new()
+	c.add_point(Vector3(9.947, 23.362, 58.729))
+	c.add_point(Vector3(10.652, 19.256, 57.171),
+			Vector3(-1.389, 0.222, 0.468), Vector3(4.325, -0.690, -1.456))
+	c.add_point(Vector3(24, 21.12, 54), Vector3(-4, 0, 0), Vector3.ZERO)
+	assert_bool(Builder.min_turn_radius(c, 6.0, 6.0) < 3.0).is_true()
+
+
 # --------------------------------------------------------------- adaptive sampling
 
 
@@ -328,6 +362,26 @@ func test_extrude_closed_square_loop_seam_rings_coincide() -> void:
 	# = perpendicular of (1,0,-1)/sqrt(2) in the XZ plane... derive: r = t x UP
 	var t_seam := (Vector3(1, 0, 0) + Vector3(0, 0, -1)).normalized()
 	assert_vector(r_first).is_equal_approx(t_seam.cross(Vector3.UP), Vector3.ONE * 0.01)
+
+
+## Open ends: the end ring's tangent is the endpoint's handle direction EXACTLY, not
+## the finite difference — a port-snapped end that bends right after the port must stay
+## perpendicular to its locked handle or the seam gaps on one side (the "slit").
+func test_extrude_open_end_rings_perpendicular_to_handles() -> void:
+	# the kit_fixture SocketRoad shape: out-handle +X off the port, immediate hard bend
+	var c := Curve3D.new()
+	c.add_point(Vector3(36, 0.12, -18), Vector3.ZERO, Vector3(4, 0, 0))
+	c.add_point(Vector3(46, 0.05, -24), Vector3(-3, 0, 1.8), Vector3(3, 0, -1.8))
+	c.add_point(Vector3(52, 0.05, -34), Vector3(0, 0, 4), Vector3.ZERO)
+	var points := PackedVector2Array([Vector2(-1.0, 0), Vector2(1.0, 0)])
+	var offsets := Builder.adaptive_offsets(c, 6.0, 6.0)
+	var surfaces := Builder.extrude(c, points, PackedInt32Array([0]), offsets, false)
+	var pos: PackedVector3Array = surfaces[0][Mesh.ARRAY_VERTEX]
+	var r_first := (pos[1] - pos[0]).normalized()
+	assert_float(r_first.dot(Vector3(1, 0, 0))).is_equal_approx(0.0, 0.0001)
+	var last := (offsets.size() - 1) * 2
+	var r_last := (pos[last + 1] - pos[last]).normalized()
+	assert_float(r_last.dot(Vector3(0, 0, 1).normalized())).is_equal_approx(0.0, 0.0001)
 
 
 func test_extrude_climbing_straight_has_no_roll() -> void:

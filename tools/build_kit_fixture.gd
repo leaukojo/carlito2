@@ -405,7 +405,7 @@ func _add_spline_road(scene_owner: Node, authoring: Node) -> void:
 ## with the start tangent locked along the outward face normal, then curving southeast
 ## over free ground. Proves a tile->spline seam through the bake, and the drive test
 ## crosses it. Clear of: TreeScatter (x 42..58, z -5..95), SplineRoad (z -26..-34),
-## and the ground edge (x 60, ribbon half-width ~5.3).
+## and the ground edge (x 60, ribbon half-width ~6.05).
 func _add_socket_road(scene_owner: Node, authoring: Node) -> void:
 	var gm := authoring.get_node("RoadLoop") as GridMap
 	var recipe: Variant = JSON.parse_string(

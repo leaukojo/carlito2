@@ -32,19 +32,12 @@ size = Vector2(560, 560)
 [sub_resource type="StandardMaterial3D" id="SeaBedMat"]
 albedo_color = Color(0.83, 0.76, 0.55, 1)
 
-[sub_resource type="Curve3D" id="Curve3D_h35jj"]
+[sub_resource type="Curve3D" id="Curve3D_u8elx"]
 _data = {
-"points": PackedVector3Array(0, 0, 0, 5.8943553, 1.9571389, -11.473835, 7.142996, 19.494204, 36.15118, -13.031094, -0.19017431, 0.5649951, 9.649456, 0.14082308, -0.4183759, 43.937485, 22.264706, 23.114714, 4.3655124, 1.4269655, -8.49782, -6.6515436, -2.1742058, 12.9477625, 70.972885, 20.424768, 33.38368, 14.702461, 0.21456605, -0.63746136, -8.952902, -0.13065764, 0.38817507, 30.140652, 17.754902, 49.971355, -4.0487733, -1.3443389, 7.8812613, 0, 0, 0, 7.142996, 19.494204, 36.15118),
-"tilts": PackedFloat32Array(0, 0, 0, 0, 0)
+"points": PackedVector3Array(0, 0, 0, -4, 0, 0, 24, 21.12, 54, 10.265163, -1.0630885, -0.26334256, -6.224809, 0.6446583, 0.15969129, -6.266679, 26.11622, 49.742813, 3.772961, 0.16420437, -4.9927077, -3.9581292, -0.17226316, 5.237738, -24.225409, 26.114357, 55.237175, -0.37415746, 2.5718217, -6.0312605, 0.3730686, -2.5643373, 6.0137086, -25.27335, 25.289024, 74.89408, -3.3136096, 4.6581526, -3.1939485, 3.093937, -4.3493447, 2.9822087, -22.141945, 11.793389, 88.82173, -6.1016207, 0.25462788, -0.29700047, 10.449943, -0.4360885, 0.50865793, -7.803624, 0.7307175, 91.73294, -9.656562, -4.031176, 0.38811633, 8.499977, 3.5483544, -0.3416309, 22.220314, 9.9421, 90.981094, 0, 0, 0, 0, 0, 0, 46.365253, 23.343763, 89.555786),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0)
 }
-point_count = 5
-
-[sub_resource type="Curve3D" id="Curve3D_40d31"]
-_data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 33.526764, 8.507885, -91.73463, 6.159329, -0.79938895, 1.8870084, -6.2999797, 0.8176433, -1.930099, 16.052122, 11.280393, -99.8788, 6.4462366, -1.5875245, 0.0967182, -6.1551647, 1.5158418, -0.09235101, -3.4997635, 13.33917, -103.07829, 0, 0, 0, 0, 0, 0, -20.962368, 20.392017, -100.43416),
-"tilts": PackedFloat32Array(0, 0, 0, 0)
-}
-point_count = 4
+point_count = 8
 
 [sub_resource type="ShaderMaterial" id="SplatMat"]
 render_priority = 0
@@ -79,7 +72,7 @@ far = 1000.0
 script = ExtResource("3_cam")
 
 [node name="Spawn" type="Marker3D" parent="." unique_id=712029966]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.321548, 21.698063, 38.053894)
+transform = Transform3D(-0.027084181, 0, 0.99963313, 0, 1, 0, -0.99963313, 0, -0.027084181, 37.27413, 21.698063, 56.36169)
 script = ExtResource("4_spawn")
 vehicle_types = PackedStringArray("car")
 
@@ -105,26 +98,6 @@ script = ExtResource("10_40d31")
 chunk_size = 64.0
 metadata/_custom_type_script = "uid://t88htpmwukbg"
 
-[node name="RoadPath" type="Node3D" parent="AuthoringRoot" unique_id=2001928173]
-script = ExtResource("11_h35jj")
-profile = ExtResource("12_40d31")
-draw_clearance = 0.5
-conform_falloff = 10.0
-conform_epsilon = 0.2
-metadata/_custom_type_script = "uid://cpl5vh8pdc04w"
-
-[node name="Path" type="Path3D" parent="AuthoringRoot/RoadPath" unique_id=1028599093]
-curve = SubResource("Curve3D_h35jj")
-
-[node name="RoadPath2" type="Node3D" parent="AuthoringRoot" unique_id=2145508769]
-script = ExtResource("11_h35jj")
-profile = ExtResource("12_40d31")
-banking = true
-metadata/_custom_type_script = "uid://cpl5vh8pdc04w"
-
-[node name="Path" type="Path3D" parent="AuthoringRoot/RoadPath2" unique_id=598026417]
-curve = SubResource("Curve3D_40d31")
-
 [node name="RoadsTiles" type="GridMap" parent="AuthoringRoot" unique_id=1999393255]
 mesh_library = ExtResource("9_u8elx")
 cell_size = Vector3(12, 3, 12)
@@ -133,6 +106,15 @@ data = {
 "cells": PackedInt32Array(458754, 4, 49, 458755, 4, 49)
 }
 metadata/_editor_floor_ = Vector3(0, 7, 0)
+
+[node name="RoadPath" type="Node3D" parent="AuthoringRoot" unique_id=584347843]
+script = ExtResource("11_h35jj")
+profile = ExtResource("12_40d31")
+conform_epsilon = 0.4
+metadata/_custom_type_script = "uid://cpl5vh8pdc04w"
+
+[node name="Path" type="Path3D" parent="AuthoringRoot/RoadPath" unique_id=1234200791]
+curve = SubResource("Curve3D_u8elx")
 
 [node name="Island" type="StaticBody3D" parent="." unique_id=1504712988]
 script = ExtResource("5_terrain")

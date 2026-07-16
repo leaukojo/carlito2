@@ -82,6 +82,7 @@ func _enter_tree() -> void:
 	_road_panel.smooth_corners_changed.connect(func(on): _road_tool.smooth_corners = on)
 	_road_panel.snap_ports_changed.connect(func(on): _road_tool.snap_ports = on)
 	_road_panel.snap_ends_requested.connect(func(): _road_tool.snap_ends())
+	_road_tool.draw_status.connect(func(msg): _road_panel.show_warning(msg))
 	_road_tool.deactivated.connect(func(): _road_panel.show_off())
 
 	# The three tool panels share a "Kit Tools" bottom panel (like the Kit dock):

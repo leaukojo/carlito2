@@ -23,7 +23,9 @@ extends RefCounted
 ## v4: road extrusion anchors a ring at every interior curve control point (corner miters).
 ## v5: road extrusion fold-clamps the inside edge below the local turn radius and gives
 ## closed loops one shared bisector frame at the seam.
-const BAKER_VERSION := 5
+## v6: open-end rings use the exact endpoint handle tangent (finite difference yawed
+## port-snapped ends against the tile face).
+const BAKER_VERSION := 6
 
 ## Scatter: items with at least this many stored instances bake as one
 ## MultiMeshInstance3D per chunk x item (geometry stored once) instead of merging

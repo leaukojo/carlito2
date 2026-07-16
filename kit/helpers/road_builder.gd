@@ -119,6 +119,31 @@ static func tangent_at(curve: Curve3D, offset: float, length: float) -> Vector3:
 	return d.normalized() if d.length_squared() > 1e-12 else Vector3.FORWARD
 
 
+## Smallest local turn radius extrude's fold clamp will see over the curve: per
+## adjacent ring pair, ds / tangent swing — skipping pure pitch kinks (crest/dip, no
+## lateral component), exactly like the clamp. INF for straights/degenerate curves.
+## The draw tool refuses clicks that would drop this below the ribbon half-width: below
+## that floor the inside edge pinches to the fold point and the corner reads as a slit
+## — geometric, not fixable by frames (adding this helper changes no bake output).
+static func min_turn_radius(curve: Curve3D, max_seg_len: float,
+		max_angle_deg: float) -> float:
+	var offsets := adaptive_offsets(curve, max_seg_len, max_angle_deg)
+	if offsets.size() < 2:
+		return INF
+	var length := curve.get_baked_length()
+	var best := INF
+	for i in offsets.size() - 1:
+		var t_a := tangent_at(curve, offsets[i], length)
+		var t_b := tangent_at(curve, offsets[i + 1], length)
+		var swing := t_a.angle_to(t_b)
+		if swing < 1e-4:
+			continue
+		if absf(t_a.cross(t_b).dot(Vector3.UP)) < 1e-8:
+			continue   # pure pitch kink: no lateral fold
+		best = minf(best, (offsets[i + 1] - offsets[i]) / swing)
+	return best
+
+
 ## Road frame at a baked offset: basis.x = right (horizontal unless tilted), basis.y =
 ## up, origin = the curve point. A near-vertical tangent (authoring pathology — roads
 ## are never vertical) degenerates T x UP, so the caller threads the previous ring's
@@ -205,6 +230,21 @@ static func extrude(curve: Curve3D, points: PackedVector2Array, mats: PackedInt3
 		if bis.length_squared() > 1e-12:
 			seam_tangent = bis.normalized()
 
+	# Open ends use the EXACT endpoint tangent — the handle direction — instead of the
+	# finite difference, which bends with any immediate curvature and yaws the end ring
+	# (a port-snapped end then buries one edge in the tile and gaps the other). Zero
+	# handles (polyline) keep the finite-difference fallback: the first chord is the
+	# exact tangent there anyway.
+	var start_tangent := Vector3.ZERO
+	var end_tangent := Vector3.ZERO
+	if seam_tangent == Vector3.ZERO and curve.point_count >= 2:
+		var h0 := curve.get_point_out(0)
+		if h0.length_squared() > 1e-12:
+			start_tangent = h0.normalized()
+		var h1 := curve.get_point_in(curve.point_count - 1)
+		if h1.length_squared() > 1e-12:
+			end_tangent = -h1.normalized()
+
 	var frames: Array[Transform3D] = []
 	var prev_right := Vector3.RIGHT
 	for i in offsets.size():
@@ -213,6 +253,10 @@ static func extrude(curve: Curve3D, points: PackedVector2Array, mats: PackedInt3
 		var t := tangent_at(curve, o, length)
 		if seam_tangent != Vector3.ZERO and (i == 0 or i == offsets.size() - 1):
 			t = seam_tangent
+		elif i == 0 and start_tangent != Vector3.ZERO:
+			t = start_tangent
+		elif i == offsets.size() - 1 and end_tangent != Vector3.ZERO:
+			t = end_tangent
 		var f := frame_from_tangent(t, curve.sample_baked(o), tilt, prev_right)
 		prev_right = f.basis.x
 		frames.append(f)

@@ -1,7 +1,7 @@
 {
-	"baker_version": 5,
+	"baker_version": 6,
 	"chunk_size": 48.0,
-	"input_hash": "85e17f6fe6a4f2d57602a67a11a9d41c01190bccade7cc39c70ac64d4bd4a419",
+	"input_hash": "7ab0e259eb8a4d9b520465c20d0f5aa083ab62b1dee01bc61af99d2719d66005",
 	"level": "res://src/levels/dev/kit_fixture.tscn",
 	"stats": {
 		"bodies": 9,
@@ -12,6 +12,6 @@
 		"scatter_multimeshes": 5,
 		"shapes": 113,
 		"surfaces": 52,
-		"vertices": 58628
+		"vertices": 58630
 	}
 }
