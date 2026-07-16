@@ -190,6 +190,13 @@ func _on_selection_changed() -> void:
 			road = node
 	_brush.set_target(terrain)
 	_panel.set_has_terrain(terrain != null)
+	if terrain != null:
+		# Channel names and colors are the terrain's own data, so the picker is rebuilt per
+		# selection rather than hard-coded in the panel.
+		var colors := PackedColorArray()
+		for i in 8:
+			colors.append(terrain.channel_color(i))
+		_panel.set_channels(terrain.channel_names, colors)
 	_scatter_brush.set_target(canvas)
 	_scatter_panel.set_has_canvas(canvas != null)
 	_road_tool.set_target(road)

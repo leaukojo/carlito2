@@ -21,8 +21,29 @@ extends StaticBody3D
 ##  - An AUTO-SPLAT button seeding the RGBA splatmap (kit/terrain/terrain_splat.gdshader
 ##    colors: R=grass G=dirt B=sand A=rock) from slope + height, same undo discipline.
 ##    Pure math lives in TerrainGen (kit/terrain/terrain_gen.gd), unit-tested.
+##
+## Ground painting has EIGHT channels: 0..3 are splatmap.RGBA, 4..7 the optional
+## splatmap2.RGBA (absent = the plain 4-channel terrain, unchanged). Both the colors and the
+## names are per-level data — the colors ARE the material's shader params (edit them on the
+## material to repaint a level's palette), the names are `channel_names` below. Auto-splat
+## still only classifies the base four.
 
 const SPLAT_SHADER_PATH := "res://kit/terrain/terrain_splat.gdshader"
+## Splat shader color param per channel index (0..7). The one place the channel order is
+## written down: the brush cursor and the panel's swatches read colors through it.
+const CHANNEL_PARAMS: Array[StringName] = [
+	&"grass_color", &"dirt_color", &"sand_color", &"rock_color",
+	&"color5", &"color6", &"color7", &"color8",
+]
+const DEFAULT_CHANNEL_NAMES := [
+	"Grass", "Dirt", "Sand", "Rock", "Snow", "Mud", "Asphalt", "Gravel",
+]
+
+
+## The stock channel names: the `channel_names` export default, and the panel's fallback.
+## A function because a PackedStringArray isn't a constant expression.
+static func default_channel_names() -> PackedStringArray:
+	return PackedStringArray(DEFAULT_CHANNEL_NAMES)
 
 ## Grayscale image that IS the terrain: white = high, black = low.
 @export var heightmap: Texture2D:
@@ -84,10 +105,21 @@ const SPLAT_SHADER_PATH := "res://kit/terrain/terrain_splat.gdshader"
 @export_tool_button("Generate new random terrain") var _generate_random_action := _generate_random
 
 @export_group("Splat")
+## Weights for paint channels 0..3 (RGBA = grass/dirt/sand/rock).
 @export var splatmap: Texture2D:
 	set(value):
 		splatmap = value
 		_push_splat_param()
+## Weights for paint channels 4..7 (RGBA). Optional: without it the terrain is a plain
+## 4-channel one. The brush creates it on the first stroke of a channel >= 4.
+@export var splatmap2: Texture2D:
+	set(value):
+		splatmap2 = value
+		_push_splat_param()
+## Display names for the eight paint channels, shown in the brush panel's channel picker.
+## Names only — a channel's COLOR is the matching shader param on `material` (see
+## CHANNEL_PARAMS); rename and recolor per level to taste.
+@export var channel_names := default_channel_names()
 ## Beaches appear below this world height (the band fades out over another half of it);
 ## above, grass.
 @export var sand_height := 2.0
@@ -173,7 +205,37 @@ func rebuild_collision_from_image(img: Image) -> void:
 func png_path_for(kind: String) -> String:
 	if kind == "height":
 		return _target_png_path(heightmap, "height")
+	if kind == "splat2":
+		return _target_png_path(splatmap2, "splat2")
 	return _target_png_path(splatmap, "splat")
+
+
+## The editable color of paint channel `ch` (0..7): the material's shader param when the
+## level set one, else the splat shader's own default. Gray when the material isn't a
+## shader material (nothing to paint into).
+func channel_color(ch: int) -> Color:
+	var mat := material as ShaderMaterial
+	if mat == null:
+		return Color.GRAY
+	var param := CHANNEL_PARAMS[clampi(ch, 0, 7)]
+	var value: Variant = mat.get_shader_parameter(param)
+	if value is Color:
+		return value
+	if mat.shader != null:
+		# An unset param reads back null — ask the shader for the uniform's own default.
+		var def: Variant = RenderingServer.shader_get_parameter_default(mat.shader.get_rid(), param)
+		if def is Color:
+			return def
+	return Color.GRAY
+
+
+## Display name of paint channel `ch`, falling back to the default when `channel_names` is
+## short (a level may store fewer than eight).
+func channel_name(ch: int) -> String:
+	var i := clampi(ch, 0, 7)
+	if i < channel_names.size() and not channel_names[i].is_empty():
+		return channel_names[i]
+	return DEFAULT_CHANNEL_NAMES[i]  # a level may store fewer than eight
 
 
 ## Vertex grid dimensions: one cell = one world unit, so verts = extent + 1 (min 2).
@@ -325,10 +387,11 @@ func _apply_collision(cols: int, rows: int, heights: PackedFloat32Array) -> void
 	cs.shape = shape
 
 
-## Feed the splatmap to the splat ShaderMaterial (no-op on other material types).
+## Feed both splatmaps to the splat ShaderMaterial (no-op on other material types).
 func _push_splat_param() -> void:
 	if material is ShaderMaterial:
 		(material as ShaderMaterial).set_shader_parameter(&"splatmap", splatmap)
+		(material as ShaderMaterial).set_shader_parameter(&"splatmap2", splatmap2)
 
 
 # --- generation (editor-only: destructive-by-button, undoable, never per-frame) ---
@@ -354,7 +417,7 @@ func _generate_with_seed(seed_value: int) -> void:
 	var props := {}
 	if seed_value != gen_seed:
 		props[&"gen_seed"] = [gen_seed, seed_value]
-	_commit_generated("Generate terrain heightmap", &"heightmap", path, img, props)
+	_commit_generated("Generate terrain heightmap", [[&"heightmap", path, img]], props)
 
 
 func _auto_splat() -> void:
@@ -371,6 +434,17 @@ func _auto_splat() -> void:
 	var px_z := terrain_size.y / maxf(float(img.get_height() - 1), 1.0)
 	var splat := TerrainGen.build_splatmap(img, height, px_x, px_z,
 			sand_height, dirt_slope_deg, rock_slope_deg)
+	var images: Array = [[&"splatmap", path, splat]]
+	# Auto-splat classifies channels 0..3 only, so any painted 4..7 weight has to be zeroed
+	# in the SAME action — left alone it would keep double-counting against the fresh base
+	# weights, and the terrain would still read as snow/asphalt where it now says grass.
+	if splatmap2 != null:
+		var path2 := _target_png_path(splatmap2, "splat2")
+		if not path2.is_empty():
+			var zero := Image.create(splat.get_width(), splat.get_height(), false,
+					Image.FORMAT_RGBA8)
+			zero.fill(Color(0, 0, 0, 0))
+			images.append([&"splatmap2", path2, zero])
 	# One-click promise: if the current material isn't the splat shader, swap in a fresh
 	# splat ShaderMaterial (inside the same undo action, so undo restores the old look).
 	var props := {}
@@ -380,22 +454,17 @@ func _auto_splat() -> void:
 		var new_material := ShaderMaterial.new()
 		new_material.shader = load(SPLAT_SHADER_PATH)
 		props[&"material"] = [material, new_material]
-	_commit_generated("Auto-splat terrain", &"splatmap", path, splat, props)
+	_commit_generated("Auto-splat terrain", images, props)
 
 
-## One undoable action around a generated image (a stray click must not
-## destroy hand-sculpted brush work): do applies the new image, undo restores a
-## snapshot of the prior one — both through _apply_generated, which writes the PNG and
-## reimports, so disk always matches the scene. `props` are sibling property changes
+## One undoable action around the generated image(s) (a stray click must not
+## destroy hand-sculpted brush work): do applies the new images, undo restores a
+## snapshot of the prior ones — both through _apply_generated, which writes the PNG and
+## reimports, so disk always matches the scene. `images` is a list of
+## [property, png path, new image] triples that must land or revert together (auto-splat
+## rewrites splatmap AND clears splatmap2). `props` are sibling property changes
 ## ({name: [old, new]} — the random seed, the material swap) riding the same action.
-func _commit_generated(action_name: String, prop: StringName, path: String,
-		new_img: Image, props: Dictionary) -> void:
-	var prior: Image = null
-	var tex: Texture2D = get(prop)
-	if tex != null:
-		prior = tex.get_image()
-		if prior != null and prior.is_compressed():
-			prior.decompress()
+func _commit_generated(action_name: String, images: Array, props: Dictionary) -> void:
 	# Untyped on purpose: EditorUndoRedoManager is an editor-only class, so ANNOTATING with it
 	# makes this @tool script fail to PARSE in exported (non-editor) builds — which silently
 	# breaks every HeightmapTerrain at runtime. The value is fetched by string singleton lookup
@@ -407,8 +476,18 @@ func _commit_generated(action_name: String, prop: StringName, path: String,
 		# runs in registration order, undo reversed).
 		undo_redo.add_do_property(self, prop_name, props[prop_name][1])
 		undo_redo.add_undo_property(self, prop_name, props[prop_name][0])
-	undo_redo.add_do_method(self, &"_apply_generated", prop, path, new_img)
-	undo_redo.add_undo_method(self, &"_apply_generated", prop, path, prior)
+	for entry: Array in images:
+		var prop: StringName = entry[0]
+		var path: String = entry[1]
+		var new_img: Image = entry[2]
+		var prior: Image = null
+		var tex: Texture2D = get(prop)
+		if tex != null:
+			prior = tex.get_image()
+			if prior != null and prior.is_compressed():
+				prior.decompress()
+		undo_redo.add_do_method(self, &"_apply_generated", prop, path, new_img)
+		undo_redo.add_undo_method(self, &"_apply_generated", prop, path, prior)
 	undo_redo.commit_action()
 
 

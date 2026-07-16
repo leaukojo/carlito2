@@ -2,10 +2,12 @@
 extends "res://addons/carlito_kit/brush_chassis.gd"
 ## Terrain sculpt/paint brush. Rides the shared brush chassis; adds
 ## the terrain-specific half: raise / lower / smooth / flatten on the heightmap image, and
-## splat-channel painting on the splatmap.
+## 8-channel painting across the terrain's two splat weight images.
 ##
 ## Editor-only by construction: a brush edits image CONTENT only. It never swaps
-## the terrain's exported heightmap/splatmap Texture2D, and never touches the terrain's saved
+## the terrain's exported heightmap/splatmap Texture2D (the one exception: painting a channel
+## >= 4 on a terrain with no splatmap2 creates that PNG, and flush points the node at it), and
+## never touches the terrain's saved
 ## material (so the scene always serializes the PNG reference, never a transient in-memory
 ## texture). Live feedback comes from remeshing the touched chunks straight off the working
 ## image (height) and a preview material_override on those chunks (paint) — the chunks are
@@ -21,20 +23,26 @@ const TerrainGen := preload("res://kit/terrain/terrain_gen.gd")
 enum { OFF, RAISE, LOWER, SMOOTH, FLATTEN, PAINT }
 
 var mode := OFF
-var channel := 0  # splat channel to paint: 0/1/2/3 = grass/dirt/sand/rock
+## Splat channel to paint, 0..7: 0..3 live in the splatmap (grass/dirt/sand/rock), 4..7 in
+## the optional splatmap2. Names and colors are the terrain's (see HeightmapTerrain).
+var channel := 0
 
 var _undo: EditorUndoRedoManager
 var _terrain: HeightmapTerrain = null
 
 # Per-terrain edit session, kept until scene save (flush) or plugin exit — so deselecting
 # doesn't drop uncommitted work and undo stays coherent across reselection.
-# id -> { terrain, height:Image, splat:Image, splat_tex:ImageTexture,
-#         preview_mat:ShaderMaterial, height_dirty:bool, splat_dirty:bool }
+# id -> { terrain, height:Image, splat:Image, splat2:Image,
+#         splat_tex:ImageTexture, splat2_tex:ImageTexture, preview_mat:ShaderMaterial,
+#         height_dirty:bool, splat_dirty:bool, splat2_dirty:bool }
 var _sessions := {}
 
-# Active-stroke state.
+# Active-stroke state. A paint stroke edits BOTH splat images (painting any channel has to
+# fade the seven others, which straddle the two), so the snapshots come in pairs; a sculpt
+# stroke only fills the first.
 var _stroke_kind := "height"
 var _stroke_before: Image = null   # full snapshot at stroke begin (dirty region carved out at end)
+var _stroke_before2: Image = null  # ditto for splat2 (paint strokes only)
 var _dirty := Rect2i()
 var _dirty_any := false
 var _flatten_target := 0.0
@@ -73,7 +81,10 @@ func flush_all() -> void:
 		if s.splat_dirty and s.splat != null:
 			_flush_image(terrain, "splat", s.splat)
 			s.splat_dirty = false
-		# The reimported PNG is now the real splatmap, so dropping the preview can't pop.
+		if s.splat2_dirty and s.splat2 != null:
+			_flush_image(terrain, "splat2", s.splat2)
+			s.splat2_dirty = false
+		# The reimported PNGs are now the real splatmaps, so dropping the preview can't pop.
 		_drop_preview(s)
 		_heal_material(terrain)
 
@@ -107,8 +118,8 @@ func _cursor_color() -> Color:
 		FLATTEN:
 			return Color(1.0, 0.9, 0.4)
 		PAINT:
-			return [Color(0.4, 0.8, 0.35), Color(0.6, 0.45, 0.3),
-					Color(0.85, 0.78, 0.55), Color(0.55, 0.55, 0.55)][clampi(channel, 0, 3)]
+			# The cursor wears the channel's own (per-level, editable) color.
+			return _terrain.channel_color(channel) if is_instance_valid(_terrain) else Color.GRAY
 	return Color.WHITE
 
 
@@ -149,12 +160,15 @@ func _stroke_begin(center: Vector3) -> void:
 	_stroke_kind = "splat" if mode == PAINT else "height"
 	var work := _work_for(_terrain, _stroke_kind)
 	_stroke_before = null
+	_stroke_before2 = null
 	_dirty_any = false
 	if work == null:
 		push_warning("Kit brush: %s first." % ("auto-splat the terrain" if _stroke_kind == "splat"
 				else "generate a heightmap"))
 		return
 	_stroke_before = work.duplicate()
+	if mode == PAINT:
+		_stroke_before2 = _work_for(_terrain, "splat2").duplicate()
 	if mode == FLATTEN:
 		_flatten_target = _sample_work_red(work, center.x, center.z)
 
@@ -174,7 +188,12 @@ func _stroke_apply(center: Vector3) -> void:
 
 	var dirty: Rect2i
 	if mode == PAINT:
-		dirty = BrushOps.stamp_splat(work, c.x, c.y, rx, rz, channel, strength, falloff)
+		# Both images take the same kernel with their own slice of the unit vector, so the
+		# channel painted rises and every other channel — in either image — fades.
+		dirty = BrushOps.stamp_splat(work, c.x, c.y, rx, rz,
+				BrushOps.unit_slice(channel, 0), strength, falloff)
+		BrushOps.stamp_splat(_work_for(_terrain, "splat2"), c.x, c.y, rx, rz,
+				BrushOps.unit_slice(channel, 1), strength, falloff)
 	else:
 		dirty = BrushOps.stamp_height(work, c.x, c.y, rx, rz, mode - RAISE, strength, falloff,
 				_flatten_target)
@@ -184,8 +203,9 @@ func _stroke_apply(center: Vector3) -> void:
 	_dirty_any = true
 
 	if mode == PAINT:
-		_refresh_splat(_terrain, work)
+		_refresh_splat(_terrain)
 		_mark_dirty(_terrain, "splat")
+		_mark_dirty(_terrain, "splat2")
 	else:
 		# Remesh only the chunks under the brush footprint (never a full rebuild
 		# per stroke). Collision is deferred to stroke end.
@@ -198,23 +218,30 @@ func _stroke_apply(center: Vector3) -> void:
 func _stroke_end() -> void:
 	if not _dirty_any or _stroke_before == null:
 		_stroke_before = null
+		_stroke_before2 = null
 		return
 	var work := _work_for(_terrain, _stroke_kind)
 	if _stroke_kind == "height":
 		_terrain.rebuild_collision_from_image(work)  # catch physics up once, at stroke end
 
-	# Undo snapshots only the touched region of each side.
-	var before_region := _stroke_before.get_region(_dirty)
-	var after_region := work.get_region(_dirty)
+	# Undo snapshots only the touched region of each side — of both images for a paint
+	# stroke (same dirty rect: one kernel stamped into both).
+	var kinds := ["splat", "splat2"] if _stroke_kind == "splat" else ["height"]
+	var befores := [_stroke_before, _stroke_before2]
 	_stroke_before = null
+	_stroke_before2 = null
 	var pos := _dirty.position
 	var scene_root := EditorInterface.get_edited_scene_root()
 	_undo.create_action("Paint terrain" if _stroke_kind == "splat" else "Sculpt terrain",
 			UndoRedo.MERGE_DISABLE, scene_root)
-	_undo.add_do_method(self, "_apply_region", _terrain, _stroke_kind, after_region, pos)
-	_undo.add_undo_method(self, "_apply_region", _terrain, _stroke_kind, before_region, pos)
-	_undo.add_do_reference(after_region)
-	_undo.add_undo_reference(before_region)
+	for i in kinds.size():
+		var kind: String = kinds[i]
+		var before_region := (befores[i] as Image).get_region(_dirty)
+		var after_region := _work_for(_terrain, kind).get_region(_dirty)
+		_undo.add_do_method(self, "_apply_region", _terrain, kind, after_region, pos)
+		_undo.add_undo_method(self, "_apply_region", _terrain, kind, before_region, pos)
+		_undo.add_do_reference(after_region)
+		_undo.add_undo_reference(before_region)
 	_undo.commit_action(false)  # edits are already live — don't re-run the do now
 
 
@@ -228,8 +255,8 @@ func _apply_region(terrain: HeightmapTerrain, kind: String, region: Image, pos: 
 		return
 	work.blit_rect(region, Rect2i(Vector2i.ZERO, region.get_size()), pos)
 	_mark_dirty(terrain, kind)
-	if kind == "splat":
-		_refresh_splat(terrain, work)
+	if kind == "splat" or kind == "splat2":
+		_refresh_splat(terrain)
 		return
 	var lo := _px_to_world(terrain, work, pos)
 	var hi := _px_to_world(terrain, work, pos + region.get_size())
@@ -241,18 +268,36 @@ func _apply_region(terrain: HeightmapTerrain, kind: String, region: Image, pos: 
 
 # ------------------------------------------------------------------ session / image helpers
 
+## The working image for `kind` ("height" / "splat" / "splat2"), decoded from the terrain's
+## texture on first touch. splat2 is the exception: a terrain that has never been painted with
+## a channel >= 4 has no splatmap2, so one is created all-zero (= no extra weight anywhere,
+## the shader's own default) sized like the splatmap — the first such stroke just works, and
+## flush writes the new PNG. Sizing off the splatmap is enough because a paint stroke without
+## a splatmap is refused in _stroke_begin.
 func _work_for(terrain: HeightmapTerrain, kind: String) -> Image:
 	var id := terrain.get_instance_id()
 	if not _sessions.has(id):
 		_sessions[id] = {
-			"terrain": terrain, "height": null, "splat": null, "splat_tex": null,
-			"preview_mat": null, "height_dirty": false, "splat_dirty": false,
+			"terrain": terrain, "height": null, "splat": null, "splat2": null,
+			"splat_tex": null, "splat2_tex": null, "preview_mat": null,
+			"height_dirty": false, "splat_dirty": false, "splat2_dirty": false,
 		}
 	var s: Dictionary = _sessions[id]
 	if kind == "height":
 		if s.height == null:
 			s.height = _decode(terrain.heightmap, Image.FORMAT_L8)
 		return s.height
+	if kind == "splat2":
+		if s.splat2 == null:
+			s.splat2 = _decode(terrain.splatmap2, Image.FORMAT_RGBA8)
+		if s.splat2 == null:
+			var base: Image = _work_for(terrain, "splat")
+			if base == null:
+				return null
+			s.splat2 = Image.create(base.get_width(), base.get_height(), false,
+					Image.FORMAT_RGBA8)
+			(s.splat2 as Image).fill(Color(0, 0, 0, 0))
+		return s.splat2
 	if s.splat == null:
 		s.splat = _decode(terrain.splatmap, Image.FORMAT_RGBA8)
 	return s.splat
@@ -260,26 +305,39 @@ func _work_for(terrain: HeightmapTerrain, kind: String) -> Image:
 
 func _mark_dirty(terrain: HeightmapTerrain, kind: String) -> void:
 	var s: Dictionary = _sessions[terrain.get_instance_id()]
-	s["height_dirty" if kind == "height" else "splat_dirty"] = true
+	s[kind + "_dirty"] = true
 
 
-## Show live paint without touching the SAVED material: a throwaway ImageTexture (updated in
-## place per sample) feeds a duplicate of the material, applied as material_override on the
-## terrain's unowned chunk MeshInstance3Ds. Writing the transient texture into the saved
-## material instead would embed the whole raw image into the .tscn on save.
-func _refresh_splat(terrain: HeightmapTerrain, work: Image) -> void:
+## Show live paint without touching the SAVED material: throwaway ImageTextures (updated in
+## place per sample) for BOTH weight images feed a duplicate of the material, applied as
+## material_override on the terrain's unowned chunk MeshInstance3Ds. Writing the transient
+## textures into the saved material instead would embed the whole raw images into the .tscn
+## on save.
+func _refresh_splat(terrain: HeightmapTerrain) -> void:
+	var work := _work_for(terrain, "splat")
+	if work == null:
+		return
 	var s: Dictionary = _sessions[terrain.get_instance_id()]
-	if s.splat_tex == null:
-		s.splat_tex = ImageTexture.create_from_image(work)
-	else:
-		(s.splat_tex as ImageTexture).update(work)
+	s.splat_tex = _live_texture(s.splat_tex, work)
+	s.splat2_tex = _live_texture(s.splat2_tex, _work_for(terrain, "splat2"))
 	if s.preview_mat == null:
 		if not (terrain.material is ShaderMaterial):
 			return
-		var mat := (terrain.material as ShaderMaterial).duplicate() as ShaderMaterial
-		mat.set_shader_parameter(&"splatmap", s.splat_tex)
-		s.preview_mat = mat
-	_push_preview(terrain, s.preview_mat)
+		s.preview_mat = (terrain.material as ShaderMaterial).duplicate() as ShaderMaterial
+	var mat: ShaderMaterial = s.preview_mat
+	mat.set_shader_parameter(&"splatmap", s.splat_tex)
+	mat.set_shader_parameter(&"splatmap2", s.splat2_tex)
+	_push_preview(terrain, mat)
+
+
+## Create-or-update the transient ImageTexture mirroring a working image.
+func _live_texture(tex: ImageTexture, img: Image) -> ImageTexture:
+	if img == null:
+		return tex
+	if tex == null:
+		return ImageTexture.create_from_image(img)
+	tex.update(img)
+	return tex
 
 
 ## (Re)apply the preview material to the terrain's current chunk nodes. Called after every
@@ -319,11 +377,13 @@ func _heal_material(terrain: HeightmapTerrain) -> void:
 	var mat := terrain.material as ShaderMaterial
 	if mat == null:
 		return
-	var param: Variant = mat.get_shader_parameter(&"splatmap")
-	if param is ImageTexture and (param as ImageTexture).resource_path.is_empty():
-		mat.set_shader_parameter(&"splatmap", terrain.splatmap)
-		push_warning("Kit brush: transient splatmap found on the saved material — reset to the "
-				+ "terrain's splatmap. The live preview should never write to it.")
+	for param: StringName in [&"splatmap", &"splatmap2"]:
+		var value: Variant = mat.get_shader_parameter(param)
+		if value is ImageTexture and (value as ImageTexture).resource_path.is_empty():
+			mat.set_shader_parameter(param,
+					terrain.splatmap if param == &"splatmap" else terrain.splatmap2)
+			push_warning("Kit brush: transient %s found on the saved material — reset to the "
+					% param + "terrain's texture. The live preview should never write to it.")
 
 
 func _flush_image(terrain: HeightmapTerrain, kind: String, img: Image) -> void:
@@ -344,6 +404,8 @@ func _flush_image(terrain: HeightmapTerrain, kind: String, img: Image) -> void:
 	# param, so live state and saved artifact agree.
 	if kind == "height":
 		terrain.heightmap = tex
+	elif kind == "splat2":
+		terrain.splatmap2 = tex
 	else:
 		terrain.splatmap = tex
 

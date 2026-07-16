@@ -1,7 +1,7 @@
 {
 	"baker_version": 5,
 	"chunk_size": 64.0,
-	"input_hash": "1e9f033db6b5721b91f8f41b88e3122b5e95072bb342287e0fadaba4e5f45fa6",
+	"input_hash": "f5fd4653f44ea5c9117d104f3b1842b374a06e4ad5efc2e4b76f191a65157e66",
 	"level": "res://src/levels/dev/terrain_demo.tscn",
 	"stats": {
 		"bodies": 0,

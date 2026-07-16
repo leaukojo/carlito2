@@ -7,8 +7,9 @@ extends RefCounted
 ##
 ## Everything is deterministic and works in PIXEL space with separate x/z pixel radii, so a
 ## world-circular brush on a non-square terrain stamps as an ellipse in image space. The
-## height image is greyscale (red channel = normalized height [0,1]); the splatmap is RGBA
-## weights (R=grass, G=dirt, B=sand, A=rock — TerrainGen's channel order).
+## height image is greyscale (red channel = normalized height [0,1]); the splat weights are
+## an 8-vector split across two RGBA images — channels 0..3 in the splatmap (R=grass, G=dirt,
+## B=sand, A=rock — TerrainGen's channel order), 4..7 in the optional splatmap2.
 
 # Sculpt modes (raise/lower shift the normalized height; smooth blurs; flatten pulls toward
 # a captured target). Paint is a separate stamp (stamp_splat), not a sculpt mode.
@@ -97,24 +98,34 @@ static func stamp_height(img: Image, cx: int, cy: int, rx: float, rz: float,
 	return Rect2i(minx, miny, maxx - minx + 1, maxy - miny + 1)
 
 
-## Stamp a splat-channel paint into the RGBA splatmap: pulls each touched pixel toward the
-## pure selected channel (channel 0..3 = R/G/B/A = grass/dirt/sand/rock) by strength*weight.
-## The splat shader renormalizes, so lerping toward the unit colour reads as "painting grass
-## over dirt". Returns the dirty Rect2i in pixels.
+## The RGBA slice of the 8-channel unit vector for `channel` (0..7) that belongs to splat
+## image `image_index` (0 = splatmap holds channels 0..3, 1 = splatmap2 holds 4..7). All-zero
+## when the channel lives in the OTHER image — and that is the whole trick: stamping both
+## images with their slice lerps the far image's weights toward zero, so painting one channel
+## fades the seven others no matter which image each lives in, with no cross-image bookkeeping.
+static func unit_slice(channel: int, image_index: int) -> Color:
+	var unit := Color(0, 0, 0, 0)
+	match clampi(channel, 0, 7) - image_index * 4:
+		0: unit.r = 1.0
+		1: unit.g = 1.0
+		2: unit.b = 1.0
+		3: unit.a = 1.0
+	return unit
+
+
+## Stamp a splat-channel paint into an RGBA weight image: pulls each touched pixel toward
+## `unit` (a unit_slice) by strength*weight. The splat shader renormalizes, so lerping toward
+## the unit colour reads as "painting grass over dirt". Returns the dirty Rect2i in pixels —
+## geometry depends only on the kernel, so the two images of a paint stroke always report the
+## same rect.
 static func stamp_splat(img: Image, cx: int, cy: int, rx: float, rz: float,
-		channel: int, strength: float, falloff: float) -> Rect2i:
+		unit: Color, strength: float, falloff: float) -> Rect2i:
 	var iw := img.get_width()
 	var ih := img.get_height()
 	var x0 := clampi(cx - int(ceil(rx)) - 1, 0, iw - 1)
 	var x1 := clampi(cx + int(ceil(rx)) + 1, 0, iw - 1)
 	var y0 := clampi(cy - int(ceil(rz)) - 1, 0, ih - 1)
 	var y1 := clampi(cy + int(ceil(rz)) + 1, 0, ih - 1)
-	var unit := Color(0, 0, 0, 0)
-	match clampi(channel, 0, 3):
-		0: unit.r = 1.0
-		1: unit.g = 1.0
-		2: unit.b = 1.0
-		3: unit.a = 1.0
 
 	var minx := iw
 	var miny := ih

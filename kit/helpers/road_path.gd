@@ -424,8 +424,8 @@ func _conform_terrain() -> void:
 				float(dims.x - 1), float(dims.y - 1))
 		if not dirty.has_area():
 			continue
-		t._commit_generated("Conform terrain to road '%s'" % name, &"heightmap",
-				t.png_path_for("height"), img, {})
+		t._commit_generated("Conform terrain to road '%s'" % name,
+				[[&"heightmap", t.png_path_for("height"), img]], {})
 		touched += 1
 	if touched == 0:
 		push_warning("RoadPath: no HeightmapTerrain overlaps this road — nothing conformed.")

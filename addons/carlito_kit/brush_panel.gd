@@ -20,7 +20,8 @@ const MODE_TOOLTIPS := [
 			+ "and fields. (Smooth rounds things; Flatten makes them level.)",
 	"Colors the ground with the selected channel instead of changing its shape.",
 ]
-const CHANNEL_LABELS := ["Grass", "Dirt", "Sand", "Rock"]
+const CHANNEL_COUNT := 8
+const SWATCH_PX := 14
 
 var _status: Label
 var _mode_group := ButtonGroup.new()
@@ -69,12 +70,12 @@ func _build() -> void:
 	_channel_row.add_child(ch_label)
 	_channel_box = OptionButton.new()
 	_channel_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_channel_box.tooltip_text = "Which ground color to paint."
-	for name in CHANNEL_LABELS:
-		_channel_box.add_item(name)
+	_channel_box.tooltip_text = "Which ground color to paint. Names and colors are the " \
+			+ "terrain's own — rename them on the node, recolor them on its material."
 	_channel_box.item_selected.connect(func(i): channel_changed.emit(i))
 	_channel_row.add_child(_channel_box)
 	_channel_row.visible = false
+	set_channels(HeightmapTerrain.default_channel_names(), PackedColorArray())
 
 	add_child(HSeparator.new())
 	_radius = _spinner("Radius", 0.5, 512.0, 0.5, 8.0,
@@ -133,6 +134,31 @@ func _emit_params() -> void:
 ## picker for Paint and hint at the required source image.
 func on_mode(mode: int) -> void:
 	_channel_row.visible = (mode == 5)  # PAINT
+
+
+## Fill the channel picker from the selected terrain: its eight display names, each with a
+## swatch of that channel's color (both are per-level data — see HeightmapTerrain). Pass an
+## empty `colors` for a plain, iconless list. The selection survives the refill, so
+## re-selecting a terrain never silently switches which channel the brush paints.
+func set_channels(names: PackedStringArray, colors: PackedColorArray) -> void:
+	var selected := maxi(_channel_box.selected, 0)
+	_channel_box.clear()
+	for i in CHANNEL_COUNT:
+		var label: String = HeightmapTerrain.DEFAULT_CHANNEL_NAMES[i]
+		if i < names.size() and not names[i].is_empty():
+			label = names[i]
+		if i < colors.size():
+			_channel_box.add_icon_item(_swatch(colors[i]), label)
+		else:
+			_channel_box.add_item(label)
+	_channel_box.select(mini(selected, CHANNEL_COUNT - 1))
+
+
+## A flat color chip, used as a channel's icon in the picker.
+func _swatch(color: Color) -> ImageTexture:
+	var img := Image.create(SWATCH_PX, SWATCH_PX, false, Image.FORMAT_RGBA8)
+	img.fill(color)
+	return ImageTexture.create_from_image(img)
 
 
 ## Reflect a bracket-key radius change without re-emitting params_changed.

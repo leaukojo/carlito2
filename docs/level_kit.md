@@ -171,15 +171,27 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   snapshotting the prior image + any property change (seed, material swap) — a stray
   click must not destroy sculpt work.
 - **Splat ground:** `kit/terrain/terrain_splat.gdshader` (ships — `kit/terrain/` is not
-  export-excluded): 4 albedo colors blended by an RGBA splatmap, **R=grass G=dirt B=sand
-  A=rock**, sampled raw (no `source_color` — sRGB would bend weights),
-  gl_compatibility-safe. `blend_sharpness` pow-sharpens + renormalizes the weights
-  (default 8 — crisp low-poly borders, not soft fades). The **Auto-splat** button
-  classifies from slope + height (`sand_height`, `dirt_slope_deg`, `rock_slope_deg`),
-  swapping in a splat ShaderMaterial when needed (same undo action); the node pushes
-  `splatmap` into the material param on rebuild. The below-sea ring splats sand out to
-  the square map edge by design — a level's `WaterSurface` at sea level is what makes
-  the beach read as a circular coast.
+  export-excluded): **8** albedo colors blended by **two** RGBA weight maps, sampled raw
+  (no `source_color` — sRGB would bend weights), gl_compatibility-safe. `blend_sharpness`
+  pow-sharpens + renormalizes across all 8 weights (default 8 — crisp low-poly borders,
+  not soft fades). The **Auto-splat** button classifies from slope + height
+  (`sand_height`, `dirt_slope_deg`, `rock_slope_deg`), swapping in a splat ShaderMaterial
+  when needed (same undo action); the node pushes both maps into the material params on
+  rebuild. The below-sea ring splats sand out to the square map edge by design — a level's
+  `WaterSurface` at sea level is what makes the beach read as a circular coast.
+- **The 8 channels are per-level data.** Index 0..3 = `splatmap`.RGBA (**R=grass G=dirt
+  B=sand A=rock** — TerrainGen's order), 4..7 = `splatmap2`.RGBA. `splatmap2` is
+  **optional**: absent, the shader samples it transparent (`hint_default_transparent`, NOT
+  `_black` — the engine's default black is *opaque*, which would give every terrain a
+  full-weight channel 8), so a 4-channel terrain is byte-for-byte unchanged. A channel's
+  **color** is its shader param (`HeightmapTerrain.CHANNEL_PARAMS` maps index → param:
+  `grass_color`…`rock_color`, then `color5`…`color8` defaulting to snow/mud/asphalt/gravel)
+  — edit the material to repaint a level's palette; its **name** is the node's
+  `channel_names`. Both are read by the brush panel (`channel_color()` falls back to the
+  shader's own default via `RenderingServer.shader_get_parameter_default`, since an unset
+  param reads back null). Auto-splat classifies only the base 4, so it **zeroes `splatmap2`
+  in the same undo action** — stale extra weights would otherwise double-count against the
+  fresh base ones.
 - **Generated-PNG import gotcha:** `TerrainGen.ensure_import_settings` writes/patches
   the `.import` sidecar — lossless, no mipmaps, **`detect_3d/compress_to=0`** (the
   splatmap is sampled by a 3D shader; the default detect_3d would silently reimport it
@@ -203,20 +215,29 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   is inert (returns false, doesn't touch the viewport) until a subclass reports a valid
   target.
 - **`terrain_brush.gd`**: sculpt **raise/lower/smooth/flatten** on the heightmap,
-  **paint** on the splatmap (4 channels). The pure per-pixel stamp math lives in
+  **paint** any of the 8 splat channels. The pure per-pixel stamp math lives in
   `kit/helpers/brush_ops.gd` (radial `weight` curve, `sculpt_value`,
   `stamp_height`/`stamp_splat` returning the dirty Rect2i) — editor-free, unit-tested in
-  `tests/test_brush_ops.gd`. Ground under the cursor is found by **iterating
+  `tests/test_brush_ops.gd`. Paint is a lerp toward the unit 8-vector, **split across both
+  weight images**: each takes the same kernel with its `BrushOps.unit_slice(channel,
+  image_index)` — all-zero for the image the channel doesn't live in, which is exactly the
+  fade the other seven channels need, so sums stay normalized with no cross-image
+  bookkeeping. Every paint stroke therefore stamps, previews, dirties, undoes and flushes
+  **both** images (same kernel ⇒ same dirty rect). A terrain with no `splatmap2` gets an
+  all-zero one created lazily on the first channel ≥ 4 stroke, written to
+  `png_path_for("splat2")` on save. Ground under the cursor is found by **iterating
   ray-vs-heightfield** (no physics — editor space isn't reliably populated, and we want
   the terrain surface, not a placed prop), sampling the **live working image** so the
   cursor tracks in-progress sculpting.
 - **Editor-only; PNGs stay the sole artifact.** A brush never swaps the terrain's
   exported `heightmap`/`splatmap` Texture2D, so the scene always serializes the PNG
-  reference. Live feedback: height remeshes only the touched chunks straight off the
+  reference (sole exception: the lazily created `splatmap2`, which has no PNG to point at
+  until its first flush). Live feedback: height remeshes only the touched chunks straight off the
   in-memory working image via `HeightmapTerrain.rebuild_region_world(img, min_x, max_x,
   min_z, max_z)` (collision deferred to stroke end via `rebuild_collision_from_image` —
-  HeightMapShape3D has no partial update); paint drives a temporary splatmap
-  shader-param override from a throwaway `ImageTexture`. Edits accumulate in per-terrain
+  HeightMapShape3D has no partial update); paint drives temporary `splatmap` + `splatmap2`
+  shader-param overrides from throwaway `ImageTexture`s (the preview material dupe must
+  carry BOTH, or a channel ≥ 4 stroke would be invisible). Edits accumulate in per-terrain
   sessions and are written to the PNGs + reimported **only on scene save**
   (`EditorPlugin._save_external_data` → `TerrainBrush.flush_all`), never per stroke.
   `HeightmapTerrain.png_path_for(kind)` provides the PNG paths.
@@ -225,7 +246,9 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   blits back and refreshes the visual, robust to the terrain no longer being selected
   (re-derives the session).
 - **Panel** (`addons/carlito_kit/brush_panel.gd`, right dock `DOCK_SLOT_RIGHT_BL`): mode
-  buttons (index-matched to the brush enum, 0 = Off), a Paint-only channel picker,
+  buttons (index-matched to the brush enum, 0 = Off), a Paint-only channel picker (8
+  entries, refilled per selection from the terrain's `channel_names` + a color swatch per
+  channel; the selection survives the refill),
   radius/strength/edge-softness spinners (labeled "Edge softness" in the UI; the param
   stays `falloff` in code). The plugin tracks `selection_changed` → sets the
   brush target to any selected `HeightmapTerrain`; picking a mode disarms the placement
