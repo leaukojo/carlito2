@@ -53,7 +53,6 @@
 [ext_resource type="Script" uid="uid://cpl5vh8pdc04w" path="res://kit/helpers/road_path.gd" id="52_7iofg"]
 [ext_resource type="Resource" uid="uid://3r6iaciwp2fk" path="res://kit/roads/asphalt_profile.tres" id="53_0e8c1"]
 [ext_resource type="MeshLibrary" path="res://kit/palettes/racing.meshlib" id="53_jm8ie"]
-[ext_resource type="Script" uid="uid://81gx7eh4vwms" path="res://kit/helpers/kit_piece.gd" id="54_8hbdd"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/nature/fence_simple.tscn" id="72_72po1"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/nature/fence_bendCenter.tscn" id="73_npqul"]
 
@@ -317,13 +316,11 @@ data = {
 }
 metadata/_editor_floor_ = Vector3(0, 0, 0)
 
-[node name="FenceSimple" type="Node3D" parent="Authoring" unique_id=701573764 instance=ExtResource("72_72po1")]
+[node name="FenceSimple" parent="Authoring" unique_id=701573764 instance=ExtResource("72_72po1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.6620116, 9.536743e-07, 1.7685738)
-script = ExtResource("54_8hbdd")
 
-[node name="FenceBendCenter" type="Node3D" parent="Authoring" unique_id=932741338 instance=ExtResource("73_npqul")]
+[node name="FenceBendCenter" parent="Authoring" unique_id=932741338 instance=ExtResource("73_npqul")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.312356, 0, 4.0933785)
-script = ExtResource("54_8hbdd")
 
 [node name="ShowcaseLabels" type="Node3D" parent="." unique_id=833851642]
 
