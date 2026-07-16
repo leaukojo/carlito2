@@ -40,6 +40,18 @@ const DEFAULT_CHANNEL_NAMES := [
 ]
 
 
+## Emitted when one of the source images is REPLACED wholesale — `kind` is "height",
+## "splat" or "splat2". Fires for Generate, Auto-splat, road Conform, an inspector
+## assignment, and the undo of any of them (they all land through the property setters).
+##
+## This is the seam the kit brush needs: it keeps a decoded working copy of each image in
+## memory until scene save, so anything that rewrites a PNG behind its back leaves that copy
+## stale — and the next stroke would stamp into the pre-button pixels and flush them, undoing
+## the button. Brush-side identity checks can't stand in for this: _apply_generated reloads
+## with CACHE_MODE_REPLACE, which keeps the same Texture2D instance and swaps its contents.
+signal source_image_replaced(kind: String)
+
+
 ## The stock channel names: the `channel_names` export default, and the panel's fallback.
 ## A function because a PackedStringArray isn't a constant expression.
 static func default_channel_names() -> PackedStringArray:
@@ -50,6 +62,7 @@ static func default_channel_names() -> PackedStringArray:
 	set(value):
 		heightmap = value
 		_rebuild_if_ready()
+		source_image_replaced.emit("height")
 ## World-unit extent on X (width) and Z (depth). Also the collision/mesh grid size.
 @export var terrain_size := Vector2(64, 64):
 	set(value):
@@ -110,12 +123,14 @@ static func default_channel_names() -> PackedStringArray:
 	set(value):
 		splatmap = value
 		_push_splat_param()
+		source_image_replaced.emit("splat")
 ## Weights for paint channels 4..7 (RGBA). Optional: without it the terrain is a plain
 ## 4-channel one. The brush creates it on the first stroke of a channel >= 4.
 @export var splatmap2: Texture2D:
 	set(value):
 		splatmap2 = value
 		_push_splat_param()
+		source_image_replaced.emit("splat2")
 ## Display names for the eight paint channels, shown in the brush panel's channel picker.
 ## Names only — a channel's COLOR is the matching shader param on `material` (see
 ## CHANNEL_PARAMS); rename and recolor per level to taste.

@@ -92,7 +92,11 @@ func flush_all() -> void:
 func teardown() -> void:
 	_free_cursor()
 	for id: int in _sessions:
-		_drop_preview(_sessions[id])
+		var s: Dictionary = _sessions[id]
+		_drop_preview(s)
+		var terrain: HeightmapTerrain = s.terrain
+		if is_instance_valid(terrain):
+			terrain.source_image_replaced.disconnect(s.on_replaced)
 	_sessions.clear()
 	_terrain = null
 
@@ -277,11 +281,16 @@ func _apply_region(terrain: HeightmapTerrain, kind: String, region: Image, pos: 
 func _work_for(terrain: HeightmapTerrain, kind: String) -> Image:
 	var id := terrain.get_instance_id()
 	if not _sessions.has(id):
+		# Bound callable kept in the session so teardown can disconnect the exact same one
+		# (the node would otherwise keep this RefCounted brush alive).
+		var on_replaced := _on_source_replaced.bind(terrain)
 		_sessions[id] = {
 			"terrain": terrain, "height": null, "splat": null, "splat2": null,
 			"splat_tex": null, "splat2_tex": null, "preview_mat": null,
 			"height_dirty": false, "splat_dirty": false, "splat2_dirty": false,
+			"on_replaced": on_replaced,
 		}
+		terrain.source_image_replaced.connect(on_replaced)
 	var s: Dictionary = _sessions[id]
 	if kind == "height":
 		if s.height == null:
@@ -306,6 +315,24 @@ func _work_for(terrain: HeightmapTerrain, kind: String) -> Image:
 func _mark_dirty(terrain: HeightmapTerrain, kind: String) -> void:
 	var s: Dictionary = _sessions[terrain.get_instance_id()]
 	s[kind + "_dirty"] = true
+
+
+## The terrain replaced one of its source images (Generate / Auto-splat / road Conform / an
+## inspector assignment / an undo of those): drop our working copy so the next touch decodes
+## the new one. Without this the session keeps the PRE-button pixels and the next stroke
+## flushes them back — Auto-splat would visibly "come undone" on the next paint.
+##
+## Dropping an unflushed dirty image here is the intended outcome, not a loss: those buttons
+## overwrite hand work by design (and undoably), and our own flush only ever assigns a
+## texture whose PNG it just wrote.
+func _on_source_replaced(kind: String, terrain: HeightmapTerrain) -> void:
+	var s: Dictionary = _sessions.get(terrain.get_instance_id(), {})
+	if s.is_empty():
+		return
+	s[kind] = null
+	s[kind + "_dirty"] = false
+	if kind != "height":
+		s[kind + "_tex"] = null  # the transient preview texture mirrored the dropped image
 
 
 ## Show live paint without touching the SAVED material: throwaway ImageTextures (updated in

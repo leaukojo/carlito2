@@ -240,6 +240,15 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   carry BOTH, or a channel ≥ 4 stroke would be invisible). Edits accumulate in per-terrain
   sessions and are written to the PNGs + reimported **only on scene save**
   (`EditorPlugin._save_external_data` → `TerrainBrush.flush_all`), never per stroke.
+- **Cached working images must be dropped when a button replaces a PNG.** Generate,
+  Auto-splat, road Conform, an inspector assignment and the undo of any of them all land
+  through `HeightmapTerrain`'s property setters, which emit
+  **`source_image_replaced(kind)`**; the brush subscribes per session and nulls that
+  image. Without it the session keeps the pre-button pixels and the next stroke flushes
+  them back — Auto-splat visibly comes undone on the next paint (and only a Godot restart,
+  which clears sessions, "fixes" it). A brush-side identity check is **not** a substitute:
+  `_apply_generated` reloads with `CACHE_MODE_REPLACE`, so the Texture2D instance is
+  unchanged and only its contents differ.
   `HeightmapTerrain.png_path_for(kind)` provides the PNG paths.
 - **Undo** snapshots only the touched image region (before/after sub-images via
   `get_region`, `commit_action(false)` since edits are already live); `_apply_region`
