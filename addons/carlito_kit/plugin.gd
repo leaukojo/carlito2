@@ -80,6 +80,8 @@ func _enter_tree() -> void:
 	_road_panel.mode_changed.connect(_on_road_mode)
 	_road_panel.close_requested.connect(func(): _road_tool.close_loop())
 	_road_panel.smooth_corners_changed.connect(func(on): _road_tool.smooth_corners = on)
+	_road_panel.snap_ports_changed.connect(func(on): _road_tool.snap_ports = on)
+	_road_panel.snap_ends_requested.connect(func(): _road_tool.snap_ends())
 	_road_tool.deactivated.connect(func(): _road_panel.show_off())
 
 	# The three tool panels share a "Kit Tools" bottom panel (like the Kit dock):
@@ -201,7 +203,8 @@ func _on_selection_changed() -> void:
 		elif node is RoadPath:
 			road = node
 	_brush.set_target(terrain)
-	_brush.set_grid(_find_road_gridmap())
+	var road_grid := _find_road_gridmap()
+	_brush.set_grid(road_grid)
 	_panel.set_has_terrain(terrain != null)
 	if terrain != null:
 		# Channel names and colors are the terrain's own data, so the picker is rebuilt per
@@ -213,6 +216,7 @@ func _on_selection_changed() -> void:
 	_scatter_brush.set_target(canvas)
 	_scatter_panel.set_has_canvas(canvas != null)
 	_road_tool.set_target(road)
+	_road_tool.set_grid(road_grid)
 	_road_panel.set_has_road(road != null)
 	if terrain != null or canvas != null or road != null:
 		make_bottom_panel_item_visible(_tools_root)

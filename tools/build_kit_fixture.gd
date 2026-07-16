@@ -23,6 +23,12 @@ const CELL := 12.0  # roads scale (lane-fit); must match roads.json cell_size x/
 const ID_STRAIGHT := 49
 const ID_BEND := 0
 
+const RoadPortsScript := preload("res://kit/helpers/road_ports.gd")
+
+# The lone straight tile SocketRoad plugs into (see _add_socket_road). East of the
+# loop, south of the tree scatter: cell (2,0,-2) spans x 24..36, z -24..-12.
+const SOCKET_CELL := Vector3i(2, 0, -2)
+
 # One prefab per collision mode (KitPiece.collision_mode), for the bake canary.
 const PREFABS := {
 	"none": "res://kit/prefabs/nature/grass.tscn",
@@ -68,6 +74,7 @@ func _ready() -> void:
 	_add_scatter(root, authoring)
 	_add_canvas(root, authoring)
 	_add_spline_road(root, authoring)
+	_add_socket_road(root, authoring)
 
 	var packed := PackedScene.new()
 	if packed.pack(root) != OK:
@@ -83,9 +90,9 @@ func _ready() -> void:
 	get_tree().quit(0)
 
 
-func _add(owner: Node, parent: Node, child: Node) -> void:
+func _add(scene_owner: Node, parent: Node, child: Node) -> void:
 	parent.add_child(child)
-	child.owner = owner
+	child.owner = scene_owner
 
 
 func _make_environment() -> WorldEnvironment:
@@ -221,12 +228,16 @@ func _make_road_loop() -> GridMap:
 	# tight bends at the four corners
 	for corner: Vector2i in BEND_DEG:
 		gm.set_cell_item(Vector3i(corner.x, 0, corner.y), ID_BEND, o.call(BEND_DEG[corner]))
+	# lone EW straight east of the loop: the port-socket stub. The closed loop itself
+	# has zero open ports (every road face meets an occupied neighbor), so this tile
+	# provides the two open +-X ports SocketRoad plugs into.
+	gm.set_cell_item(SOCKET_CELL, ID_STRAIGHT, o.call(STRAIGHT_EW_DEG))
 	return gm
 
 
 ## One prefab per collision mode, spread on the ground clear of the loop. The weld ramp
 ## sits just south of the loop so it can be driven onto.
-func _add_prefabs(owner: Node, parent: Node) -> void:
+func _add_prefabs(scene_owner: Node, parent: Node) -> void:
 	var poses := {
 		"none": Vector3(28, 0, 0),
 		"box": Vector3(-28, 0, 0),
@@ -238,16 +249,16 @@ func _add_prefabs(owner: Node, parent: Node) -> void:
 		var inst := (load(PREFABS[mode]) as PackedScene).instantiate()
 		inst.position = poses[mode]
 		parent.add_child(inst)
-		inst.owner = owner
+		inst.owner = scene_owner
 
 
 ## One labelled row per kit of evenly-sampled prefabs, for eyeballing scale. The prefabs go
 ## under Authoring (baked/CI-covered); the Label3D signposts go under a sibling node so they
 ## survive the bake (which frees the authoring subtree) and still show in play.
-func _add_showcase(owner: Node, authoring: Node) -> void:
+func _add_showcase(scene_owner: Node, authoring: Node) -> void:
 	var labels := Node3D.new()
 	labels.name = "ShowcaseLabels"
-	_add(owner, owner, labels)
+	_add(scene_owner, scene_owner, labels)
 
 	for row in SHOWCASE_KITS.size():
 		var kit: String = SHOWCASE_KITS[row]
@@ -258,7 +269,7 @@ func _add_showcase(owner: Node, authoring: Node) -> void:
 			var inst := (load(names[i]) as PackedScene).instantiate()
 			inst.position = Vector3(x0 + i * SHOWCASE_DX, 0, z)
 			authoring.add_child(inst)
-			inst.owner = owner
+			inst.owner = scene_owner
 
 		var label := Label3D.new()
 		label.name = "Label_" + kit
@@ -267,7 +278,7 @@ func _add_showcase(owner: Node, authoring: Node) -> void:
 		label.pixel_size = 0.08
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		label.modulate = Color(1, 0.95, 0.6)
-		_add(owner, labels, label)
+		_add(scene_owner, labels, label)
 
 
 const SCATTER_SEED := 20260711
@@ -279,13 +290,13 @@ const SCATTER_SEED := 20260711
 ## y=0 (no editor, no physics), then stores the transforms — the baker only ever
 ## consumes stored data. No terrain in the fixture, so the default
 ## stored_ground_hash "" already matches.
-func _add_scatter(owner: Node, authoring: Node) -> void:
+func _add_scatter(scene_owner: Node, authoring: Node) -> void:
 	# 16x100 m at density 0.05 -> ~80 trees (>= the 64 MultiMesh threshold)
-	_add(owner, authoring, _make_region("TreeScatter",
+	_add(scene_owner, authoring, _make_region("TreeScatter",
 			"res://kit/prefabs/nature/tree_default.tscn", true,
 			Vector3(50, 0, 45), Vector2(16, 100), 0.05, 2.5))
 	# 10x20 m at density 0.1 -> ~20 grass tufts (merge path, zero physics)
-	_add(owner, authoring, _make_region("GrassScatter",
+	_add(scene_owner, authoring, _make_region("GrassScatter",
 			"res://kit/prefabs/nature/grass.tscn", false,
 			Vector3(50, 0, -20), Vector2(10, 20), 0.1, 1.0))
 
@@ -294,7 +305,7 @@ func _add_scatter(owner: Node, authoring: Node) -> void:
 ## the exact same ScatterBase + baker path as a region, so CI's baked smoke proves the canvas
 ## NODE type bakes end-to-end. Built like a "painted" result: a deterministic fill stored
 ## straight in (no editor, no brush), on the flat west strip so it never overlaps the regions.
-func _add_canvas(owner: Node, authoring: Node) -> void:
+func _add_canvas(scene_owner: Node, authoring: Node) -> void:
 	var canvas := Node3D.new()
 	canvas.name = "GrassCanvas"
 	canvas.set_script(load("res://kit/helpers/scatter_canvas.gd"))
@@ -319,14 +330,16 @@ func _add_canvas(owner: Node, authoring: Node) -> void:
 	var total := 0
 	for flat in placements:
 		var s := PackedFloat32Array()
+		@warning_ignore("integer_division")
 		for j in flat.size() / 4:
 			s.append_array(PackedFloat32Array([
 					flat[j * 4], 0.0, flat[j * 4 + 1], flat[j * 4 + 2], flat[j * 4 + 3]]))
 		stored.append(s)
+		@warning_ignore("integer_division")
 		total += s.size() / 5
 	canvas.set("stored_transforms", stored)
 	print("canvas GrassCanvas: %d instances" % total)
-	_add(owner, authoring, canvas)
+	_add(scene_owner, authoring, canvas)
 
 
 func _make_region(region_name: String, prefab_path: String, collision: bool,
@@ -351,10 +364,12 @@ func _make_region(region_name: String, prefab_path: String, collision: bool,
 	var total := 0
 	for flat in placements:
 		var s := PackedFloat32Array()
+		@warning_ignore("integer_division")
 		for j in flat.size() / 4:
 			s.append_array(PackedFloat32Array([
 					flat[j * 4], 0.0, flat[j * 4 + 1], flat[j * 4 + 2], flat[j * 4 + 3]]))
 		stored.append(s)
+		@warning_ignore("integer_division")
 		total += s.size() / 5
 	region.set("stored_transforms", stored)
 	print("scatter %s: %d instances" % [region_name, total])
@@ -369,12 +384,12 @@ func _make_region(region_name: String, prefab_path: String, collision: bool,
 ## Profile set explicitly (this builder runs headless; the editor-only auto-assign in
 ## RoadPath._ready never fires here) so the preset serializes as an ExtResource and the
 ## bake input hash tracks it.
-func _add_spline_road(owner: Node, authoring: Node) -> void:
+func _add_spline_road(scene_owner: Node, authoring: Node) -> void:
 	var road := Node3D.new()
 	road.name = "SplineRoad"
 	road.set_script(load("res://kit/helpers/road_path.gd"))
 	road.set("profile", load("res://kit/roads/asphalt_profile.tres"))
-	_add(owner, authoring, road)
+	_add(scene_owner, authoring, road)
 	var path := Path3D.new()
 	path.name = "Path"
 	var curve := Curve3D.new()
@@ -382,7 +397,47 @@ func _add_spline_road(owner: Node, authoring: Node) -> void:
 	curve.add_point(Vector3(-15, 0.05, -34), Vector3(-8, 0, 0), Vector3(8, 0, 0))
 	curve.add_point(Vector3(10, 0.05, -26), Vector3(-8, 0, -4), Vector3.ZERO)
 	path.curve = curve
-	_add(owner, road, path)
+	_add(scene_owner, road, path)
+
+
+## The port-socket canary: a RoadPath whose FIRST point sits on the socket stub's +X
+## port (found via RoadPorts.nearest_port — the same pure helper the editor snap uses)
+## with the start tangent locked along the outward face normal, then curving southeast
+## over free ground. Proves a tile->spline seam through the bake, and the drive test
+## crosses it. Clear of: TreeScatter (x 42..58, z -5..95), SplineRoad (z -26..-34),
+## and the ground edge (x 60, ribbon half-width ~5.3).
+func _add_socket_road(scene_owner: Node, authoring: Node) -> void:
+	var gm := authoring.get_node("RoadLoop") as GridMap
+	var recipe: Variant = JSON.parse_string(
+			FileAccess.get_file_as_string("res://kit/import/roads.json"))
+	var ports: Array[Dictionary] = RoadPortsScript.enumerate_ports(
+			gm, RoadPortsScript.parse_table(recipe), gm.transform)
+	# the stub's +X port: face center of SOCKET_CELL's east edge, at the deck surface
+	var expect := gm.map_to_local(SOCKET_CELL) + Vector3(CELL * 0.5, 0.12, 0)
+	var port: Dictionary = RoadPortsScript.nearest_port(ports, expect, 1.0)
+	if port.is_empty():
+		push_error("socket stub has no open +X port — ports table / occupancy broke")
+		get_tree().quit(1)
+		return
+
+	var road := Node3D.new()
+	road.name = "SocketRoad"
+	road.set_script(load("res://kit/helpers/road_path.gd"))
+	road.set("profile", load("res://kit/roads/asphalt_profile.tres"))
+	_add(scene_owner, authoring, road)
+	var path := Path3D.new()
+	path.name = "Path"
+	var curve := Curve3D.new()
+	var p0: Vector3 = port["position"]
+	var p1 := Vector3(46, 0.05, -24)
+	var p2 := Vector3(52, 0.05, -34)
+	curve.add_point(p0, Vector3.ZERO, (port["normal"] as Vector3) * 4.0)
+	var h: Dictionary = RoadBuilder.smooth_handles(p0, p1, p2)
+	curve.add_point(p1, h["in"], h["out"])
+	curve.add_point(p2, Vector3.ZERO, Vector3.ZERO)
+	path.curve = curve
+	_add(scene_owner, road, path)
+	print("socket road: start on port %s facing %s" % [p0, port["normal"]])
 
 
 ## Evenly-spaced sample of a kit's sorted prefab .tscn paths (indices 0 .. n-1 spread across

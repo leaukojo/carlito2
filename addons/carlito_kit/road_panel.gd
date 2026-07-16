@@ -9,6 +9,8 @@ extends VBoxContainer
 signal mode_changed(mode: int)
 signal close_requested
 signal smooth_corners_changed(on: bool)
+signal snap_ports_changed(on: bool)
+signal snap_ends_requested
 
 const MODE_LABELS := ["Off", "Draw"]
 
@@ -16,7 +18,9 @@ var _status: Label
 var _mode_group := ButtonGroup.new()
 var _mode_buttons: Array[Button] = []
 var _smooth: CheckBox
+var _snap_ports: CheckBox
 var _close: Button
+var _snap_ends: Button
 
 
 func _init() -> void:
@@ -58,11 +62,28 @@ func _build() -> void:
 	_smooth.toggled.connect(func(on: bool): smooth_corners_changed.emit(on))
 	add_child(_smooth)
 
+	_snap_ports = CheckBox.new()
+	_snap_ports.text = "Snap to ports"
+	_snap_ports.button_pressed = true
+	_snap_ports.tooltip_text = "Drawn end points near an open city-tile edge capture " \
+			+ "onto its port with the tangent locked perpendicular to the face; " \
+			+ "arriving at a port ends the draw."
+	_snap_ports.toggled.connect(func(on: bool): snap_ports_changed.emit(on))
+	add_child(_snap_ports)
+
 	_close = Button.new()
 	_close.text = "Close loop"
 	_close.tooltip_text = "Append a point on the first point with a smooth seam, then exit Draw."
 	_close.pressed.connect(func(): close_requested.emit())
 	add_child(_close)
+
+	_snap_ends = Button.new()
+	_snap_ends.text = "Snap ends to ports"
+	_snap_ends.tooltip_text = "Snap the road's first/last points to the nearest open " \
+			+ "tile port (within 6 m) and lock their tangents — the fixup after " \
+			+ "dragging an end with the gizmo. One undo step."
+	_snap_ends.pressed.connect(func(): snap_ends_requested.emit())
+	add_child(_snap_ends)
 
 	var hint := Label.new()
 	hint.text = "Select a RoadPath, pick Draw, then click the ground in the 3D view " \
@@ -89,7 +110,9 @@ func set_has_road(has: bool) -> void:
 	for b in _mode_buttons:
 		b.disabled = not has
 	_smooth.disabled = not has
+	_snap_ports.disabled = not has
 	_close.disabled = not has
+	_snap_ends.disabled = not has
 	if has:
 		_status.text = "RoadPath selected — ready to draw."
 		_status.add_theme_color_override("font_color", Color(0.5, 0.9, 0.5))

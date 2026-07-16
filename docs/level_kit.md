@@ -104,9 +104,12 @@ everywhere is duck-typed marker methods (`is_carlito_authoring` / `is_carlito_ki
 loop from the roads palette, one prefab of each collision mode, a weld ramp, a car
 spawn — plus one permanent canary for every bake path: `TreeScatter` (80 tree_default,
 MultiMesh path, collision), `GrassScatter` (20 grass, merge path, collision-off),
-`GrassCanvas` (36 grass, `ScatterCanvas`, merge path), and `SplineRoad` (a RoadPath
+`GrassCanvas` (36 grass, `ScatterCanvas`, merge path), `SplineRoad` (a RoadPath
 S-curve at y = 0.05 on the south strip, profile set explicitly — headless runs never hit
-the editor auto-assign). It is expanded programmatically by `tools/build_kit_fixture.gd`
+the editor auto-assign), and `SocketRoad` (a RoadPath whose first point is placed on a
+port of a lone straight tile east of the loop via `RoadPorts` — the tile↔spline socket
+canary; the closed loop itself has zero open ports). It is expanded programmatically by
+`tools/build_kit_fixture.gd`
 (flat ground y = 0, no editor; no terrain, so the scatter ground hash `""` matches).
 Rebuild it with `godot --headless res://tools/build_kit_fixture.tscn` (a game-mode tool;
 hand-authoring GridMap cell/orientation data is fragile), then re-bake.
@@ -423,6 +426,35 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   point — the rescue for hand-kinked curves); each is one undoable action. Corners
   still self-overlap when the local turn radius drops below the ribbon half-width
   (~5 m asphalt) — that is geometric; space clicks/points wider.
+- **Ports (tile ↔ spline sockets):** a *port* is the edge-center of an occupied
+  roads-GridMap cell face that the tile actually carries road across AND whose neighbor
+  cell is empty. Ports are fully computable from the lattice + a per-tile table —
+  top-level `"ports"` in `kit/import/roads.json`: `surface_y` (asphalt deck height above
+  the cell base, measured 0.12) plus ordered first-match-wins entries
+  `{ "match": [name regexes], "ports": [{ "cell": [x,z], "face": "+x|-x|+z|-z" }] }` in
+  the item's local pre-rotation frame (`cell` is the anchor-relative offset for
+  multi-cell tiles like the 3×3 roundabout). Discovery is pure/baker-safe
+  (`kit/helpers/road_ports.gd`, tested in `tests/test_road_ports.gd`): rotate offset +
+  face by the cell's 24-orientation basis, skip faces whose neighbor cell is occupied.
+  **Excluded for now:** `road-curve` (2×2) and `road-split` are XZ-centered, so their
+  ends sit on half-cell planes — off-lattice; use `road-bend` / crossroad instead.
+  Openness is judged by cell occupancy only (an unpainted cell under another tile's
+  overhang counts as open).
+- **Port snapping (Draw mode):** with the panel's **Snap to ports** toggle on (default),
+  a click within 3 m (XZ) of a port commits the point exactly AT the port — deck height,
+  **no draw_clearance**, so the ribbon meets the tile flush — with the end tangent
+  locked 4 m along the outward face normal; arriving at a port **exits Draw** (the road
+  ends there, and no later click can rewrite the locked tangent). The ghost shows
+  diamond markers on nearby ports (blue) and the snap candidate (green). The built-in
+  Path3D gizmo can't be intercepted, so dragged ends are fixed up with the panel's
+  **Snap ends to ports** button (destructive-by-button): snaps the road's first/last
+  points to their nearest ports within 6 m + locks tangents, one undo step.
+  **Height agreement:** put port cells on a flattened pad (terrain-brush grid-snap 12 m
+  flatten); Conform's plateau meets the tile at road − ε and `edge_drop` absorbs the
+  quantization as usual. **Width:** the tiles' measured paved strip is 9.6 m;
+  `asphalt_profile.tres` sets `lane_width = 4.05` (4.05 + 0.15 edge line + 0.6 shoulder
+  = 4.8 half-width → 9.6 m paved) so the ribbon is flush with the tile
+  (`road_profile.gd` script defaults are unchanged — 7 m surface / 8.5 m paved).
 - **Conform terrain is destructive-by-button** (the same discipline as terrain
   Generate): samples the curve every 0.5 m (deterministic,
   tessellation-independent), flattens every overlapping `HeightmapTerrain` to road
