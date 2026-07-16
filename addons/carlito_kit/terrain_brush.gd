@@ -5,12 +5,14 @@ extends "res://addons/carlito_kit/brush_chassis.gd"
 ## splat-channel painting on the splatmap.
 ##
 ## Editor-only by construction: a brush edits image CONTENT only. It never swaps
-## the terrain's exported heightmap/splatmap Texture2D (so the scene always serializes the
-## PNG reference, never a transient in-memory texture). Live feedback comes from remeshing
-## the touched chunks straight off the working image (height) and a temporary splatmap shader
-## override (paint). Edits accumulate in memory and are written to the PNGs only on SCENE
-## SAVE (flush_all, wired to the plugin's _save_external_data) — never reimported per stroke.
-## The heightmap/splat PNGs stay the sole artifact the runtime and baker already read.
+## the terrain's exported heightmap/splatmap Texture2D, and never touches the terrain's saved
+## material (so the scene always serializes the PNG reference, never a transient in-memory
+## texture). Live feedback comes from remeshing the touched chunks straight off the working
+## image (height) and a preview material_override on those chunks (paint) — the chunks are
+## unowned, so nothing put on them can serialize. Edits accumulate in memory and are written
+## to the PNGs only on SCENE SAVE (flush_all, wired to the plugin's _save_external_data) —
+## never reimported per stroke. The heightmap/splat PNGs stay the sole artifact the runtime
+## and baker already read.
 
 const BrushOps := preload("res://kit/helpers/brush_ops.gd")
 const TerrainGen := preload("res://kit/terrain/terrain_gen.gd")
@@ -27,7 +29,7 @@ var _terrain: HeightmapTerrain = null
 # Per-terrain edit session, kept until scene save (flush) or plugin exit — so deselecting
 # doesn't drop uncommitted work and undo stays coherent across reselection.
 # id -> { terrain, height:Image, splat:Image, splat_tex:ImageTexture,
-#         height_dirty:bool, splat_dirty:bool }
+#         preview_mat:ShaderMaterial, height_dirty:bool, splat_dirty:bool }
 var _sessions := {}
 
 # Active-stroke state.
@@ -71,10 +73,15 @@ func flush_all() -> void:
 		if s.splat_dirty and s.splat != null:
 			_flush_image(terrain, "splat", s.splat)
 			s.splat_dirty = false
+		# The reimported PNG is now the real splatmap, so dropping the preview can't pop.
+		_drop_preview(s)
+		_heal_material(terrain)
 
 
 func teardown() -> void:
 	_free_cursor()
+	for id: int in _sessions:
+		_drop_preview(_sessions[id])
 	_sessions.clear()
 	_terrain = null
 
@@ -184,6 +191,7 @@ func _stroke_apply(center: Vector3) -> void:
 		# per stroke). Collision is deferred to stroke end.
 		_terrain.rebuild_region_world(work, center.x - radius, center.x + radius,
 				center.z - radius, center.z + radius)
+		_repush_preview(_terrain)
 		_mark_dirty(_terrain, "height")
 
 
@@ -227,6 +235,7 @@ func _apply_region(terrain: HeightmapTerrain, kind: String, region: Image, pos: 
 	var hi := _px_to_world(terrain, work, pos + region.get_size())
 	terrain.rebuild_region_world(work, minf(lo.x, hi.x), maxf(lo.x, hi.x),
 			minf(lo.y, hi.y), maxf(lo.y, hi.y))
+	_repush_preview(terrain)
 	terrain.rebuild_collision_from_image(work)
 
 
@@ -237,7 +246,7 @@ func _work_for(terrain: HeightmapTerrain, kind: String) -> Image:
 	if not _sessions.has(id):
 		_sessions[id] = {
 			"terrain": terrain, "height": null, "splat": null, "splat_tex": null,
-			"height_dirty": false, "splat_dirty": false,
+			"preview_mat": null, "height_dirty": false, "splat_dirty": false,
 		}
 	var s: Dictionary = _sessions[id]
 	if kind == "height":
@@ -254,17 +263,67 @@ func _mark_dirty(terrain: HeightmapTerrain, kind: String) -> void:
 	s["height_dirty" if kind == "height" else "splat_dirty"] = true
 
 
-## Show live paint without touching the exported splatmap property: drive the material's
-## splatmap shader param from a throwaway ImageTexture we update per sample. On save, flush
-## sets terrain.splatmap to the reimported PNG, which overwrites this override.
+## Show live paint without touching the SAVED material: a throwaway ImageTexture (updated in
+## place per sample) feeds a duplicate of the material, applied as material_override on the
+## terrain's unowned chunk MeshInstance3Ds. Writing the transient texture into the saved
+## material instead would embed the whole raw image into the .tscn on save.
 func _refresh_splat(terrain: HeightmapTerrain, work: Image) -> void:
 	var s: Dictionary = _sessions[terrain.get_instance_id()]
 	if s.splat_tex == null:
 		s.splat_tex = ImageTexture.create_from_image(work)
 	else:
 		(s.splat_tex as ImageTexture).update(work)
-	if terrain.material is ShaderMaterial:
-		(terrain.material as ShaderMaterial).set_shader_parameter(&"splatmap", s.splat_tex)
+	if s.preview_mat == null:
+		if not (terrain.material is ShaderMaterial):
+			return
+		var mat := (terrain.material as ShaderMaterial).duplicate() as ShaderMaterial
+		mat.set_shader_parameter(&"splatmap", s.splat_tex)
+		s.preview_mat = mat
+	_push_preview(terrain, s.preview_mat)
+
+
+## (Re)apply the preview material to the terrain's current chunk nodes. Called after every
+## paint sample and after any incremental remesh — _build_chunk recreates chunks with
+## material_override = terrain.material, dropping the preview.
+func _push_preview(terrain: HeightmapTerrain, mat: Material) -> void:
+	var container := terrain.get_node_or_null(^"Chunks")
+	if container == null:
+		return
+	for child in container.get_children():
+		if child is MeshInstance3D:
+			(child as MeshInstance3D).material_override = mat
+
+
+## Re-apply the live preview after an incremental remesh, if this terrain has one. A full
+## rebuild() from an inspector edit mid-session also recreates chunks; that loses the preview
+## until the next paint sample, which is acceptable.
+func _repush_preview(terrain: HeightmapTerrain) -> void:
+	var s: Dictionary = _sessions.get(terrain.get_instance_id(), {})
+	if s.get("preview_mat") != null:
+		_push_preview(terrain, s.preview_mat)
+
+
+## Restore the chunks to the saved material and drop the preview.
+func _drop_preview(s: Dictionary) -> void:
+	if s.get("preview_mat") == null:
+		return
+	var terrain: HeightmapTerrain = s.terrain
+	if is_instance_valid(terrain):
+		_push_preview(terrain, terrain.material)
+	s.preview_mat = null
+
+
+## Tripwire + self-heal: the saved material must never hold a pathless (transient) splatmap
+## texture — that is what embeds a raw image into the .tscn on save.
+func _heal_material(terrain: HeightmapTerrain) -> void:
+	var mat := terrain.material as ShaderMaterial
+	if mat == null:
+		return
+	var param: Variant = mat.get_shader_parameter(&"splatmap")
+	if param is ImageTexture and (param as ImageTexture).resource_path.is_empty():
+		mat.set_shader_parameter(&"splatmap", terrain.splatmap)
+		push_warning("Kit brush: transient splatmap found on the saved material — reset to the "
+				+ "terrain's splatmap. The live preview should never write to it.")
 
 
 func _flush_image(terrain: HeightmapTerrain, kind: String, img: Image) -> void:
