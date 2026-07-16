@@ -27,6 +27,7 @@ var _scatter_brush  # ScatterBrush (RefCounted)
 var _scatter_panel: Control
 var _road_tool  # RoadDrawTool (RefCounted)
 var _road_panel: Control
+var _tools_root: Control
 
 
 func _enter_tree() -> void:
@@ -55,14 +56,12 @@ func _enter_tree() -> void:
 		_brush.strength = s
 		_brush.falloff = f)
 	_brush.radius_display.connect(func(r): _panel.set_radius_display(r))
-	add_control_to_dock(DOCK_SLOT_RIGHT_BL, _panel)
 
 	_scatter_brush = ScatterBrush.new(get_undo_redo())
 	_scatter_panel = ScatterPanel.new()
 	_scatter_panel.mode_changed.connect(_on_scatter_mode)
 	_scatter_panel.radius_changed.connect(func(r): _scatter_brush.radius = r)
 	_scatter_brush.radius_display.connect(func(r): _scatter_panel.set_radius_display(r))
-	add_control_to_dock(DOCK_SLOT_RIGHT_BL, _scatter_panel)
 
 	_road_tool = RoadDrawTool.new(get_undo_redo())
 	_road_panel = RoadPanel.new()
@@ -70,7 +69,21 @@ func _enter_tree() -> void:
 	_road_panel.close_requested.connect(func(): _road_tool.close_loop())
 	_road_panel.smooth_corners_changed.connect(func(on): _road_tool.smooth_corners = on)
 	_road_tool.deactivated.connect(func(): _road_panel.show_off())
-	add_control_to_dock(DOCK_SLOT_RIGHT_BL, _road_panel)
+
+	# The three tool panels share a "Kit Tools" bottom panel (like the Kit dock):
+	# add_control_to_dock is a deprecated compatibility path in 4.6 whose EditorDock
+	# wrapper breaks 3D viewport navigation (WASD freelook, F focus, wheel speed).
+	_tools_root = ScrollContainer.new()
+	_tools_root.name = "Kit Tools"
+	_tools_root.custom_minimum_size = Vector2(0, 240)
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 24)
+	_tools_root.add_child(box)
+	for panel in [_panel, _scatter_panel, _road_panel]:
+		panel.custom_minimum_size = Vector2(300, 0)
+		box.add_child(panel)
+	_panel.custom_minimum_size = Vector2(600, 0)  # terrain brush: extra room for mode grid + spinners
+	add_control_to_bottom_panel(_tools_root, "Kit Tools")
 
 	EditorInterface.get_selection().selection_changed.connect(_on_selection_changed)
 	# Placement works regardless of selection, so we need every viewport event (docs:
@@ -98,26 +111,22 @@ func _exit_tree() -> void:
 	if _brush != null:
 		_brush.teardown()
 	_brush = null
-	if _panel != null:
-		remove_control_from_docks(_panel)
-		_panel.free()
 	_panel = null
 
 	if _scatter_brush != null:
 		_scatter_brush.teardown()
 	_scatter_brush = null
-	if _scatter_panel != null:
-		remove_control_from_docks(_scatter_panel)
-		_scatter_panel.free()
 	_scatter_panel = null
 
 	if _road_tool != null:
 		_road_tool.teardown()
 	_road_tool = null
-	if _road_panel != null:
-		remove_control_from_docks(_road_panel)
-		_road_panel.free()
 	_road_panel = null
+
+	if _tools_root != null:
+		remove_control_from_bottom_panel(_tools_root)
+		_tools_root.free()  # frees the three panels with it
+	_tools_root = null
 
 
 ## Save hook: brush edits accumulate in memory and are written to the heightmap /
@@ -185,6 +194,8 @@ func _on_selection_changed() -> void:
 	_scatter_panel.set_has_canvas(canvas != null)
 	_road_tool.set_target(road)
 	_road_panel.set_has_road(road != null)
+	if terrain != null or canvas != null or road != null:
+		make_bottom_panel_item_visible(_tools_root)
 
 
 func _on_settings_changed(random_yaw: bool, snap_enabled: bool, snap_step: float,
