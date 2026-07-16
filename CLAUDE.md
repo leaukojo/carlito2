@@ -270,6 +270,16 @@ warning classes (shadowing, integer division) are escalated to **errors** in pro
   harmless leak-at-exit noise, not a failure.
 - `--headless --script` only runs `extends SceneTree` scripts; EditorScripts need
   File ▸ Run in the editor.
+- **Parse-checking `addons/` code**: `& $GODOT --headless --path . --editor --quit-after 30`
+  loads the enabled plugins and prints real `SCRIPT ERROR: Parse Error` lines — the only
+  cheap gate for editor-only scripts (`--script` mode can't load them, `--import` doesn't
+  compile them). Caveat: it does **not** catch integer division between two *constants*
+  (`48 / 4` is folded silently), so a clean run is not proof the warnings-as-errors gate saw
+  everything — still eyeball division on variables.
+- **gdUnit4 float asserts vs. image formats**: `assert_float(img.get_pixel(..).r).is_equal(0.2)`
+  FAILS ("Expecting 0.200000 but was 0.200000") — `FORMAT_RF`/`RGBAF` store float32, the
+  literal is float64. Only binary-exact values (0.0, 0.25, 0.5, 0.75) compare with
+  `is_equal`; anything else needs `is_equal_approx`.
 - The editor **rewrites `export_presets.cfg`** when you export from the UI — CLI export
   reads it as-is. Keep thread_support + PWA (cross-origin-isolation headers) enabled:
   GitHub Pages sends no COOP/COEP, the PWA service worker injects them, and the threaded
