@@ -25,6 +25,26 @@ The previous generation of the game lives at `../carlito` (and its deployed buil
 **Never read or copy its code** — observe its deployed build only, as a behavior/layout
 reference.
 
+## Working style (user preferences — learned the hard way)
+
+- **Act as a senior Godot dev, no workarounds.** Push back on questionable requests; use
+  the engine's real tools (GridMap/palette for tiling, never hand-placed piles of nodes;
+  if headless blocks the right approach, script it correctly). Measure asset footprints
+  against the 1.8 m car before placing — never guess scale/orientation.
+- **Never commit or push unless explicitly asked** (violated before; firm rule).
+- The user verifies **by driving**: any demo/verification scene must be a real Level with
+  a VehicleSpawn (F6-runnable, unregistered), never camera-only. Visual bar: crisp
+  high-contrast splat borders (low-poly style), plateaued buildable terrain, coasts made
+  circular by water at sea level — never the square map edge.
+- "Quickly / do not verify" = skip ceremony, make the small change, stop.
+- **Before ending any authoring/kit/level change**: re-bake + `check_bakes` (stale bakes
+  are the #1 repeat CI failure). After contract edits: `gen_js_contract.mjs`. Always sweep
+  new GDScript warnings (shadowed identifiers like `load`/`basis`/`range`, integer division).
+- If stuck after ~2 failed attempts on a bug, stop and write a concise symptom + hypotheses
+  handoff instead of thrashing.
+- Token economy: subagents only Haiku/Sonnet, max 3, no nested subagents; keep docs/memory
+  present-state only (no phase history).
+
 ## Layout
 
 ```
@@ -185,18 +205,15 @@ junctions, lane markings, traffic.
   bake/runtime). Ground snap drops un-snappable points (no Y=0 fallback). The
   stale-scatter ground-hash guard is a config warning + bake gate + CI check; **Re-snap
   to ground** is the recovery. Weld-mode prefabs in scatter are a bake error.
-- Roads: the ribbon derives from curve + profile alone (never reads terrain). Profile
-  default is assigned via a plain property set in editor `_ready` — never a preload
-  export default (equal-to-default is omitted from the .tscn = input-hash hole). The
-  frame is custom (NOT `sample_baked_with_rotation` — parallel transport accumulates
-  roll). Conform flattens the **full half-width incl. skirt**, targets projected onto the
-  nearest centerline **segment** (nearest-sample is wrong on grades), floor-quantized to
-  8-bit; `edge_drop` must absorb ε + height/255 (conform warns). Turns tighter than the
-  ribbon half-width fold-clamp the inside edge (extrude's `FOLD_MARGIN`, pinches — never
-  self-overlaps; UVs keep the profile lateral); closed loops (first == last control
-  position) give both end rings one shared bisector frame. The draw panel's "Smooth
-  corners" checkbox (default on) toggles the per-click Catmull-Rom handles; off draws an
-  exact angled polyline, which the corner miter rings + fold clamp render cleanly.
+- Roads: ribbon derives from curve + profile alone (never reads terrain); custom frame
+  (NOT `sample_baked_with_rotation` — parallel transport accumulates roll). Profile
+  default is a plain property set in editor `_ready`, never a preload export default
+  (equal-to-default is omitted from the .tscn = input-hash hole). Conform flattens the
+  **full half-width incl. skirt**, projects targets onto the nearest centerline
+  **segment** (nearest-sample is wrong on grades), floor-quantizes to 8-bit; `edge_drop`
+  must absorb ε + height/255 (conform warns). Tight turns fold-clamp the inside edge
+  (never self-overlaps); closed loops share one bisector end frame. Full detail incl. the
+  draw panel's "Smooth corners" behavior: `docs/level_kit.md`.
 - Authoring order: terrain → roads + conform → splat → scatter (conform trips the scatter
   stale guard by design).
 - Bake-adjacent CODE (RoadBuilder, ScatterBase) is invisible to the file-hash net — bump
@@ -238,7 +255,16 @@ node tools/gen_js_contract.mjs
 
 # local web export (CI does the real one)
 & $GODOT --headless --path . --export-release "Web" build/web/index.html
+
+# "am I safe to push?" — all CI gates locally (editor-type gate, import, tests,
+# stale-bake check, smoke, contract sync)
+powershell -File tools/preflight.ps1
 ```
+
+A pre-commit hook (`tools/git-hooks/`, installed via `core.hooksPath`) blocks editor-type
+annotations, stale contract copies, and stale bakes at commit time. The recurring GDScript
+warning classes (shadowing, integer division) are escalated to **errors** in project.godot
+— intentional integer division needs `@warning_ignore("integer_division")`.
 
 - A headless run ending with only `ERROR: N resources still in use at exit` is **clean** —
   harmless leak-at-exit noise, not a failure.

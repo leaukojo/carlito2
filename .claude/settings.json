@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./addons/gdUnit4/runtest.cmd *)",
+      "Bash('C:/Users/Ccamy/Desktop/Godot/Godot_v4.6.3-stable_win64_console.exe' --headless --path . --import)",
+      "Bash('C:/Users/Ccamy/Desktop/Godot/Godot_v4.6.3-stable_win64_console.exe' --headless --path . --quit-after 120)",
+      "Bash('C:/Users/Ccamy/Desktop/Godot/Godot_v4.6.3-stable_win64_console.exe' --headless --path . res://tools/bake_levels.tscn)",
+      "Bash('C:/Users/Ccamy/Desktop/Godot/Godot_v4.6.3-stable_win64_console.exe' --headless --path . res://tools/check_bakes.tscn)",
+      "Bash('C:/Users/Ccamy/Desktop/Godot/Godot_v4.6.3-stable_win64_console.exe' --headless --path . res://tools/build_kit_fixture.tscn)",
+      "Bash('C:/Users/Ccamy/Desktop/Godot/Godot_v4.6.3-stable_win64_console.exe' --headless --path . --script res://tools/gen_kit_assets.gd)",
+      "Bash(node tools/gen_js_contract.mjs)",
+      "Bash(powershell -File tools/preflight.ps1)",
+      "mcp__plugin_context7_context7__query-docs",
+      "mcp__plugin_context7_context7__resolve-library-id"
+    ]
+  }
+}

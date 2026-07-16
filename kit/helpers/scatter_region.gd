@@ -156,6 +156,7 @@ func _regenerate() -> void:
 	for i in placements.size():
 		var flat := placements[i]
 		var stored := PackedFloat32Array()
+		@warning_ignore("integer_division")
 		for j in flat.size() / 4:
 			var o := j * 4
 			var world := global_transform * Vector3(flat[o], 0.0, flat[o + 1])

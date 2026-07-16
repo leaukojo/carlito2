@@ -31,6 +31,17 @@ jobs:
           unzip -q templates.tpz -d /tmp/templates
           mv /tmp/templates/templates/* "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
 
+      # Editor-only classes used as type annotations outside addons/ parse-fail in
+      # exported builds (the node silently does nothing) — hard gate. The [^#]* prefix
+      # skips comment-only mentions.
+      - name: Editor-type annotation gate
+        shell: bash
+        run: |
+          if grep -rnE '^[^#]*(:|->)[[:space:]]*Editor[A-Z][A-Za-z0-9]*' --include='*.gd' src kit tools tests; then
+            echo "editor-only type annotation outside addons/ (breaks exported builds)"
+            exit 1
+          fi
+
       - name: Import project
         run: godot --headless --import
 

@@ -35,11 +35,11 @@ func test_real_contract_is_valid_v5() -> void:
 
 func _assert_core_signals_present(names: PackedStringArray, dir: String) -> void:
 	var data := _real_contract()
-	for name in names:
-		assert_bool(data.has_signal_def(name, dir)) \
-			.override_failure_message("missing core '%s' signal: %s" % [dir, name]).is_true()
-		assert_bool(data.is_todo(name, dir)) \
-			.override_failure_message("core '%s' signal must not be todo: %s" % [dir, name]).is_false()
+	for sig_name in names:
+		assert_bool(data.has_signal_def(sig_name, dir)) \
+			.override_failure_message("missing core '%s' signal: %s" % [dir, sig_name]).is_true()
+		assert_bool(data.is_todo(sig_name, dir)) \
+			.override_failure_message("core '%s' signal must not be todo: %s" % [dir, sig_name]).is_false()
 
 
 func test_every_v1_in_signal_present() -> void:

@@ -21,6 +21,13 @@ Bridge="*res://src/bridge/bridge.gd"
 InputRouter="*res://src/input/input_router.gd"
 GameState="*res://src/shell/game_state.gd"
 
+[debug]
+
+gdscript/warnings/shadowed_variable=2
+gdscript/warnings/shadowed_variable_base_class=2
+gdscript/warnings/shadowed_global_identifier=2
+gdscript/warnings/integer_division=2
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/carlito_kit/plugin.cfg", "res://addons/gdUnit4/plugin.cfg")

@@ -8,8 +8,8 @@ extends GdUnitTestSuite
 const Recipe := preload("res://kit/helpers/kit_recipe.gd")
 
 
-func _fam(name: String, match_list: Array, pipeline := "prefab", extra := {}) -> Dictionary:
-	var f := {"name": name, "match": match_list, "pipeline": pipeline}
+func _fam(fam_name: String, match_list: Array, pipeline := "prefab", extra := {}) -> Dictionary:
+	var f := {"name": fam_name, "match": match_list, "pipeline": pipeline}
 	for k in extra:
 		f[k] = extra[k]
 	return f

@@ -19,11 +19,11 @@ var engine_load := 0               ## %, contract 'engine_load'
 
 ## Modeled engine load (honest-model latitude, like fuel/coolant): throttle
 ## demand, plus a parasitic term while the PTO is engaged. Pure -> unit-tested.
-static func engine_load_pct(throttle: float, pto_on: bool, pto_load: float) -> float:
-	var load := clampf(absf(throttle), 0.0, 1.0)
+static func engine_load_pct(throttle_in: float, pto_on: bool, pto_load: float) -> float:
+	var demand := clampf(absf(throttle_in), 0.0, 1.0)
 	if pto_on:
-		load = clampf(load + pto_load, 0.0, 1.0)
-	return load * 100.0
+		demand = clampf(demand + pto_load, 0.0, 1.0)
+	return demand * 100.0
 
 
 func to_bridge_dict() -> Dictionary:

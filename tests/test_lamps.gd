@@ -3,10 +3,6 @@ extends GdUnitTestSuite
 ## LampSet (Light3D energy, material overrides) need a tree and are not tested here;
 ## the pure tri-state rule and the horn synthesis are.
 
-const LampSet := preload("res://src/vehicles/base/lamp_set.gd")
-const Horn := preload("res://src/vehicles/base/horn.gd")
-
-
 # --- rear tri-state (STOP > TAIL > OFF) --------------------------------------
 
 func test_brake_bit_gives_stop_regardless_of_headlights() -> void:

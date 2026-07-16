@@ -33,6 +33,7 @@ func _params(overrides := {}) -> Dictionary:
 func _all_points(placements: Array) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for flat: PackedFloat32Array in placements:
+		@warning_ignore("integer_division")
 		for j in flat.size() / 4:
 			out.append(Vector2(flat[j * 4], flat[j * 4 + 1]))
 	return out
@@ -113,7 +114,9 @@ func test_weights_bias_item_pick() -> void:
 		"density": 0.5,
 		"min_spacing": 0.5,
 	}))
+	@warning_ignore("integer_division")
 	var light := placements[0].size() / 4
+	@warning_ignore("integer_division")
 	var heavy := placements[1].size() / 4
 	assert_bool(heavy > light * 2).is_true()
 
@@ -122,6 +125,7 @@ func test_jitter_ranges_respected() -> void:
 	var placements := Scatter.generate_placements(_params({
 		"yaw_jitter_deg": 90.0, "scale_min": 0.5, "scale_max": 0.6}))
 	var flat := placements[0]
+	@warning_ignore("integer_division")
 	for j in flat.size() / 4:
 		assert_bool(absf(flat[j * 4 + 2]) <= deg_to_rad(45.0) + 0.0001).is_true()
 		var s := flat[j * 4 + 3]
@@ -168,9 +172,9 @@ func test_stored_transform_decodes_stride5() -> void:
 
 # ------------------------------------------------------------------ ground hash
 
-func _terrain(img: Image, name: String) -> Node3D:
+func _terrain(img: Image, terrain_name: String) -> Node3D:
 	var t := StaticBody3D.new()
-	t.name = name
+	t.name = terrain_name
 	t.set_script(load("res://src/levels/base/heightmap_terrain.gd"))
 	t.set("heightmap", ImageTexture.create_from_image(img))
 	return t

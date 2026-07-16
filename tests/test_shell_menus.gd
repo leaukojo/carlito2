@@ -3,10 +3,6 @@ extends GdUnitTestSuite
 ## the passed allowed-vehicle list, and both emit their pick. Pure Control scenes, so
 ## they build and fire headless without a 3D level.
 
-const LevelSelect := preload("res://src/ui/level_select.gd")
-const GarageMenu := preload("res://src/ui/garage_menu.gd")
-
-
 func _buttons(node: Node) -> Array:
 	var out := []
 	for b in node.find_children("*", "Button", true, false):

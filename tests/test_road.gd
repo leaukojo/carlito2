@@ -369,7 +369,7 @@ func _conform_test_image() -> Dictionary:
 func test_conform_heights_flattens_inner_and_blends_falloff() -> void:
 	var setup := _conform_test_image()
 	var img: Image = setup.img
-	var before := img.get_pixel(0, 0).r
+	var orig := img.get_pixel(0, 0).r
 	var dirty := Builder.conform_heights(img, setup.samples, 2.5, 3.0, 15.0, 15.0)
 	# inner band (rows 5..9, dist <= 2.5): the floor-quantized target, never above it
 	for row in [5, 6, 7, 8, 9]:
@@ -378,10 +378,10 @@ func test_conform_heights_flattens_inner_and_blends_falloff() -> void:
 		assert_bool(r <= 0.25 + 1e-6).is_true()
 	# mid-falloff (row 4, dist 3): strictly between target and original
 	var mid := img.get_pixel(8, 4).r
-	assert_bool(mid > img.get_pixel(8, 7).r and mid < before).is_true()
+	assert_bool(mid > img.get_pixel(8, 7).r and mid < orig).is_true()
 	# beyond half_width + falloff (dist >= 5.5): untouched
-	assert_float(img.get_pixel(8, 13).r).is_equal(before)
-	assert_float(img.get_pixel(0, 0).r).is_equal(before)
+	assert_float(img.get_pixel(8, 13).r).is_equal(orig)
+	assert_float(img.get_pixel(0, 0).r).is_equal(orig)
 	# tight dirty rect: rows 2..12 change (dist 5 still blends), all 16 columns
 	assert_that(dirty).is_equal(Rect2i(0, 2, 16, 11))
 
@@ -475,6 +475,7 @@ func test_split_arrays_by_chunk_buckets_by_world_centroid() -> void:
 		var pos: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 		var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
 		assert_int(pos.size()).is_equal(4)   # per-chunk dedup
+		@warning_ignore("integer_division")
 		tri_total += idx.size() / 3
 		for i in idx:
 			assert_bool(i >= 0 and i < pos.size()).is_true()
