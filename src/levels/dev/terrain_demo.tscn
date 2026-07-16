@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" uid="uid://dyqakr52vmxiu" path="res://src/levels/dev/terrain_demo_island_height.png" id="6_height"]
 [ext_resource type="Texture2D" uid="uid://cyia3e0h3irgf" path="res://src/levels/dev/terrain_demo_island_splat.png" id="7_splat"]
 [ext_resource type="Shader" uid="uid://bcdkfxw2svriw" path="res://kit/terrain/terrain_splat.gdshader" id="8_shader"]
+[ext_resource type="MeshLibrary" path="res://kit/palettes/roads.meshlib" id="9_u8elx"]
 [ext_resource type="Script" uid="uid://bqwd2fww3l5yg" path="res://src/water/water_surface.gd" id="9_water"]
 [ext_resource type="Script" uid="uid://t88htpmwukbg" path="res://kit/helpers/authoring_root.gd" id="10_40d31"]
 [ext_resource type="Script" uid="uid://cpl5vh8pdc04w" path="res://kit/helpers/road_path.gd" id="11_h35jj"]
@@ -112,6 +113,15 @@ metadata/_custom_type_script = "uid://cpl5vh8pdc04w"
 
 [node name="Path" type="Path3D" parent="AuthoringRoot/RoadPath2" unique_id=598026417]
 curve = SubResource("Curve3D_40d31")
+
+[node name="RoadsTiles" type="GridMap" parent="AuthoringRoot" unique_id=1999393255]
+mesh_library = ExtResource("9_u8elx")
+cell_size = Vector3(12, 3, 12)
+cell_center_y = false
+data = {
+"cells": PackedInt32Array(458754, 4, 49, 458755, 4, 49)
+}
+metadata/_editor_floor_ = Vector3(0, 7, 0)
 
 [node name="Island" type="StaticBody3D" parent="." unique_id=1504712988]
 script = ExtResource("5_terrain")
