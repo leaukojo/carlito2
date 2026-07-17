@@ -231,12 +231,14 @@ func _commit_point(world: Vector3) -> void:
 	if scene_root == null:
 		return
 	var curve := path.curve
-	if straight:
+	var inv := path.global_transform.affine_inverse()
+	var port := _snap_port(world)
+	if straight and port.is_empty():
+		# Port capture wins over angle snap: the ghost previews the capture at the
+		# raw click, so snapping first could veto a port the preview promised.
 		var last: Variant = _last_point_world()
 		if last != null:
 			world = _apply_angle_snap(world, last)
-	var inv := path.global_transform.affine_inverse()
-	var port := _snap_port(world)
 	var port_handle := Vector3.ZERO
 	if not port.is_empty():
 		world = port["position"]
@@ -279,8 +281,9 @@ func _commit_point(world: Vector3) -> void:
 		if not prev_handles.is_empty():
 			_undo.add_do_method(curve, "set_point_in", idx - 1, prev_handles["in"])
 			_undo.add_do_method(curve, "set_point_out", idx - 1, prev_handles["out"])
-			# undo runs in reverse registration order: the added point goes first,
-			# then these restore the previous point's handles
+			# undo methods run in REGISTRATION order (verified on 4.6): these restore
+			# the previous point's handles, then remove_point below drops the added
+			# point — the operations are independent, so the order is safe
 			_undo.add_undo_method(curve, "set_point_in", idx - 1, curve.get_point_in(idx - 1))
 			_undo.add_undo_method(curve, "set_point_out", idx - 1, curve.get_point_out(idx - 1))
 		_undo.add_undo_method(curve, "remove_point", idx)
@@ -485,8 +488,9 @@ func close_loop() -> void:
 		_undo.add_do_method(curve, "set_point_out", 0, seam["out"])
 		_undo.add_do_method(curve, "set_point_in", n - 1, prev_h["in"])
 		_undo.add_do_method(curve, "set_point_out", n - 1, prev_h["out"])
-		# undo runs in reverse registration order: the seam point goes first, then the
-		# handle restores
+		# undo methods run in REGISTRATION order (verified on 4.6): the handle
+		# restores land first, then remove_point below drops the seam point — the
+		# operations are independent, so the order is safe
 		_undo.add_undo_method(curve, "set_point_out", n - 1, curve.get_point_out(n - 1))
 		_undo.add_undo_method(curve, "set_point_in", n - 1, curve.get_point_in(n - 1))
 		_undo.add_undo_method(curve, "set_point_out", 0, curve.get_point_out(0))
