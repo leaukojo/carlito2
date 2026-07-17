@@ -79,7 +79,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 script = ExtResource("9_water")
 size = Vector2(560, 560)
 depth = 3.0
-far_sea_extent = 4000.0
+far_sea_extent = 1900.0
 
 [node name="SeaBed" type="MeshInstance3D" parent="." unique_id=115278425]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
