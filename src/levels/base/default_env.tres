@@ -1,14 +1,28 @@
 [gd_resource type="Environment" format=3 uid="uid://bjh6g6yntyvh1"]
 
-[sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
-sky_top_color = Color(0.23, 0.42, 0.72, 1)
-sky_horizon_color = Color(0.72, 0.82, 0.92, 1)
-sky_curve = 0.12
-ground_bottom_color = Color(0.16, 0.36, 0.47, 1)
-ground_horizon_color = Color(0.72, 0.82, 0.92, 1)
-ground_curve = 0.12
-sun_angle_max = 20.0
-sun_curve = 0.12
+[ext_resource type="Shader" uid="uid://ndp2f0v5227g" path="res://src/levels/base/sky.gdshader" id="1_sky"]
+
+[sub_resource type="FastNoiseLite" id="Noise_1"]
+noise_type = 2
+frequency = 0.015
+fractal_octaves = 4
+
+[sub_resource type="NoiseTexture2D" id="CloudTex"]
+noise = SubResource("Noise_1")
+seamless = true
+
+[sub_resource type="ShaderMaterial" id="SkyMat"]
+shader = ExtResource("1_sky")
+shader_parameter/sky_top_color = Color(0.23, 0.42, 0.72, 1)
+shader_parameter/sky_horizon_color = Color(0.72, 0.82, 0.92, 1)
+shader_parameter/ground_bottom_color = Color(0.16, 0.36, 0.47, 1)
+shader_parameter/ground_horizon_color = Color(0.72, 0.82, 0.92, 1)
+shader_parameter/sky_curve = 0.12
+shader_parameter/cloud_color = Color(1, 1, 1, 1)
+shader_parameter/cloud_shadow_color = Color(0.62, 0.68, 0.78, 1)
+shader_parameter/cloud_coverage = 0.55
+shader_parameter/cloud_speed = 0.006
+shader_parameter/cloud_noise = SubResource("CloudTex")
 
 [sub_resource type="Sky" id="Sky_1"]
 sky_material = SubResource("SkyMat")
