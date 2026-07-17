@@ -132,6 +132,13 @@ junctions, lane markings, traffic.
 - The web export Head Include is pasted into `export_presets.cfg`; the reviewable source
   is `src/bridge/web/head_include.html` — **edit the source and re-paste into the preset;
   they must match.**
+- The web export uses a **custom HTML shell** (`html/custom_html_shell` →
+  `src/bridge/web/shell.html`) — a vendored copy of Godot's `godot.html` template with one
+  Carlito patch: the PWA service-worker branch reloads once (guarded by
+  `sessionStorage.carlitoCoiReloaded`) instead of rejecting with "Service worker already
+  exists", so first-load cross-origin isolation on GitHub Pages self-heals without a manual
+  reload. **On a Godot upgrade, re-extract `godot.html` from the web export template and
+  re-apply this patch** (keep the `$GODOT_*` placeholders, esp. `$GODOT_HEAD_INCLUDE`).
 - Bridge publish walks `Contract.signals_for_vehicle(...)` × `to_bridge_dict()` — never a
   hand-written field list. A `test_telemetry` case fails if `to_bridge_dict()` stops
   covering a ground "out" signal.
