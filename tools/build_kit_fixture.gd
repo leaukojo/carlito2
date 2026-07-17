@@ -96,17 +96,9 @@ func _add(scene_owner: Node, parent: Node, child: Node) -> void:
 
 
 func _make_environment() -> WorldEnvironment:
-	var sky_mat := ProceduralSkyMaterial.new()
-	var sky := Sky.new()
-	sky.sky_material = sky_mat
-	var env := Environment.new()
-	env.background_mode = Environment.BG_SKY
-	env.sky = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.6
 	var we := WorldEnvironment.new()
 	we.name = "WorldEnvironment"
-	we.environment = env
+	we.environment = load("res://src/levels/base/default_env.tres")
 	return we
 
 
@@ -115,7 +107,9 @@ func _make_sun() -> DirectionalLight3D:
 	sun.name = "Sun"
 	sun.transform = Transform3D(Basis.from_euler(Vector3(deg_to_rad(-50), deg_to_rad(40), 0)),
 			Vector3(0, 40, 0))
+	sun.light_color = Color(1, 0.96, 0.88)
 	sun.shadow_enabled = true
+	sun.directional_shadow_max_distance = 150.0
 	return sun
 
 

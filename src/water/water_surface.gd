@@ -33,9 +33,22 @@ const MESH_SUBDIV := 32
 	set(v):
 		kill_margin = v
 		_rebuild()
+## Side length of an optional flat "sea to the horizon" plane around this region
+## (0 = off). Visual only — one unsubdivided quad in the deep-water color, sitting
+## slightly below the wavy surface so the two never z-fight; distance + fog blend it
+## into the sky. No kill volume and no height API out there.
+@export var far_sea_extent := 0.0:
+	set(v):
+		far_sea_extent = v
+		_rebuild()
+
+## How far the far-sea quad sits below the surface (must clear the wave troughs).
+const FAR_SEA_DROP := 0.25
+const FAR_SEA_COLOR := Color(0.03, 0.14, 0.26)
 
 var _mesh: MeshInstance3D
 var _shape: CollisionShape3D
+var _far_mesh: MeshInstance3D
 
 
 func _ready() -> void:
@@ -80,6 +93,27 @@ func _rebuild() -> void:
 	var box_height := maxf(depth - kill_margin, 0.05)
 	(_shape.shape as BoxShape3D).size = Vector3(size.x, box_height, size.y)
 	_shape.position = Vector3(0.0, -kill_margin - box_height * 0.5, 0.0)
+	_rebuild_far_sea()
+
+
+func _rebuild_far_sea() -> void:
+	if far_sea_extent <= 0.0:
+		if _far_mesh != null:
+			_far_mesh.queue_free()
+			_far_mesh = null
+		return
+	if _far_mesh == null:
+		_far_mesh = MeshInstance3D.new()
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = FAR_SEA_COLOR
+		mat.roughness = 0.12
+		mat.metallic_specular = 0.6
+		_far_mesh.material_override = mat
+		_far_mesh.position = Vector3(0.0, -FAR_SEA_DROP, 0.0)
+		add_child(_far_mesh, false, Node.INTERNAL_MODE_BACK)
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(far_sea_extent, far_sea_extent)
+	_far_mesh.mesh = plane
 
 
 ## Non-boat vehicle in the water body -> drown: reuse the respawn path.

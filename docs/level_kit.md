@@ -472,7 +472,9 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   including the smoothing rewrite of the previous point and the corner a polyline
   click forms there), so a red ghost always means a refused click; only the changed
   segments are checked, so a pre-existing tight corner never blocks drawing. Only
-  gizmo-made kinks bypass the guard — those still get extrude's fold-clamp pinch.
+  gizmo-made kinks bypass the guard — those still get extrude's fold-clamp pinch,
+  and the RoadPath raises a configuration warning whenever the whole curve's
+  min turn radius sits under the half-width, so the slit never goes unnoticed.
 - **Ports (tile ↔ spline sockets):** a *port* is the edge-center of an occupied
   roads-GridMap cell face that the tile actually carries road across AND whose neighbor
   cell is empty. Ports are fully computable from the lattice + a per-tile table —

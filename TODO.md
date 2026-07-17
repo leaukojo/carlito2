@@ -42,6 +42,12 @@ Observe the previous game's deployed build for layout spirit (never its code/geo
 - All vehicle types spawnable except boat, unless a coastline water region fits naturally.
 - Register, bake, `check_bakes` + `CARLITO_LEVEL=<id>` headless smoke green.
 
+## 3b. Visual polish (deferred plans)
+
+Baseline (shared tuned env + fog, warm sun, far-sea horizon plane, night atmosphere) is
+done. Remaining: clouds/better sky (`docs/plans/sky_clouds.md`) and the broader pro-eye
+sweep — foam line, particles, shadow tuning, color grade (`docs/plans/visual_polish_pass.md`).
+
 ## 4. Perf pass
 
 Profile the **deployed** web build first — F3 overlay (FPS / frame ms / draw calls /

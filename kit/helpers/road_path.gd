@@ -239,6 +239,17 @@ func _get_configuration_warnings() -> PackedStringArray:
 	var path := get_node_or_null(^"Path") as Path3D
 	if path == null or path.curve == null or path.curve.point_count < 2:
 		warnings.append("The Path child's curve needs at least 2 points.")
+	elif profile != null:
+		# The draw tool refuses clicks under the fold limit, but the built-in Path3D
+		# gizmo bypasses it: below the half-width the extruder pinches the inside
+		# edge into a slit. Same floor as the draw guard (_fold_guard_ok).
+		var radius: float = RoadBuilder.min_turn_radius(path.curve,
+				max_segment_length, max_segment_angle_deg)
+		if radius < profile.full_half_width():
+			warnings.append(("Turn radius %.1f m is under the ribbon's %.1f m " +
+					"half-width — the inside edge pinches into a slit there. " +
+					"Widen the turn (Arc draw mode keeps radii safe).") % [
+					radius, profile.full_half_width()])
 	return warnings
 
 

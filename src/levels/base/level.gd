@@ -29,6 +29,8 @@ const VEHICLE_SCENES := {
 const NIGHT_SUN_ENERGY := 0.12
 const NIGHT_SUN_COLOR := Color(0.55, 0.62, 0.85)
 const NIGHT_AMBIENT_ENERGY := 0.12
+const NIGHT_FOG_COLOR := Color(0.05, 0.07, 0.13)
+const NIGHT_SKY_ENERGY := 0.05
 
 var vehicle: BaseVehicle
 
@@ -38,6 +40,8 @@ var _is_night := false
 var _day_sun_energy := 1.0
 var _day_sun_color := Color.WHITE
 var _day_ambient_energy := 1.0
+var _day_fog_color := Color.WHITE
+var _day_sky_energy := 1.0
 
 
 func _ready() -> void:
@@ -109,13 +113,20 @@ func _capture_day_night() -> void:
 		_sun = node as DirectionalLight3D
 		break
 	for node in find_children("*", "WorldEnvironment", true, false):
-		_env = (node as WorldEnvironment).environment
+		var we := node as WorldEnvironment
+		if we.environment != null:
+			# Levels share one saved Environment resource; night-mode mutations must
+			# stay per-level, so work on a runtime copy.
+			we.environment = we.environment.duplicate(true)
+		_env = we.environment
 		break
 	if _sun != null:
 		_day_sun_energy = _sun.light_energy
 		_day_sun_color = _sun.light_color
 	if _env != null:
 		_day_ambient_energy = _env.ambient_light_energy
+		_day_fog_color = _env.fog_light_color
+		_day_sky_energy = _env.background_energy_multiplier
 
 
 func _toggle_day_night() -> void:
@@ -125,6 +136,8 @@ func _toggle_day_night() -> void:
 		_sun.light_color = NIGHT_SUN_COLOR if _is_night else _day_sun_color
 	if _env != null:
 		_env.ambient_light_energy = NIGHT_AMBIENT_ENERGY if _is_night else _day_ambient_energy
+		_env.fog_light_color = NIGHT_FOG_COLOR if _is_night else _day_fog_color
+		_env.background_energy_multiplier = NIGHT_SKY_ENERGY if _is_night else _day_sky_energy
 
 
 ## Respawn the player as `type` at a matching spawn marker (garage menu).

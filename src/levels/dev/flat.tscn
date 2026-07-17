@@ -1,8 +1,9 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://src/levels/dev/flat.gd" id="1_flat"]
 [ext_resource type="PackedScene" path="res://src/vehicles/car/car.tscn" id="2_car"]
 [ext_resource type="Script" path="res://src/vehicles/base/chase_camera.gd" id="3_cam"]
+[ext_resource type="Environment" path="res://src/levels/base/default_env.tres" id="4_env"]
 
 [sub_resource type="BoxShape3D" id="GroundShape"]
 size = Vector3(400, 1, 400)
@@ -22,24 +23,17 @@ size = Vector3(2, 2, 2)
 [sub_resource type="StandardMaterial3D" id="PropMat"]
 albedo_color = Color(0.8, 0.65, 0.2, 1)
 
-[sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
-
-[sub_resource type="Sky" id="Sky_1"]
-sky_material = SubResource("SkyMat")
-
-[sub_resource type="Environment" id="Env_1"]
-background_mode = 2
-sky = SubResource("Sky_1")
-
 [node name="Flat" type="Node3D"]
 script = ExtResource("1_flat")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("Env_1")
+environment = ExtResource("4_env")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866, 0.354, -0.354, 0, 0.707, 0.707, 0.5, -0.612, 0.612, 0, 20, 0)
+light_color = Color(1, 0.96, 0.88, 1)
 shadow_enabled = true
+directional_shadow_max_distance = 150.0
 
 [node name="Ground" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
