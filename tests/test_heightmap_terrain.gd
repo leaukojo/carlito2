@@ -63,17 +63,20 @@ func test_height_adds_node_offset() -> void:
 
 
 func test_chunked_mesh_builds_per_tile_and_height_matches_across_borders() -> void:
-	# 4x4 cells at chunk_cells 2 -> 2x2 tiles, one MeshInstance3D each; the height
-	# query is image-based, so values across a chunk border are unchanged.
+	# 4x4 cells at chunk_cells 2 -> 2x2 tiles, one MeshInstance3D each. A relief heightmap
+	# is required: a uniform one collapses to a single flat quad (the few-polygon path).
+	# The ramp is constant in Z, so the image-based height query returns the same value at
+	# a fixed X on either side of the Z chunk seam.
 	var t := _terrain(Vector2(4, 4), 10.0)
 	t.chunk_cells = 2
-	t.heightmap = _flat(0.5)
+	t.heightmap = _ramp_x()
 	var chunks := t.get_node("Chunks")
 	assert_int(chunks.get_child_count()).is_equal(4)
 	for chunk in chunks.get_children():
 		assert_object((chunk as MeshInstance3D).mesh).is_not_null()
-	assert_float(t.height_at(Vector3(0, 0, 0))).is_equal_approx(5.0, 0.001)   # tile seam
-	assert_float(t.height_at(Vector3(1.5, 0, 1.5))).is_equal_approx(5.0, 0.001)
+	# X = 0 -> mid-ramp -> red 0.5 -> y 5.0, unchanged across the Z seam.
+	assert_float(t.height_at(Vector3(0, 0, -1.5))).is_equal_approx(5.0, 0.001)
+	assert_float(t.height_at(Vector3(0, 0, 1.5))).is_equal_approx(5.0, 0.001)
 
 
 func test_rebuild_region_world_remeshes_touched_chunks_only_leaving_collision() -> void:
