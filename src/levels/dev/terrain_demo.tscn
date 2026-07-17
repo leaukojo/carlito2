@@ -96,9 +96,9 @@ mesh_library = ExtResource("9_u8elx")
 cell_size = Vector3(12, 3, 12)
 cell_center_y = false
 data = {
-"cells": PackedInt32Array(458754, 4, 49, 458755, 4, 49)
+"cells": PackedInt32Array(458754, 4, 49, 458755, 4, 49, 720893, 65535, 49, 720892, 65535, 49, 720891, 65535, 1048576)
 }
-metadata/_editor_floor_ = Vector3(0, 7, 0)
+metadata/_editor_floor_ = Vector3(0, 10, 0)
 
 [node name="RoadPath" type="Node3D" parent="AuthoringRoot" unique_id=584347843]
 script = ExtResource("11_h35jj")

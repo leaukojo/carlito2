@@ -10,7 +10,7 @@ extends RefCounted
 ## normalized height [0,1]; the node's `height` export is the world amplitude (meters of
 ## a white pixel). The splatmap is an RGBA weight image: R=grass, G=dirt, B=sand, A=rock.
 
-enum Preset { ISLAND, ROLLING_HILLS, PLAINS, DUNES }
+enum Preset { ISLAND, ROLLING_HILLS, PLAINS, DUNES, FLAT }
 
 ## Per-preset character: fractal type, frequency multiplier (relative to feature_scale),
 ## default octave count, relative amplitude (fraction of `height` the preset peaks at, so
@@ -31,6 +31,13 @@ const PRESETS := {
 	Preset.DUNES: {
 		"fractal": FastNoiseLite.FRACTAL_RIDGED, "freq_mult": 1.2,
 		"amplitude": 0.4, "falloff": false,
+	},
+	# Dead-flat plane at sea level: a sculptable blank slate (the heightmap PNG still
+	# exists at full resolution, so the brush can add relief later). While the terrain
+	# STAYS uniform, HeightmapTerrain renders it as a single quad — see is_uniform.
+	Preset.FLAT: {
+		"fractal": FastNoiseLite.FRACTAL_FBM, "freq_mult": 1.0,
+		"amplitude": 0.0, "falloff": false,
 	},
 }
 
@@ -191,6 +198,19 @@ static func build_splatmap(height_img: Image, height_scale: float, px_x: float,
 			splat.set_pixel(x, y, classify_splat(
 					height_m, slope, sand_height, dirt_slope_deg, rock_slope_deg))
 	return splat
+
+
+## Whether every height in the grid is the same value (a dead-flat terrain). The mesher
+## uses this to collapse a flat terrain to one two-triangle quad — the few-polygon path
+## for flat ground; any relief (sculpt, generate) re-densifies on the next rebuild.
+static func is_uniform(heights: PackedFloat32Array) -> bool:
+	if heights.is_empty():
+		return true
+	var first := heights[0]
+	for h in heights:
+		if h != first:
+			return false
+	return true
 
 
 ## Cell-space chunk lattice for the render mesh: Rect2i positions/sizes in cells (a

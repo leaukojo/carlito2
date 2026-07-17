@@ -188,6 +188,12 @@ func rebuild_region_world(img: Image, min_x: float, max_x: float,
 	var cols := dims.x
 	var rows := dims.y
 	var heights := _sample_heights(img, cols, rows)
+	# A collapsed flat terrain has no chunk nodes to patch — the first sculpt stroke
+	# densifies the whole mesh from the brush's live image (once; later samples patch).
+	if container.get_node_or_null(^"FlatQuad") != null:
+		_apply_chunks(cols, rows, heights)
+		_push_splat_param()
+		return
 	# World XZ -> cell indices (see _build_chunk: world x of cell cx = gpos.x - (cols-1)/2 +
 	# cx). Expanded one cell each side so an edit on a chunk border also refreshes the
 	# neighbour's shared verts/normals.
@@ -354,6 +360,13 @@ func _apply_chunks(cols: int, rows: int, heights: PackedFloat32Array) -> void:
 		add_child(container)
 	for child in container.get_children():
 		child.free()
+	# A dead-flat terrain (FLAT preset, null heightmap, or an all-uniform image) renders
+	# as one two-triangle quad — the few-polygon path. Any relief re-densifies here on
+	# the next full rebuild. Collision is untouched: still the one HeightMapShape3D.
+	if TerrainGen.is_uniform(heights):
+		container.add_child(_build_flat_quad(cols, rows,
+				heights[0] if not heights.is_empty() else 0.0))
+		return
 	for rect in TerrainGen.chunk_ranges(cols, rows, chunk_cells):
 		container.add_child(_build_chunk(rect, cols, rows, heights))
 
@@ -386,6 +399,28 @@ func _build_chunk(rect: Rect2i, cols: int, rows: int,
 	mi.position = Vector3(
 			-float(cols - 1) * 0.5 + float(rect.position.x), 0.0,
 			-float(rows - 1) * 0.5 + float(rect.position.y))
+	mi.mesh = st.commit()
+	mi.material_override = material
+	return mi
+
+
+## Single quad covering the whole terrain at uniform height `y` (see _apply_chunks).
+## Same conventions as _build_chunk: UVs 0..1 across the terrain (splat continuity),
+## CW winding, normal straight up (exact for a flat surface).
+func _build_flat_quad(cols: int, rows: int, y: float) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var w := float(cols - 1)
+	var h := float(rows - 1)
+	for corner in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
+		st.set_uv(corner)
+		st.set_normal(Vector3.UP)
+		st.add_vertex(Vector3(corner.x * w, y, corner.y * h))
+	st.add_index(0); st.add_index(1); st.add_index(2)
+	st.add_index(1); st.add_index(3); st.add_index(2)
+	var mi := MeshInstance3D.new()
+	mi.name = "FlatQuad"
+	mi.position = Vector3(-w * 0.5, 0.0, -h * 0.5)
 	mi.mesh = st.commit()
 	mi.material_override = material
 	return mi

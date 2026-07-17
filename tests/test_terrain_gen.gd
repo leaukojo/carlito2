@@ -155,6 +155,20 @@ func test_presets_scale_amplitude() -> void:
 	assert_float(plains_max).is_greater(0.0)
 
 
+func test_flat_preset_is_all_zero() -> void:
+	# FLAT is a sea-level blank slate: every pixel exactly 0 regardless of seed/terracing.
+	var img := Gen.generate_heights(Gen.Preset.FLAT, 7, 20.0, 3, 0.55, 0.95, 9, 9, 4, 0.6)
+	for y in 9:
+		for x in 9:
+			assert_float(img.get_pixel(x, y).r).is_equal(0.0)
+
+
+func test_is_uniform() -> void:
+	assert_bool(Gen.is_uniform(PackedFloat32Array())).is_true()
+	assert_bool(Gen.is_uniform(PackedFloat32Array([0.5, 0.5, 0.5]))).is_true()
+	assert_bool(Gen.is_uniform(PackedFloat32Array([0.5, 0.5, 0.6]))).is_false()
+
+
 # --- slope + normals ---
 
 
