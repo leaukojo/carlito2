@@ -186,6 +186,9 @@ junctions, lane markings, traffic.
   (`godot --headless res://tools/bake_levels.tscn`), and `level.gd` fetches GameState via
   `get_node("/root/GameState")` for the same reason.
 - A **freed node compares equal to null** — read results before `free()`.
+- Vector2/3 component math is **float32**: `Vector2.angle()` carries ~1e-7 noise against
+  float64 `PI`, so exact-boundary tests (`ceil(sweep / (PI/2))` etc.) need a ~1e-5
+  tolerance — 1e-9 is not enough (bit the road-arc segment count).
 - Godot 4.6 renamed the decomposition helper to `create_multiple_convex_collisions`
   (plural).
 - SurfaceTool.append_from leaves scaled normals unnormalized — the baker's

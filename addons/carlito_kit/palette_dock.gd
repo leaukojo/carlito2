@@ -16,6 +16,7 @@ const THUMB_PX := 96
 signal prefab_armed(kit: String, name: String)
 signal tile_selected(kit: String, name: String)
 signal settings_changed(random_yaw: bool, snap_enabled: bool, snap_step: float, yaw_deg: float)
+signal autofloor_changed(on: bool)
 
 # Per kit, ordered families: { kit -> [ { label, items:[ {kit,name,kind,thumb} ] } ] ].
 var _catalog: Dictionary = {}
@@ -28,12 +29,13 @@ var _random_yaw: CheckButton
 var _yaw_field: SpinBox
 var _snap: CheckButton
 var _snap_step: SpinBox
+var _autofloor_btn: CheckButton
 var _content: VBoxContainer
 var _button_group := ButtonGroup.new()
 
 
 func _init() -> void:
-	name = "Kit"
+	name = "Palette"
 	custom_minimum_size = Vector2(0, 240)
 	_build_catalog()
 	_build_ui()
@@ -201,6 +203,16 @@ func _build_ui() -> void:
 	_snap_step.value_changed.connect(func(_v): _emit_settings())
 	toolbar.add_child(_snap_step)
 
+	toolbar.add_child(VSeparator.new())
+
+	_autofloor_btn = CheckButton.new()
+	_autofloor_btn.text = "Auto-floor"
+	_autofloor_btn.tooltip_text = "Paint the selected tile straight onto the terrain: each " \
+			+ "click raycasts the ground and the cell floor follows the hit height, so " \
+			+ "you don't set the GridMap floor by hand. [ / ] rotate; Ctrl-click erases."
+	_autofloor_btn.toggled.connect(func(on: bool): autofloor_changed.emit(on))
+	toolbar.add_child(_autofloor_btn)
+
 	_apply_kit_snap()  # seed the step from the initial tab's grid
 
 	var scroll := ScrollContainer.new()
@@ -228,6 +240,13 @@ func set_yaw_display(degrees: float) -> void:
 	_yaw_field.set_block_signals(true)
 	_yaw_field.value = fposmod(roundf(degrees), 360.0)  # 360 -> 0, stays within max_value
 	_yaw_field.set_block_signals(false)
+
+
+## Reflect a tool-driven auto-floor exit (RMB/Escape) back on the toggle without
+## re-emitting autofloor_changed (the plugin already knows).
+func set_autofloor(on: bool) -> void:
+	if _autofloor_btn.button_pressed != on:
+		_autofloor_btn.set_pressed_no_signal(on)
 
 
 ## Snap step follows the active kit's tile grid (palette cell_size), or 1 m for prop-only

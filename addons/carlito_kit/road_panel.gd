@@ -11,20 +11,39 @@ signal close_requested
 signal smooth_corners_changed(on: bool)
 signal snap_ports_changed(on: bool)
 signal snap_ends_requested
+signal draw_submode_changed(mode: int)
+signal angle_snap_changed(step_deg: float)
 
 const MODE_LABELS := ["Off", "Draw"]
+const SUBMODE_LABELS := ["Free", "Straight", "Arc"]
+const SUBMODE_TOOLTIPS := [
+	"Each click appends a point; Smooth corners Catmull-Rom-smooths the previous one.",
+	"Each click appends an exact straight segment (zero handles). Corners sharper "
+			+ "than the fold limit are refused - draw those as arcs.",
+	"Circular arc: click start, tangent direction, end. A start point with an "
+			+ "out-handle (a previous arc) reuses it as the tangent; right-click "
+			+ "re-picks a pending tangent.",
+]
+const SNAP_STEPS := [0.0, 45.0, 15.0]
+const SNAP_LABELS := ["Off", "45°", "15°"]
 
 var _status: Label
 var _mode_group := ButtonGroup.new()
 var _mode_buttons: Array[Button] = []
+var _submode_group := ButtonGroup.new()
+var _submode_buttons: Array[Button] = []
+var _submode := 0
+var _angle_snap: OptionButton
+var _radius: Label
 var _smooth: CheckBox
 var _snap_ports: CheckBox
 var _close: Button
 var _snap_ends: Button
+var _has_road := false
 
 
 func _init() -> void:
-	name = "Road Draw"
+	name = "Roads"
 	add_theme_constant_override("separation", 6)
 	_build()
 	set_has_road(false)
@@ -54,8 +73,49 @@ func _build() -> void:
 		_mode_buttons.append(b)
 		row.add_child(b)
 
+	var shape_heading := Label.new()
+	shape_heading.text = "Draw shape"
+	shape_heading.add_theme_color_override("font_color", Color(0.7, 0.8, 1.0))
+	add_child(shape_heading)
+
+	var shape_row := HBoxContainer.new()
+	add_child(shape_row)
+	for i in SUBMODE_LABELS.size():
+		var b := Button.new()
+		b.text = SUBMODE_LABELS[i]
+		b.tooltip_text = SUBMODE_TOOLTIPS[i]
+		b.toggle_mode = true
+		b.button_group = _submode_group
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if i == 0:
+			b.button_pressed = true
+		b.pressed.connect(func():
+			_submode = i
+			draw_submode_changed.emit(i)
+			_update_smooth_enabled())
+		_submode_buttons.append(b)
+		shape_row.add_child(b)
+
+	var snap_row := HBoxContainer.new()
+	add_child(snap_row)
+	var snap_label := Label.new()
+	snap_label.text = "Angle snap"
+	snap_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	snap_row.add_child(snap_label)
+	_angle_snap = OptionButton.new()
+	for s in SNAP_LABELS:
+		_angle_snap.add_item(s)
+	_angle_snap.tooltip_text = "Snap Straight/Arc directions to this heading step."
+	_angle_snap.item_selected.connect(func(i: int): angle_snap_changed.emit(SNAP_STEPS[i]))
+	snap_row.add_child(_angle_snap)
+
+	_radius = Label.new()
+	_radius.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(_radius)
+	set_radius_display("", false)
+
 	_smooth = CheckBox.new()
-	_smooth.text = "Smooth corners"
+	_smooth.text = "Smooth corners (Free)"
 	_smooth.button_pressed = true
 	_smooth.tooltip_text = "Give each drawn point Catmull-Rom handles. Off: the road " \
 			+ "follows the clicks exactly, with angled connections at the corners."
@@ -87,9 +147,13 @@ func _build() -> void:
 
 	var hint := Label.new()
 	hint.text = "Select a RoadPath, pick Draw, then click the ground in the 3D view " \
-			+ "to append curve points (each click is one undo step). Right-click or " \
-			+ "Escape exits; Close loop joins the road back to its first point. " \
-			+ "Clearance is draw_clearance on the node; Drape and " \
+			+ "to append curve points (each click is one undo step). Shapes: Free " \
+			+ "smooths as you click, Straight adds exact chords, Arc is start / " \
+			+ "tangent / end (chained arcs reuse the previous end tangent; " \
+			+ "right-click re-picks a pending tangent). The ghost shows the ribbon " \
+			+ "edges and turns red when the turn is too tight to extrude. " \
+			+ "Right-click or Escape exits; Close loop joins the road back to its " \
+			+ "first point. Clearance is draw_clearance on the node; Drape and " \
 			+ "Conform buttons are on its inspector."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
@@ -110,6 +174,17 @@ func show_warning(text: String) -> void:
 		_status.add_theme_color_override("font_color", Color(0.95, 0.6, 0.3))
 
 
+## Live min-turn-radius readout from the draw ghost ("" = idle; warn tints red).
+func set_radius_display(text: String, warn: bool) -> void:
+	if text.is_empty():
+		_radius.text = "min radius: —"
+		_radius.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+	else:
+		_radius.text = text
+		_radius.add_theme_color_override("font_color",
+				Color(0.95, 0.4, 0.3) if warn else Color(0.75, 0.75, 0.75))
+
+
 ## Reflect a tool-driven exit (RMB/Escape) without re-emitting mode_changed — the
 ## plugin already knows (programmatic button_pressed doesn't emit `pressed`).
 func show_off() -> void:
@@ -117,13 +192,22 @@ func show_off() -> void:
 		_mode_buttons[0].button_pressed = true
 
 
+func _update_smooth_enabled() -> void:
+	_smooth.disabled = not _has_road or _submode != 0
+
+
 func set_has_road(has: bool) -> void:
+	_has_road = has
 	for b in _mode_buttons:
 		b.disabled = not has
-	_smooth.disabled = not has
+	for b in _submode_buttons:
+		b.disabled = not has
+	_angle_snap.disabled = not has
+	_update_smooth_enabled()
 	_snap_ports.disabled = not has
 	_close.disabled = not has
 	_snap_ends.disabled = not has
+	set_radius_display("", false)
 	if has:
 		_status.text = "RoadPath selected — ready to draw."
 		_status.add_theme_color_override("font_color", Color(0.5, 0.9, 0.5))

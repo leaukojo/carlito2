@@ -119,9 +119,16 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
 - `plugin.gd` registers the export stripper, the bottom-panel dock, the viewport tools,
   and calls `set_input_event_forwarding_always_enabled()` so `_forward_3d_gui_input`
   receives every viewport event (placement is selection-independent). Viewport input is
-  forwarded **terrain brush → scatter brush → road draw → placement tool**; each is
-  inert until its target + mode are set, so the tools never fight normal editor
-  navigation. Nothing in the addon ships — it is editor-only.
+  forwarded **terrain brush → scatter brush → road draw → gridmap paint → placement
+  tool**; each is inert until its target + mode are set, so the tools never fight normal
+  editor navigation. Nothing in the addon ships — it is editor-only.
+- **One "Kit" bottom panel** hosts everything as a `TabContainer`: **Palette / Terrain /
+  Scatter / Roads** tabs (tab title = each panel's node name; the three tool panels ride
+  their own `ScrollContainer`). So tile-city work (Palette tab → roads kit) and spline
+  work (Roads tab) are one click apart, and selecting a `HeightmapTerrain` /
+  `ScatterCanvas` / `RoadPath` pops the panel and jumps to its tool tab. The
+  deprecated `add_control_to_dock` breaks 3D viewport nav in 4.6, so this rides the
+  bottom panel.
 - **`palette_dock.gd`** (`@tool VBoxContainer`, UI only): reads all `kit/import/*.json`
   recipes, gathers each kit's emitted prefab basenames + palette meshlib item names,
   buckets them by **family via `KitRecipe.classify`** (`label` per section, `exclude`
@@ -150,6 +157,18 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   `GridMapEditorPlugin.set_selected_palette_item` has no public handle to the built-in
   instance, so the exact paint item is a best-effort print of the item id — the author
   clicks the thumbnailed tile in the built-in palette.
+- **Auto-floor paint** (`gridmap_paint_tool.gd`, `RefCounted`; palette-toolbar
+  "Auto-floor" toggle): a terrain-aware replacement paint mode. The built-in GridMap
+  editor paints on a **manual** floor plane and exposes no script hook to drive it, so
+  when the toggle is on, a tile pick arms this tool on the selected GridMap: each click
+  raycasts the ground via the shared `ground_snap.gd` chain and `local_to_map` derives
+  the cell **Y from the hit height**, then commits one undoable `set_cell_item` with the
+  palette's item + a `[`/`]` Y-rotation (`get_orthogonal_index_from_basis`). Left-click
+  paints (drag streaks one cell per undo step), Ctrl-click erases, right-click/Escape
+  exits; a wire-box ghost shows the target cell. Mode-exclusive with the brushes and road
+  draw (owns the viewport), and follows its GridMap — selecting away drops it. Cost/
+  benefit: the built-in editor already covers plateaued pads where one floor level spans
+  the whole city; this earns its keep on multi-level terrain.
 
 ## Terrain generation & splat ground
 
@@ -312,7 +331,7 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   `get_region`, `commit_action(false)` since edits are already live); `_apply_region`
   blits back and refreshes the visual, robust to the terrain no longer being selected
   (re-derives the session).
-- **Panel** (`addons/carlito_kit/brush_panel.gd`, in the shared "Kit Tools" bottom panel):
+- **Panel** (`addons/carlito_kit/brush_panel.gd`, the "Terrain" tab of the Kit bottom panel):
   mode buttons (**index-matched to the brush enum**, 0 = Off … 5 = Ramp, 6 = Paint — adding
   a mode shifts every index after it, so the panel names the ones it tests: `MODE_OFF`,
   `MODE_FLATTEN`, `MODE_RAMP`, `MODE_PAINT`), radius/strength/edge-softness spinners
@@ -412,24 +431,48 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   edges; U = lateral m, V = arc-length m; winding CW-from-above and invariant under
   curve reversal), and the conform flatten mask.
 - **Draw mode + Drape:** `addons/carlito_kit/road_draw_tool.gd` + `road_panel.gd`
-  (right dock, Off/Draw; RoadPath-selection-gated like the brushes). Each viewport click
+  (the "Roads" tab of the Kit bottom panel, Off/Draw; RoadPath-selection-gated like the
+  brushes). Each viewport click
   ground-snaps via the shared `ground_snap.gd` chain, lifts by the node's
-  `draw_clearance` (0.3), and appends ONE undoable curve point **auto-smoothing the
-  previous point with Catmull-Rom handles** (`RoadBuilder.smooth_handles`, pure/tested —
-  a zero-handle polyline corner folds the ribbon over itself); the first click replaces
-  the untouched 2-point default stub; a ghost line previews the next segment;
-  RMB/Escape exits; the panel's **Close loop** button appends a point ON the first
-  point with Catmull-Rom seam tangents on both sides (C1 through the seam — the
-  duplicated ring welds at bake) and exits Draw. RoadPath buttons: **Drape curve onto
-  terrain** (re-snaps every existing point's Y to terrain + clearance; points over no
-  terrain keep their Y) and **Smooth curve (Catmull-Rom)** (handles for every interior
-  point — the rescue for hand-kinked curves); each is one undoable action. Corners
-  still self-overlap when the local turn radius drops below the ribbon half-width
-  (~6 m asphalt) — that is geometric; the draw tool REFUSES clicks whose new/reshaped
-  segments would cross that floor (`RoadBuilder.min_turn_radius`, panel status line +
-  warning; only the changed segments are checked, so a pre-existing tight corner never
-  blocks drawing), and gizmo-made kinks still get extrude's fold-clamp pinch — space
-  clicks/points wider.
+  `draw_clearance` (0.3), and commits ONE undoable action; the first click replaces
+  the untouched 2-point default stub; RMB/Escape exits. **Draw shapes** (panel radio,
+  all emit plain Curve3D points+handles — the extruder/bake pipeline never knows):
+  - *Free*: the historical flow — each click **auto-smooths the previous point with
+    Catmull-Rom handles** (`RoadBuilder.smooth_handles`, pure/tested; the panel's
+    Smooth corners checkbox, Free-only, turns it off for an exact polyline).
+  - *Straight*: exact zero-handle chords — the new point lands with zero handles and
+    the previous point's out-handle is zeroed in the same action. Shallow joints
+    render as clean miters; a corner tighter than the fold limit is refused (the kink
+    would pinch the inside edge into a slit) — draw those corners as arcs.
+  - *Arc*: 3-click circular arc — start, tangent direction, end (the Cities: Skylines
+    pattern; `RoadBuilder.arc_points`, pure/tested: XZ circle from tangent + chord,
+    split into <= 90° sub-arcs, each a cubic with handle length 4/3·tan(θ/4)·r; height
+    lerps along arc length with the slope in the handles). The committed end point
+    keeps its out-handle, so the NEXT arc reuses it as its tangent — chained arcs are
+    tangent-continuous with one click each; right-click re-picks a pending tangent
+    (with none pending it exits as usual). A ~collinear end degrades to a straight.
+    Arc END clicks ignore ports (start + tangent + end already fix the end tangent);
+    starting a fresh arc road ON a port still works and locks the first tangent.
+  - **Angle snap** (panel option, Off/45°/15°): snaps Straight chords and Arc
+    tangent/chord directions to the heading grid (`RoadBuilder.snap_direction`).
+  The **ghost previews the candidate as the actual tessellated ribbon edges** (same
+  adaptive sampling + frames as the extruder, at the profile's full half-width),
+  tinted red — with a live min-radius readout on the panel — when the candidate turns
+  tighter than the fold limit. The panel's **Close loop** button appends a point ON
+  the first point with Catmull-Rom seam tangents on both sides (C1 through the seam —
+  the duplicated ring welds at bake) and exits Draw. RoadPath buttons: **Drape curve
+  onto terrain** (re-snaps every existing point's Y to terrain + clearance; points
+  over no terrain keep their Y) and **Smooth curve (Catmull-Rom)** (handles for every
+  interior point — the rescue for hand-kinked curves); each is one undoable action.
+  Corners still self-overlap when the local turn radius drops below the ribbon
+  half-width (~6 m asphalt) — that is geometric; the draw tool REFUSES clicks whose
+  new/reshaped/created segments would cross that floor (`RoadBuilder.min_turn_radius`
+  / the arc's analytic radius, panel status line + warning). **Ghost, readout, and
+  refusal all measure the SAME candidate curve** (one `_click_sim` per click,
+  including the smoothing rewrite of the previous point and the corner a polyline
+  click forms there), so a red ghost always means a refused click; only the changed
+  segments are checked, so a pre-existing tight corner never blocks drawing. Only
+  gizmo-made kinks bypass the guard — those still get extrude's fold-clamp pinch.
 - **Ports (tile ↔ spline sockets):** a *port* is the edge-center of an occupied
   roads-GridMap cell face that the tile actually carries road across AND whose neighbor
   cell is empty. Ports are fully computable from the lattice + a per-tile table —
@@ -444,7 +487,8 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   ends sit on half-cell planes — off-lattice; use `road-bend` / crossroad instead.
   Openness is judged by cell occupancy only (an unpainted cell under another tile's
   overhang counts as open).
-- **Port snapping (Draw mode):** with the panel's **Snap to ports** toggle on (default),
+- **Port snapping (Draw mode, Free/Straight; Arc end clicks ignore ports):** with the
+  panel's **Snap to ports** toggle on (default),
   a click within 3 m (XZ) of a port commits the point exactly AT the port — deck height,
   **no draw_clearance**, so the ribbon meets the tile flush — with the end tangent
   locked 4 m along the outward face normal; arriving at a port **exits Draw** (the road

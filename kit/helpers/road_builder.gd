@@ -95,6 +95,78 @@ static func smooth_handles(prev: Vector3, point: Vector3, next: Vector3) -> Dict
 			"out": dir * (point.distance_to(next) / 3.0)}
 
 
+# ------------------------------------------------------------ draw-mode primitives
+# Pure helpers for the addon's Straight/Arc draw sub-modes. Additive only — nothing
+# below feeds extrusion or conform, so bake output is untouched (no BAKER_VERSION bump).
+
+
+## Snap `dir`'s XZ heading to the nearest multiple of step_deg, preserving XZ length
+## and Y (the draw tool's angle-snap toggle). step_deg <= 0 or a ~vertical dir returns
+## dir unchanged.
+static func snap_direction(dir: Vector3, step_deg: float) -> Vector3:
+	if step_deg <= 0.0:
+		return dir
+	var len_xz := Vector2(dir.x, dir.z).length()
+	if len_xz < 1e-6:
+		return dir
+	var step := deg_to_rad(step_deg)
+	var heading := roundf(atan2(dir.z, dir.x) / step) * step
+	return Vector3(cos(heading) * len_xz, dir.y, sin(heading) * len_xz)
+
+
+## 3-click circular arc (start point, tangent direction, end point — the
+## Cities: Skylines pattern) as Curve3D point data:
+## {start_out: Vector3, points: [{pos, in, out}, ...], radius: float}.
+## The circle is solved in XZ from the start tangent + chord; the sweep (reflex
+## supported) is split into equal sub-arcs of <= 90 deg, each emitted as one cubic via
+## the standard approximation (handle length 4/3 * tan(sub/4) * r), so `points` holds
+## the interior split points plus the end. Height lerps linearly along arc length and
+## the slope rides in every handle, keeping 3D tangent continuity at the joins
+## (in == -out by construction). A ~collinear end or degenerate input falls back to a
+## straight zero-handle segment with radius INF.
+static func arc_points(start: Vector3, start_dir: Vector3, end: Vector3) -> Dictionary:
+	var straight := {"start_out": Vector3.ZERO,
+			"points": [{"pos": end, "in": Vector3.ZERO, "out": Vector3.ZERO}],
+			"radius": INF}
+	var t2 := Vector2(start_dir.x, start_dir.z)
+	var d2 := Vector2(end.x - start.x, end.z - start.z)
+	if t2.length_squared() < 1e-12 or d2.length_squared() < 1e-8:
+		return straight
+	t2 = t2.normalized()
+	var side := t2.x * d2.y - t2.y * d2.x
+	# chord nearly along the tangent: the radius explodes — a straight reads the same
+	if absf(side) < d2.length() * 0.001:
+		return straight
+	var r_signed := d2.length_squared() / (2.0 * side)
+	var center := Vector2(start.x, start.z) + Vector2(-t2.y, t2.x) * r_signed
+	var radius := absf(r_signed)
+	var turn := signf(r_signed)   # rotation direction in XZ math coords
+	var u0 := Vector2(start.x, start.z) - center
+	var u1 := Vector2(end.x, end.z) - center
+	var sweep := fposmod(turn * (u1.angle() - u0.angle()), TAU)
+	if sweep < 1e-4:
+		return straight
+	# tolerance so an exact 90/180/270-degree sweep doesn't ceil into an extra segment
+	# (Vector2.angle() is float32 — the sweep carries ~1e-7 noise against float64 PI)
+	var segs := maxi(1, int(ceil(sweep / (PI * 0.5) - 1e-5)))
+	var sub := sweep / float(segs)
+	var k := 4.0 / 3.0 * tan(sub * 0.25) * radius
+	var slope := (end.y - start.y) / (radius * sweep)   # dy per arc meter
+	var start_out := Vector3.ZERO
+	var pts := []
+	for i in segs + 1:
+		var u := u0.rotated(turn * sub * float(i))
+		var tan2 := (Vector2(-u.y, u.x) * turn).normalized()   # unit tangent at u
+		var handle := Vector3(tan2.x * k, slope * k, tan2.y * k)
+		if i == 0:
+			start_out = handle
+			continue
+		var pos := Vector3(center.x + u.x,
+				lerpf(start.y, end.y, float(i) / float(segs)), center.y + u.y)
+		pts.append({"pos": pos, "in": -handle, "out": handle})
+	return {"start_out": start_out, "points": pts, "radius": radius}
+
+
 ## Append the offsets of (a, b] to out, bisecting while curvature demands it.
 static func _subdivide(curve: Curve3D, a: float, b: float, max_angle: float,
 		length: float, out: PackedFloat32Array) -> void:

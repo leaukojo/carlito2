@@ -143,6 +143,92 @@ func test_adaptive_degenerate_curves_are_empty() -> void:
 			_straight(Vector3(3, 0, 0), Vector3(3, 0, 0)), 6.0, 6.0).size()).is_equal(0)
 
 
+# ------------------------------------------------------------- draw-mode primitives
+
+
+## Curve3D from an arc_points result (what the draw tool commits).
+func _arc_curve(start: Vector3, res: Dictionary) -> Curve3D:
+	var c := Curve3D.new()
+	c.add_point(start, Vector3.ZERO, res.start_out)
+	for p: Dictionary in res.points:
+		c.add_point(p["pos"], p["in"], p["out"])
+	return c
+
+
+func test_arc_points_quarter_arc_matches_bezier_circle() -> void:
+	# start at origin heading +Z, end (20, 0, 20): the r=20 quarter arc — one cubic
+	# whose handle length is r * 0.5523 (the _quarter_arc fixture's constant)
+	var res: Dictionary = Builder.arc_points(
+			Vector3.ZERO, Vector3(0, 0, 1), Vector3(20, 0, 20))
+	assert_float(res.radius).is_equal_approx(20.0, 0.01)
+	var pts: Array = res.points
+	assert_int(pts.size()).is_equal(1)
+	assert_vector(pts[0]["pos"]).is_equal_approx(Vector3(20, 0, 20), Vector3.ONE * 0.001)
+	var h := 20.0 * 0.5523
+	assert_vector(res.start_out).is_equal_approx(Vector3(0, 0, h), Vector3.ONE * 0.01)
+	assert_vector(pts[0]["in"]).is_equal_approx(Vector3(-h, 0, 0), Vector3.ONE * 0.01)
+	assert_vector(pts[0]["out"]).is_equal_approx(Vector3(h, 0, 0), Vector3.ONE * 0.01)
+	# max radial error of the 90-degree cubic approximation is ~2.7e-4 * r
+	var center := Vector3(20, 0, 0)
+	for p in _arc_curve(Vector3.ZERO, res).get_baked_points():
+		assert_float(absf(p.distance_to(center) - 20.0)).is_less(0.02)
+
+
+func test_arc_points_reflex_splits_and_stays_on_circle() -> void:
+	# r=10 turning left (center (-10, 0, 0)), 200-degree sweep -> 3 cubics
+	var a := deg_to_rad(200.0)
+	var end := Vector3(-10.0 + 10.0 * cos(a), 0, 10.0 * sin(a))
+	var res: Dictionary = Builder.arc_points(Vector3.ZERO, Vector3(0, 0, 1), end)
+	assert_float(res.radius).is_equal_approx(10.0, 0.01)
+	var pts: Array = res.points
+	assert_int(pts.size()).is_equal(3)
+	assert_vector(pts[2]["pos"]).is_equal_approx(end, Vector3.ONE * 0.001)
+	var center := Vector3(-10, 0, 0)
+	for p in _arc_curve(Vector3.ZERO, res).get_baked_points():
+		assert_float(absf(p.distance_to(center) - 10.0)).is_less(0.02)
+
+
+func test_arc_points_sloped_keeps_tangent_continuity() -> void:
+	# the reflex arc climbing 6 m: every join is C1 by construction (in == -out incl.
+	# the slope term) and the sampled tangent at each emitted point matches its handle
+	var a := deg_to_rad(200.0)
+	var end := Vector3(-10.0 + 10.0 * cos(a), 6.0, 10.0 * sin(a))
+	var res: Dictionary = Builder.arc_points(Vector3.ZERO, Vector3(0, 0, 1), end)
+	var pts: Array = res.points
+	for p: Dictionary in pts:
+		assert_vector(p["in"]).is_equal_approx(-(p["out"] as Vector3), Vector3.ONE * 1e-5)
+	var curve := _arc_curve(Vector3.ZERO, res)
+	var length := curve.get_baked_length()
+	for p: Dictionary in pts:
+		var o := curve.get_closest_offset(p["pos"])
+		var t := Builder.tangent_at(curve, o, length)
+		var expect: Vector3 = (p["out"] as Vector3).normalized()
+		assert_float(rad_to_deg(t.angle_to(expect))).is_less(2.0)
+
+
+func test_arc_points_collinear_falls_back_to_straight() -> void:
+	var res: Dictionary = Builder.arc_points(
+			Vector3.ZERO, Vector3(0, 0, 1), Vector3(0, 0, 30))
+	assert_bool(res.radius == INF).is_true()
+	var pts: Array = res.points
+	assert_int(pts.size()).is_equal(1)
+	assert_vector(pts[0]["pos"]).is_equal(Vector3(0, 0, 30))
+	assert_vector(pts[0]["in"]).is_equal(Vector3.ZERO)
+	assert_vector(res.start_out).is_equal(Vector3.ZERO)
+
+
+func test_snap_direction_snaps_heading_preserving_length_and_y() -> void:
+	# a 50-degree heading with 45-degree steps lands on 45; XZ length and Y survive
+	var dir := Vector3(cos(deg_to_rad(50.0)), 2.0, sin(deg_to_rad(50.0)))
+	var snapped_dir: Vector3 = Builder.snap_direction(dir, 45.0)
+	assert_vector(snapped_dir).is_equal_approx(
+			Vector3(cos(deg_to_rad(45.0)), 2.0, sin(deg_to_rad(45.0))),
+			Vector3.ONE * 0.0001)
+	# step 0 = off; a vertical dir passes through untouched
+	assert_vector(Builder.snap_direction(Vector3(1, 0, 2), 0.0)).is_equal(Vector3(1, 0, 2))
+	assert_vector(Builder.snap_direction(Vector3(0, 3, 0), 45.0)).is_equal(Vector3(0, 3, 0))
+
+
 # ------------------------------------------------------------------ cross-section
 
 

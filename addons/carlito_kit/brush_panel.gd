@@ -64,7 +64,7 @@ var _falloff: SpinBox
 
 
 func _init() -> void:
-	name = "Terrain Brush"
+	name = "Terrain"
 	add_theme_constant_override("separation", 6)
 	_build()
 	set_has_terrain(false)

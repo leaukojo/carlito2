@@ -19,7 +19,7 @@ var _radius: SpinBox
 
 
 func _init() -> void:
-	name = "Scatter Brush"
+	name = "Scatter"
 	add_theme_constant_override("separation", 6)
 	_build()
 	set_has_canvas(false)

@@ -16,6 +16,7 @@ const ScatterBrush := preload("res://addons/carlito_kit/scatter_brush.gd")
 const ScatterPanel := preload("res://addons/carlito_kit/scatter_panel.gd")
 const RoadDrawTool := preload("res://addons/carlito_kit/road_draw_tool.gd")
 const RoadPanel := preload("res://addons/carlito_kit/road_panel.gd")
+const GridMapPaintTool := preload("res://addons/carlito_kit/gridmap_paint_tool.gd")
 
 var _strip: EditorExportPlugin
 var _dock: Control
@@ -27,7 +28,9 @@ var _scatter_brush  # ScatterBrush (RefCounted)
 var _scatter_panel: Control
 var _road_tool  # RoadDrawTool (RefCounted)
 var _road_panel: Control
-var _tools_root: Control
+var _gridmap_tool  # GridMapPaintTool (RefCounted)
+var _autofloor := false
+var _root: TabContainer  # one bottom panel: Palette / Terrain / Scatter / Roads tabs
 
 
 func _enter_tree() -> void:
@@ -38,14 +41,19 @@ func _enter_tree() -> void:
 	add_node_3d_gizmo_plugin(_scatter_gizmo)
 
 	_tool = PlacementTool.new(get_undo_redo())
+	_gridmap_tool = GridMapPaintTool.new(get_undo_redo())
+	_gridmap_tool.deactivated.connect(func():
+		_autofloor = false
+		_dock.set_autofloor(false))
 	_dock = PaletteDock.new()
 	_dock.prefab_armed.connect(func(kit, name):
 		_drop_road_draw()  # the placement ghost owns the viewport now
+		_gridmap_tool.set_active(false)
 		_tool.arm(kit, name))
-	_dock.tile_selected.connect(func(kit, name): _tool.select_tile(kit, name))
+	_dock.tile_selected.connect(_on_tile_selected)
 	_dock.settings_changed.connect(_on_settings_changed)
+	_dock.autofloor_changed.connect(_on_autofloor_changed)
 	_tool.yaw_changed.connect(func(deg): _dock.set_yaw_display(deg))
-	add_control_to_bottom_panel(_dock, "Kit")
 
 	_brush = TerrainBrush.new(get_undo_redo())
 	_panel = BrushPanel.new()
@@ -82,23 +90,30 @@ func _enter_tree() -> void:
 	_road_panel.smooth_corners_changed.connect(func(on): _road_tool.smooth_corners = on)
 	_road_panel.snap_ports_changed.connect(func(on): _road_tool.snap_ports = on)
 	_road_panel.snap_ends_requested.connect(func(): _road_tool.snap_ends())
+	_road_panel.draw_submode_changed.connect(func(m): _road_tool.set_submode(m))
+	_road_panel.angle_snap_changed.connect(func(deg): _road_tool.angle_snap_deg = deg)
 	_road_tool.draw_status.connect(func(msg): _road_panel.show_warning(msg))
+	_road_tool.radius_display.connect(
+			func(txt, warn): _road_panel.set_radius_display(txt, warn))
 	_road_tool.deactivated.connect(func(): _road_panel.show_off())
 
-	# The three tool panels share a "Kit Tools" bottom panel (like the Kit dock):
-	# add_control_to_dock is a deprecated compatibility path in 4.6 whose EditorDock
-	# wrapper breaks 3D viewport navigation (WASD freelook, F focus, wheel speed).
-	_tools_root = ScrollContainer.new()
-	_tools_root.name = "Kit Tools"
-	_tools_root.custom_minimum_size = Vector2(0, 240)
-	var box := HBoxContainer.new()
-	box.add_theme_constant_override("separation", 24)
-	_tools_root.add_child(box)
+	# One "Kit" bottom panel hosts the palette browser and the three tool panels as tabs,
+	# so tile-city work (Palette tab -> roads kit) and spline work (Roads tab) are one
+	# click apart instead of a switch-panel-and-reselect dance. add_control_to_dock is a
+	# deprecated compatibility path in 4.6 whose EditorDock wrapper breaks 3D viewport
+	# navigation (WASD freelook, F focus, wheel speed), so this rides the bottom panel.
+	_root = TabContainer.new()
+	_root.name = "Kit"
+	_root.custom_minimum_size = Vector2(0, 260)
+	_root.add_child(_dock)  # tab title = child node name: Palette / Terrain / Scatter / Roads
 	for panel in [_panel, _scatter_panel, _road_panel]:
-		panel.custom_minimum_size = Vector2(300, 0)
-		box.add_child(panel)
-	_panel.custom_minimum_size = Vector2(600, 0)  # terrain brush: extra room for mode grid + spinners
-	add_control_to_bottom_panel(_tools_root, "Kit Tools")
+		var scroll := ScrollContainer.new()
+		scroll.name = panel.name
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.add_child(panel)
+		_root.add_child(scroll)
+	add_control_to_bottom_panel(_root, "Kit")
 
 	EditorInterface.get_selection().selection_changed.connect(_on_selection_changed)
 	# Placement works regardless of selection, so we need every viewport event (docs:
@@ -118,10 +133,7 @@ func _exit_tree() -> void:
 	if _tool != null:
 		_tool.disarm()
 	_tool = null
-	if _dock != null:
-		remove_control_from_bottom_panel(_dock)
-		_dock.free()
-	_dock = null
+	_dock = null  # owned by _root, freed with it below
 
 	if _brush != null:
 		_brush.teardown()
@@ -138,10 +150,14 @@ func _exit_tree() -> void:
 	_road_tool = null
 	_road_panel = null
 
-	if _tools_root != null:
-		remove_control_from_bottom_panel(_tools_root)
-		_tools_root.free()  # frees the three panels with it
-	_tools_root = null
+	if _gridmap_tool != null:
+		_gridmap_tool.teardown()
+	_gridmap_tool = null
+
+	if _root != null:
+		remove_control_from_bottom_panel(_root)
+		_root.free()  # frees the palette dock + three tool panels with it
+	_root = null
 
 
 ## Save hook: brush edits accumulate in memory and are written to the heightmap /
@@ -158,6 +174,8 @@ func _forward_3d_gui_input(camera: Camera3D, event: InputEvent) -> int:
 		return EditorPlugin.AFTER_GUI_INPUT_STOP
 	if _road_tool != null and _road_tool.handle_input(camera, event):
 		return EditorPlugin.AFTER_GUI_INPUT_STOP
+	if _gridmap_tool != null and _gridmap_tool.handle_input(camera, event):
+		return EditorPlugin.AFTER_GUI_INPUT_STOP
 	if _tool != null and _tool.handle_input(camera, event):
 		return EditorPlugin.AFTER_GUI_INPUT_STOP
 	return EditorPlugin.AFTER_GUI_INPUT_PASS
@@ -169,6 +187,7 @@ func _on_brush_mode(mode: int) -> void:
 	if mode != 0:  # a brush mode owns the viewport — drop any armed placement ghost
 		_tool.disarm()
 		_drop_road_draw()
+		_drop_autofloor()
 
 
 ## Scatter brush mode picked: a non-Off mode owns the viewport, so drop the placement ghost
@@ -178,6 +197,7 @@ func _on_scatter_mode(mode: int) -> void:
 	if mode != 0:
 		_tool.disarm()
 		_drop_road_draw()
+		_drop_autofloor()
 
 
 ## Road Draw mode picked: same viewport-ownership rule as the brushes.
@@ -185,6 +205,40 @@ func _on_road_mode(mode: int) -> void:
 	_road_tool.set_active(mode == 1)
 	if mode != 0:
 		_tool.disarm()
+		_drop_autofloor()
+
+
+## Palette tile picked: open the built-in GridMap workflow, and — when Auto-floor is on —
+## also arm the terrain-aware paint tool on that GridMap (mode-exclusive: it owns the
+## viewport, so drop the road draw). select_tile selects/creates the GridMap, so it is the
+## tool's target.
+func _on_tile_selected(kit: String, tile_name: String) -> void:
+	_tool.select_tile(kit, tile_name)
+	if not _autofloor:
+		_gridmap_tool.set_active(false)
+		return
+	var grid: GridMap = null
+	for node in EditorInterface.get_selection().get_selected_nodes():
+		if node is GridMap:
+			grid = node
+			break
+	if grid == null:
+		return
+	_drop_road_draw()
+	_gridmap_tool.arm(grid, tile_name)
+	_gridmap_tool.set_active(true)
+
+
+func _on_autofloor_changed(on: bool) -> void:
+	_autofloor = on
+	if not on:
+		_gridmap_tool.set_active(false)
+
+
+func _drop_autofloor() -> void:
+	_autofloor = false
+	_gridmap_tool.set_active(false)
+	_dock.set_autofloor(false)
 
 
 func _drop_road_draw() -> void:
@@ -219,8 +273,27 @@ func _on_selection_changed() -> void:
 	_road_tool.set_target(road)
 	_road_tool.set_grid(road_grid)
 	_road_panel.set_has_road(road != null)
-	if terrain != null or canvas != null or road != null:
-		make_bottom_panel_item_visible(_tools_root)
+	# Auto-floor paint follows its GridMap: selecting away from it drops the tool (mode
+	# exclusivity — the same way the brushes release on deselect).
+	if _gridmap_tool.is_active():
+		var keeps := false
+		for node in EditorInterface.get_selection().get_selected_nodes():
+			if node is GridMap and _gridmap_tool.targets(node):
+				keeps = true
+				break
+		if not keeps:
+			_drop_autofloor()
+	# Pop the dock and jump to the matching tool tab when exactly one tool node is picked.
+	var tab := -1
+	if terrain != null:
+		tab = 1
+	elif canvas != null:
+		tab = 2
+	elif road != null:
+		tab = 3
+	if tab != -1:
+		_root.current_tab = tab
+		make_bottom_panel_item_visible(_root)
 
 
 ## The road GridMap the brush snaps to (null if the level has none yet — the brush then falls
