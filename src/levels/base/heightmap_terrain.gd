@@ -86,6 +86,10 @@ static func default_channel_names() -> PackedStringArray:
 @warning_ignore("unused_private_class_variable")
 @export_tool_button("Rebuild terrain") var _rebuild_action := rebuild
 
+## The roads GridMap's vertical cell (kit/import/roads.json cell_size.y) — the world-space
+## lattice terraced plateaus must land on for painted tiles to sit flush.
+const GRID_LEVEL_M := 3.0
+
 @export_group("Generation")
 @export var preset: TerrainGen.Preset = TerrainGen.Preset.ISLAND
 ## The terrain's fingerprint: the same seed always regenerates the exact same landscape.
@@ -105,10 +109,12 @@ static func default_channel_names() -> PackedStringArray:
 ## Island preset only: how ragged the coastline is. 0 = perfectly round island, 1 = deep
 ## bays and jutting headlands. The map border always reaches sea level regardless.
 @export_range(0.0, 1.0) var coast_roughness := 0.5
-## Plateau band height in metres — buildable flats for villages/farms. 3 m = the roads
-## GridMap vertical cell, so multiples of 3 keep plateaus grid-aligned (painted road tiles
-## sit flush, Conform becomes a touch-up). 0 disables terracing.
-@export_range(0.0, 24.0, 0.5) var terrace_step := 3.0
+## Plateau band height in road-grid levels — 1 level = the roads GridMap's 3 m vertical
+## cell, so plateau flats always land on paintable road heights (tiles sit flush, Conform
+## becomes a touch-up). 0 disables terracing. Tip: terrain height = 51 stores the 3 m
+## levels byte-exactly in the 8-bit heightmap; any other height leaves at most half a
+## height/255 residual, hidden by the tile deck.
+@export_range(0, 8) var terrace_levels := 3
 ## Portion of each terrace band that stays dead flat; the rest ramps between plateaus.
 @export_range(0.0, 0.9) var terrace_flat := 0.6
 ## Runs the noise generator from the current gen_seed. Same generator as "Generate new
@@ -566,8 +572,15 @@ func _generate_with_seed(seed_value: int) -> void:
 	if path.is_empty():
 		return
 	var dims := _grid_dims()
+	if terrace_levels > 0:
+		# Plateaus are grid-aligned in the terrain's LOCAL frame; a terrain node sitting
+		# off the 3 m world lattice shifts every plateau off the paintable road heights.
+		var y_off := fposmod(global_position.y, GRID_LEVEL_M)
+		if y_off > 0.01 and y_off < GRID_LEVEL_M - 0.01:
+			push_warning("Terrain Y = %.2f is not a multiple of %.0f m — terraced plateaus won't align with the road GridMap levels." % [global_position.y, GRID_LEVEL_M])
 	var img := TerrainGen.generate_heights(preset, seed_value, feature_scale, gen_octaves,
-			falloff_start, falloff_end, dims.x, dims.y, terrace_step / maxf(height, 0.001),
+			falloff_start, falloff_end, dims.x, dims.y,
+			float(terrace_levels) * GRID_LEVEL_M / maxf(height, 0.001),
 			terrace_flat, coast_roughness)
 	var props := {}
 	if seed_value != gen_seed:

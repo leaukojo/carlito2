@@ -29,9 +29,24 @@ Two options:
 - **Flat level:** a plain box `StaticBody3D` for ground is enough (see the gym).
 - **Terrain:** add a `HeightmapTerrain`. Selecting it jumps the Kit panel to the **Terrain**
   tab. Pick a preset (character: fractal + island falloff), set `gen_seed` /
-  `feature_scale` / `gen_octaves` / falloff band / `coast_roughness` / `terrace_steps`, set
-  **`height`** (world amplitude in metres), then **Generate terrain**. **Generate new random
+  `feature_scale` / `gen_octaves` / falloff band / `coast_roughness` / `terrace_levels`
+  (plateau band height in 3 m road-grid cells, so flats take painted road tiles flush), set
+  **`height`** (world amplitude in metres; 51 stores the 3 m levels byte-exactly), then
+  **Generate terrain**. **Generate new random
   terrain** rolls a fresh seed. Terrain needs **no AuthoringRoot** to sculpt.
+
+**Generating in sync with the road GridMap** — so plateaus take painted tiles flush with
+no Conform pass:
+
+1. Keep the terrain node's **Y on the 3 m lattice** (normally 0; Generate warns if not).
+2. Set **`height = 51`** — 3 m grid levels then store byte-exactly in the 8-bit heightmap
+   (any other height leaves up to ~`height/510` m of residual, hidden by the tile deck).
+3. Pick **`terrace_levels`** for plateau size: bands are `n × 3 m` (3 = 9 m bands), always
+   grid-aligned; 0 turns terracing off.
+4. **Generate** (alignment is baked in at generation — changing `height` or moving the
+   terrain afterwards rescales/shifts it, so regenerate after such edits).
+5. Paint roads on plateau **interiors**; the ramps *between* plateaus are not
+   grid-aligned — roads crossing them still need **Conform terrain**.
 
 Sculpt with the terrain brushes (raise/lower/smooth/flatten, ramp): `[`/`]` resize, Shift
 smooths, Ctrl inverts, the eyedropper samples a flatten height. Plateau the pads your

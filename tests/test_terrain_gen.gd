@@ -54,25 +54,26 @@ func test_terrace_off_when_step_out_of_range() -> void:
 
 func test_terrace_flat_zone_snaps_to_plateau() -> void:
 	# step01 = 0.25, half of each band flat: band [0.25, 0.5) is the plateau whose flat
-	# level is floor-snapped to the 8-bit grid, floor(1*0.25*255)/255 = 63/255, until the
+	# level snaps to the nearest 8-bit value, round(1*0.25*255)/255 = 64/255, until the
 	# ramp. h = 0.30 -> t 1.2, frac 0.2, inside the flat half -> stays at the plateau.
-	assert_float(Gen.terrace(0.30, 0.25, 0.5)).is_equal_approx(63.0 / 255.0, 0.001)
-	assert_float(Gen.terrace(0.27, 0.25, 0.5)).is_equal_approx(63.0 / 255.0, 0.001)
+	assert_float(Gen.terrace(0.30, 0.25, 0.5)).is_equal_approx(64.0 / 255.0, 0.001)
+	assert_float(Gen.terrace(0.27, 0.25, 0.5)).is_equal_approx(64.0 / 255.0, 0.001)
 
 
 func test_terrace_flat_levels_land_on_grid() -> void:
-	# Every flat plateau level must be exactly floor(f*step01*255)/255 — the grid-aligned
-	# plane painted tiles rest on. Probe the flat zone (frac small) of several bands.
+	# Every flat plateau level must be exactly round(f*step01*255)/255 — the nearest
+	# storable value to the grid plane painted tiles rest on. Probe the flat zone
+	# (frac small) of several bands.
 	var step01 := 0.2
 	for k in [1, 2, 3, 4]:
 		var h := (float(k) + 0.02) * step01           # just inside band k's flat zone
-		var expected := floorf(float(k) * step01 * 255.0) / 255.0
+		var expected := roundf(float(k) * step01 * 255.0) / 255.0
 		assert_float(Gen.terrace(h, step01, 0.6)).is_equal_approx(expected, 1e-6)
 
 
 func test_terrace_preserves_band_centres_within_grid() -> void:
-	# The ramp midpoint still maps close to itself (relief preserved); the grid floor-snap
-	# only nudges it down by < 1/255, so it lands within a grid step of h.
+	# The ramp midpoint still maps close to itself (relief preserved); the nearest-value
+	# snap only nudges it by <= 1/510, so it lands within a grid step of h.
 	assert_float(Gen.terrace(0.375, 0.25, 0.5)).is_equal_approx(0.375, 1.0 / 255.0 + 0.001)
 	assert_float(Gen.terrace(0.625, 0.25, 0.5)).is_equal_approx(0.625, 1.0 / 255.0 + 0.001)
 

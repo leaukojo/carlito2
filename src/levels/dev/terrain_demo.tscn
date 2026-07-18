@@ -9,7 +9,6 @@
 [ext_resource type="Texture2D" uid="uid://cyia3e0h3irgf" path="res://src/levels/dev/terrain_demo_island_splat.png" id="7_splat"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/commercial/building-d.tscn" id="8_p0i15"]
 [ext_resource type="Shader" uid="uid://bcdkfxw2svriw" path="res://kit/terrain/terrain_splat.gdshader" id="8_shader"]
-[ext_resource type="Script" uid="uid://81gx7eh4vwms" path="res://kit/helpers/kit_piece.gd" id="9_voicv"]
 [ext_resource type="Script" uid="uid://bqwd2fww3l5yg" path="res://src/water/water_surface.gd" id="9_water"]
 [ext_resource type="Script" uid="uid://t88htpmwukbg" path="res://kit/helpers/authoring_root.gd" id="10_40d31"]
 [ext_resource type="MeshLibrary" uid="uid://cl16o5y8exqb4" path="res://kit/palettes/roads.meshlib" id="10_pi343"]
@@ -86,9 +85,8 @@ metadata/_custom_type_script = "uid://t88htpmwukbg"
 
 [node name="CommercialProps" type="Node3D" parent="AuthoringRoot" unique_id=343336228]
 
-[node name="BuildingD" type="Node3D" parent="AuthoringRoot/CommercialProps" unique_id=1163819761 instance=ExtResource("8_p0i15")]
+[node name="BuildingD" parent="AuthoringRoot/CommercialProps" unique_id=1163819761 instance=ExtResource("8_p0i15")]
 transform = Transform3D(0.24438398, 0, -0.9696785, 0, 1, 0, 0.9696785, 0, 0.24438398, 20.017984, 29.802547, 31.22839)
-script = ExtResource("9_voicv")
 
 [node name="RoadsTiles" type="GridMap" parent="AuthoringRoot" unique_id=1564244448]
 mesh_library = ExtResource("10_pi343")
@@ -103,13 +101,12 @@ metadata/_editor_floor_ = Vector3(0, 13, 0)
 script = ExtResource("5_terrain")
 heightmap = ExtResource("6_height")
 terrain_size = Vector2(512, 512)
-height = 52.0
+height = 51.0
 material = SubResource("SplatMat")
-gen_seed = 21763
+gen_seed = 499399
 feature_scale = 256.0
 falloff_start = 0.711
 falloff_end = 0.81
-terrace_step = 10.0
 splatmap = ExtResource("7_splat")
 splatmap2 = ExtResource("13_40d31")
 channel_names = PackedStringArray("Grass", "Dirt", "Sand", "Rock", "Snow", "Mud", "Asphalt", "Gravel")

@@ -79,11 +79,12 @@ static func island_falloff(r: float, start: float, end: float) -> float:
 ## Terrace the normalized height into plateau bands of height `step01` (band height as a
 ## fraction of the terrain amplitude — i.e. step_metres / terrain height — so a metres
 ## step lands the same regardless of world scale). Buildable flats for villages/farms.
-## Each flat plateau level is FLOOR-snapped to the 8-bit heightmap grid
-## (floorf(level * 255.0) / 255.0), mirroring the road-conform floor rule so a stored
-## plateau never sits above the grid plane: the sub-1/255 residual hides under the tile
-## deck and Conform becomes a no-op / touch-up on plateaus. flat_frac in [0,1) is the
-## portion of each band that stays dead flat; the rest ramps between plateaus.
+## Each flat plateau level is snapped to the NEAREST 8-bit heightmap value
+## (roundf(level * 255.0) / 255.0) — the same residual class as the Conform button's
+## round-quantize: at most half a height/255 step either side of the grid plane, hidden
+## by the tile deck (terrain height = 51 m stores every 3 m level byte-exactly).
+## flat_frac in [0,1) is the portion of each band that stays dead flat; the rest ramps
+## between plateaus.
 ## step01 <= 0.0 or >= 1.0 is a no-op (terracing disabled / band taller than the terrain).
 static func terrace(h: float, step01: float, flat_frac: float) -> float:
 	if step01 <= 0.0 or step01 >= 1.0:
@@ -92,7 +93,7 @@ static func terrace(h: float, step01: float, flat_frac: float) -> float:
 	var f := floorf(t)
 	var frac := t - f
 	var ramp := _smooth01((frac - flat_frac * 0.5) / maxf(1.0 - flat_frac, 0.001))
-	var level := floorf(f * step01 * 255.0) / 255.0
+	var level := roundf(f * step01 * 255.0) / 255.0
 	return clampf(level + ramp * step01, 0.0, 1.0)
 
 

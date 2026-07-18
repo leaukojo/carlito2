@@ -189,7 +189,7 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   1 = ragged bays and headlands — perturbs the falloff radius with a derived-seed coast
   noise; a hard unperturbed guard past r=0.92 keeps the map border at sea level, and
   `coast_roughness == 0` is byte-identical to the pre-roughness output) / **terrace
-  plateaus** (`terrace_steps` + `terrace_flat`,
+  plateaus** (`terrace_levels` — band height in 3 m road-grid cells — + `terrace_flat`,
   applied last so island coasts step into concentric rings — the buildable flats
   villages/farms need; band centres are preserved so relief is unchanged). **World
   amplitude is the `height` export** — generated pixels stay normalized [0,1] (8-bit
@@ -518,8 +518,9 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   item mesh AABB in the painted orientation (so 2×2 / 3×3 overhang cells are covered), 4 m
   falloff beyond the union, targets **ROUND-quantized** (closest 8-bit height either side
   of the base — the deck hides the residual, unlike road ribbons which floor), one undo per
-  terrain. Grid-aligned plateaus (terrain `terrace_step`, default 3 m = the roads GridMap
-  vertical cell) mean painted road pads usually sit flush already, so Conform becomes a
+  terrain. Grid-aligned plateaus (terrain `terrace_levels`, plateau bands in whole 3 m
+  roads-GridMap cells, flats snapped to the nearest 8-bit value — byte-exact at
+  `height = 51`) mean painted road pads usually sit flush already, so Conform becomes a
   touch-up rather than a required step. Road Conform's plateau meets the tile at road − ε and `edge_drop`
   absorbs the quantization as usual. **Width:** the tiles' measured deck runs curb-to-curb ±4.8
   (9.6 m) with the white curb line AT ±4.8, so `asphalt_profile.tres` sets
