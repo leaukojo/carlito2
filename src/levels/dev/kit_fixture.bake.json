@@ -1,17 +1,17 @@
 {
 	"baker_version": 6,
 	"chunk_size": 48.0,
-	"input_hash": "993d21882a7a7ffe406a432b86e4aba8689f26f5c73a010f368262e534d2ead2",
+	"input_hash": "ba6120fa4daa4088ecf87d35ebc8ca9d7dd269b2147c58aaef5fd2ad0483daa2",
 	"level": "res://src/levels/dev/kit_fixture.tscn",
 	"stats": {
 		"bodies": 9,
-		"chunks": 11,
-		"drivable_triangles": 1860,
+		"chunks": 13,
+		"drivable_triangles": 4846,
 		"roads": 2,
 		"scatter_instances": 136,
 		"scatter_multimeshes": 5,
-		"shapes": 113,
-		"surfaces": 52,
-		"vertices": 58630
+		"shapes": 116,
+		"surfaces": 55,
+		"vertices": 63022
 	}
 }

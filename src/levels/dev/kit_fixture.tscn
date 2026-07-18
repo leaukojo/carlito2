@@ -52,7 +52,9 @@
 [ext_resource type="Script" uid="uid://dk7ho08flq7vy" path="res://kit/helpers/scatter_item.gd" id="51_7iofg"]
 [ext_resource type="Script" uid="uid://bwvw8p2jvnjnw" path="res://kit/helpers/scatter_canvas.gd" id="52_0e8c1"]
 [ext_resource type="Script" uid="uid://cpl5vh8pdc04w" path="res://kit/helpers/road_path.gd" id="53_ptt6x"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/commercial/detail-parasol-a.tscn" id="54_8hbdd"]
 [ext_resource type="Resource" uid="uid://3r6iaciwp2fk" path="res://kit/roads/asphalt_profile.tres" id="54_enfdm"]
+[ext_resource type="MeshLibrary" path="res://kit/palettes/roads_barrier.meshlib" id="56_n281j"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_cifef"]
 size = Vector3(120, 2, 190)
@@ -129,7 +131,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -90, 0.5, 0)
 script = ExtResource("6_j40k1")
 size = Vector2(40, 40)
 depth = 3.0
-far_sea_color = null
 
 [node name="BoatSpawn" type="Marker3D" parent="." unique_id=1651161007]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -90, 1.5, 0)
@@ -145,7 +146,7 @@ mesh_library = ExtResource("8_qmjqo")
 cell_size = Vector3(12, 3, 12)
 cell_center_y = false
 data = {
-"cells": PackedInt32Array(0, 1, 49, 0, 65535, 49, 1, 0, 1048625, 65535, 0, 1048625, 1, 1, 1441792, 1, 65535, 0, 65535, 65535, 1048576, 65535, 1, 655360, 2, 65534, 49)
+"cells": PackedInt32Array(0, 1, 49, 0, 65535, 49, 1, 0, 1048625, 65535, 0, 1048625, 1, 1, 1441792, 1, 65535, 0, 65535, 65535, 1048576, 65535, 1, 655360, 2, 65534, 49, 65532, 0, 1441841, 65532, 1, 1441803, 65532, 65535, 1441824, 65532, 65534, 1441822, 65530, 65534, 1441820, 65530, 65531, 1048617)
 }
 
 [node name="Grass" parent="Authoring" unique_id=457950076 instance=ExtResource("9_kahsh")]
@@ -312,6 +313,17 @@ profile = ExtResource("54_enfdm")
 
 [node name="Path" type="Path3D" parent="Authoring/SocketRoad" unique_id=1167490942]
 curve = SubResource("Curve3D_d2sbm")
+
+[node name="DetailParasolA" parent="Authoring" unique_id=1803893878 instance=ExtResource("54_8hbdd")]
+transform = Transform3D(-0.005421298, 0, 0.9999853, 0, 1, 0, -0.9999853, 0, -0.005421298, -15.246824, -1.9073486e-06, 37.613934)
+
+[node name="@Node3D@24397" parent="Authoring" unique_id=800618507 instance=ExtResource("25_npqul")]
+transform = Transform3D(-0.5946777, 0, -0.80396426, 0, 1, 0, 0.80396426, 0, -0.5946777, -12.877134, 0, 31.494978)
+
+[node name="RoadsBarrierTiles" type="GridMap" parent="Authoring" unique_id=687279073]
+mesh_library = ExtResource("56_n281j")
+cell_size = Vector3(12, 3, 12)
+cell_center_y = false
 
 [node name="ShowcaseLabels" type="Node3D" parent="." unique_id=1234015365]
 

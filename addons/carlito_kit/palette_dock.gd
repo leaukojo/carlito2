@@ -14,7 +14,7 @@ const THUMB_DIR := "res://kit/thumbs"
 const THUMB_PX := 96
 
 signal prefab_armed(kit: String, name: String)
-signal tile_selected(kit: String, name: String)
+signal tile_selected(kit: String, name: String, meshlib: String)
 signal settings_changed(random_yaw: bool, snap_enabled: bool, snap_step: float, yaw_deg: float)
 signal autofloor_changed(on: bool)
 signal conform_tiles_requested
@@ -74,16 +74,28 @@ func _ingest_recipe(path: String) -> void:
 	if cell.size() >= 1:
 		_kit_cells[kit] = float(cell[0])
 
+	# Per-family palette meshlib: a family may route to its own overlay meshlib (barriers,
+	# walls, sand) so it paints onto a separate GridMap; default is the kit meshlib.
+	var default_meshlib := "%s/%s.meshlib" % [PALETTE_DIR, kit]
+	var fam_meshlib := {}  # family name -> meshlib path
+	var meshlibs := {}     # meshlib path -> true (distinct outputs to scan for tile names)
+	for fam: Dictionary in families:
+		if String(fam.get("pipeline", "")) == "palette":
+			var out := String(fam.get("palette_output", default_meshlib))
+			fam_meshlib[String(fam.get("name", ""))] = out
+			meshlibs[out] = true
+
 	# Available basenames: emitted prefab .tscn files + palette meshlib item names.
 	var names: Array[String] = []
 	var kinds := {}  # name -> "prefab" | "tile"
 	for n in _prefab_names(kit):
 		names.append(n)
 		kinds[n] = "prefab"
-	for n in _tile_names(kit):
-		if not kinds.has(n):
-			names.append(n)
-			kinds[n] = "tile"
+	for meshlib_path in meshlibs:
+		for n in _tile_names(meshlib_path):
+			if not kinds.has(n):
+				names.append(n)
+				kinds[n] = "tile"
 	if names.is_empty():
 		return
 
@@ -101,6 +113,7 @@ func _ingest_recipe(path: String) -> void:
 		if by_family.has(fam_name):
 			by_family[fam_name].append({
 				"kit": kit, "name": n, "kind": kinds[n], "thumb": _thumb_path(kit, n),
+				"meshlib": String(fam_meshlib.get(fam_name, default_meshlib)),
 			})
 
 	var sections := []
@@ -125,9 +138,8 @@ func _prefab_names(kit: String) -> Array[String]:
 	return out
 
 
-func _tile_names(kit: String) -> Array[String]:
+func _tile_names(path: String) -> Array[String]:
 	var out: Array[String] = []
-	var path := "%s/%s.meshlib" % [PALETTE_DIR, kit]
 	if not ResourceLoader.exists(path):
 		return out
 	var ml := load(path) as MeshLibrary
@@ -330,7 +342,7 @@ func _make_tile(item: Dictionary, show_kit: bool) -> Button:
 		if item.kind == "prefab":
 			prefab_armed.emit(kit, name)
 		else:
-			tile_selected.emit(kit, name)
+			tile_selected.emit(kit, name, String(item.get("meshlib", "")))
 	)
 
 	# Overlay the thumbnail + caption inside the button, filling it. Children ignore the

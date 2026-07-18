@@ -106,11 +106,11 @@ func _run_recipe(recipe_path: String) -> int:
 	var out_dir := THUMB_DIR.path_join(kit)
 	DirAccess.open("res://").make_dir_recursive(out_dir.trim_prefix("res://"))
 	var written := 0
-	for name: String in c.assignments:
-		var fam: Dictionary = fam_by_name[String(c.assignments[name])]
+	for asset_name: String in c.assignments:
+		var fam: Dictionary = fam_by_name[String(c.assignments[asset_name])]
 		if String(fam.get("pipeline", "prefab")) == "exclude":
 			continue
-		if await _render_one(source.path_join(name + ".glb"), out_dir.path_join(name + ".png")):
+		if await _render_one(source.path_join(asset_name + ".glb"), out_dir.path_join(asset_name + ".png")):
 			written += 1
 	print("[thumbs] %s: %d" % [kit, written])
 	return written

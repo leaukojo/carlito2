@@ -3,9 +3,9 @@
 [ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_b5rr7"]
 [ext_resource type="PackedScene" path="res://kit/raw/nature/flower_redA.glb" id="2_rjdbh"]
 
-[node name="FlowerRedA" type="Node3D" unique_id=2000944696]
+[node name="FlowerRedA" type="Node3D" unique_id=130200447]
 script = ExtResource("1_b5rr7")
 collision_mode = "none"
 
 [node name="Model" type="Node3D" parent="." unique_id=1913865763 instance=ExtResource("2_rjdbh")]
-transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.12474999, 0.25, 0)
+transform = Transform3D(2.5, 0, 0, 0, 2.5, 0, 0, 0, 2.5, 0.062374994, 0.125, 0)

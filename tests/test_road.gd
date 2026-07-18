@@ -863,9 +863,10 @@ func test_tile_footprint_rects_cover_cells_and_overhangs() -> void:
 	assert_bool(r0.get_center().distance_to(Vector2(6, 6)) < 0.6).is_true()
 	assert_float(base_ys[0]).is_equal_approx(0.0, 1e-4)
 
-	var r1: Rect2 = rects[1]   # 2x2 curve at (0,0,4): XZ-centered, ~24 m square
+	var r1: Rect2 = rects[1]   # 2x2 curve at (0,0,4): ~24 m square, re-centered onto the
+	# clicked cell by the recipe's half-cell (+6 X / +6 Z) offset, so (6,54) -> (12,60)
 	assert_bool(absf(r1.size.x - 24.0) < 1.5 and absf(r1.size.y - 24.0) < 1.5).is_true()
-	assert_bool(r1.get_center().distance_to(Vector2(6, 54)) < 1.5).is_true()
+	assert_bool(r1.get_center().distance_to(Vector2(12, 60)) < 1.5).is_true()
 
 	var r2: Rect2 = rects[2]   # yawed straight at (4,1,0): still its 12 m cell, base +3
 	assert_bool(absf(r2.size.x - 12.0) < 0.6 and absf(r2.size.y - 12.0) < 0.6).is_true()

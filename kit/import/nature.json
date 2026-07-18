@@ -23,12 +23,12 @@
 		{ "name": "nature-plants", "label": "Plants & bushes",
 			"match": ["^plant"], "pipeline": "prefab", "collision_mode": "none" },
 		{ "name": "nature-grass", "label": "Grass",
-			"match": ["^grass"], "pipeline": "prefab", "collision_mode": "none" },
+			"match": ["^grass"], "pipeline": "prefab", "collision_mode": "none", "scale_mul": 0.5 },
 		{ "name": "nature-flowers", "label": "Flowers",
-			"match": ["^flower"], "pipeline": "prefab", "collision_mode": "none" },
+			"match": ["^flower"], "pipeline": "prefab", "collision_mode": "none", "scale_mul": 0.5 },
 		{ "name": "nature-mushrooms", "label": "Mushrooms",
-			"match": ["^mushroom"], "pipeline": "prefab", "collision_mode": "none" },
+			"match": ["^mushroom"], "pipeline": "prefab", "collision_mode": "none", "scale_mul": 0.5 },
 		{ "name": "nature-crops", "label": "Crops & field rows",
-			"match": ["^crop"], "pipeline": "prefab", "collision_mode": "none" }
+			"match": ["^crop"], "pipeline": "prefab", "collision_mode": "none", "scale_mul": 0.5 }
 	]
 }

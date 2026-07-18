@@ -8,7 +8,7 @@
 [ext_resource type="Texture2D" uid="uid://dyqakr52vmxiu" path="res://src/levels/dev/terrain_demo_island_height.png" id="6_height"]
 [ext_resource type="Texture2D" uid="uid://cyia3e0h3irgf" path="res://src/levels/dev/terrain_demo_island_splat.png" id="7_splat"]
 [ext_resource type="Shader" uid="uid://bcdkfxw2svriw" path="res://kit/terrain/terrain_splat.gdshader" id="8_shader"]
-[ext_resource type="MeshLibrary" path="res://kit/palettes/roads.meshlib" id="9_u8elx"]
+[ext_resource type="MeshLibrary" uid="uid://cl16o5y8exqb4" path="res://kit/palettes/roads.meshlib" id="9_u8elx"]
 [ext_resource type="Script" uid="uid://bqwd2fww3l5yg" path="res://src/water/water_surface.gd" id="9_water"]
 [ext_resource type="Script" uid="uid://t88htpmwukbg" path="res://kit/helpers/authoring_root.gd" id="10_40d31"]
 [ext_resource type="Script" uid="uid://cpl5vh8pdc04w" path="res://kit/helpers/road_path.gd" id="11_h35jj"]

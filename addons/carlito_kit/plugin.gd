@@ -217,8 +217,8 @@ func _on_road_mode(mode: int) -> void:
 ## also arm the terrain-aware paint tool on that GridMap (mode-exclusive: it owns the
 ## viewport, so drop the road draw). select_tile selects/creates the GridMap, so it is the
 ## tool's target.
-func _on_tile_selected(kit: String, tile_name: String) -> void:
-	_tool.select_tile(kit, tile_name)
+func _on_tile_selected(kit: String, tile_name: String, meshlib: String) -> void:
+	_tool.select_tile(kit, tile_name, meshlib)
 	if not _autofloor:
 		_gridmap_tool.set_active(false)
 		return

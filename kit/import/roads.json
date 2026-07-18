@@ -9,7 +9,7 @@
 		"align": "raw"
 	},
 	"ports": {
-		"_notes": "RoadPath endpoint sockets (docs/plans/road_sockets.md), consumed by kit/helpers/road_ports.gd. Measured from roads.meshlib: tiles are XZ-centered on the anchor cell, asphalt surface y=0.12 above the cell base (curb top 0.24), paved strip 9.6 m wide (road-straight runs along local X, asphalt z +/-4.8). `cell` is the anchor-relative offset of the port's home cell in the item's local frame (pre-rotation); `face` is the open face the road crosses. First matching entry wins (families-style regexes); tiles matching nothing have no ports. Deliberately portless: road-curve (2x2) and road-split (1x2) are centered pieces whose road ends land on half-cell planes (off-lattice, cannot mate with straights on this lattice); road-side* overhangs to z=-9.72; road-square's asphalt is a plaza that reaches no face; road-straight-half / -barrier-end / -barrier-half, slants, bridge, driveways are out of scope. road-roundabout is a lattice-aligned 3x3 (spans +/-18) with 4 exits on its outer ring.",
+		"_notes": "RoadPath endpoint sockets (docs/plans/road_sockets.md), consumed by kit/helpers/road_ports.gd. Measured from roads.meshlib: tiles are XZ-centered on the anchor cell, asphalt surface y=0.12 above the cell base (curb top 0.24), paved strip 9.6 m wide (road-straight runs along local X, asphalt z +/-4.8). `cell` is the anchor-relative offset of the port's home cell in the item's local frame (pre-rotation); `face` is the open face the road crosses. First matching entry wins (families-style regexes); tiles matching nothing have no ports. Deliberately portless: road-curve (2x2) is a centered piece whose road ends land on half-cell planes (off-lattice, cannot mate with straights on this lattice); road-side* overhangs to z=-9.72; road-square's asphalt is a plaza that reaches no face; -barrier-end, slants, bridge, driveways are out of scope. road-roundabout is a lattice-aligned 3x3 (spans +/-18) with 4 exits on its outer ring.",
 		"surface_y": 0.12,
 		"entries": [
 			{ "match": ["^road-straight(-barrier)?$", "^road-crossing$"], "ports": [
@@ -37,9 +37,21 @@
 		{ "name": "city-fixtures", "label": "Fixtures (cones/barriers/pillars)",
 			"match": ["^(construction|bridge-pillar)"], "pipeline": "prefab", "collision_mode": "box" },
 		{ "name": "city-roads-barrier", "label": "Roads (barrier)",
-			"match": ["^road-.*barrier"], "pipeline": "palette" },
+			"match": ["^road-.*barrier"], "pipeline": "palette",
+			"palette_output": "res://kit/palettes/roads_barrier.meshlib",
+			"assets": {
+				"road-curve-barrier": { "x_offset": 6, "z_offset": 6 },
+				"road-curve-intersection-barrier": { "x_offset": 6, "z_offset": 6 }
+			} },
 		{ "name": "city-roads", "label": "Roads (plain)",
-			"match": ["^road-"], "pipeline": "palette" },
+			"match": ["^road-"], "pipeline": "palette",
+			"assets": {
+				"road-curve": { "x_offset": 6, "z_offset": 6 },
+				"road-curve-intersection": { "x_offset": 6, "z_offset": 6 },
+				"road-curve-pavement": { "x_offset": 6, "z_offset": 6 },
+				"road-slant-curve": { "x_offset": -6 },
+				"road-slant-flat-curve": { "x_offset": -6 }
+			} },
 		{ "name": "city-ground-tiles", "label": "Ground tiles",
 			"match": ["^tile-"], "pipeline": "palette" }
 	]

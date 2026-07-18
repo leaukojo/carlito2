@@ -100,8 +100,8 @@ func _run_recipe(recipe_path: String) -> void:
 	var fam_by_name := {}
 	for fam: Dictionary in families:
 		fam_by_name[String(fam.get("name", ""))] = fam
-	var palette_items: Array[String] = []
-	var palette_overrides := {}                 # name -> asset override dict
+	var default_output := String(palette_block.get("output", ""))
+	var palette_groups := {}                     # meshlib output -> {items:[], overrides:{}}
 	var prefab_items := {}                       # name -> {mode, ov}
 	for name: String in c.assignments:
 		var fam: Dictionary = fam_by_name[String(c.assignments[name])]
@@ -109,21 +109,34 @@ func _run_recipe(recipe_path: String) -> void:
 		var asset_ov: Dictionary = (fam.get("assets", {}) as Dictionary).get(name, {})
 		match pipeline:
 			"palette":
-				palette_items.append(name)
-				palette_overrides[name] = asset_ov
+				# A palette family may route to its own meshlib (overlay layers like
+				# barriers/walls/sand paint onto a separate GridMap that overlaps roads).
+				var out := String(fam.get("palette_output", default_output))
+				if not palette_groups.has(out):
+					palette_groups[out] = {"items": [], "overrides": {}}
+				(palette_groups[out].items as Array).append(name)
+				palette_groups[out].overrides[name] = asset_ov
 			"prefab":
 				var mode := String(asset_ov.get("collision_mode", fam.get("collision_mode", "box")))
 				# per-family scale_mul (default 1.0) multiplies the kit scale — e.g. the
-				# distant-skyline low-detail buildings are authored huge for the horizon.
-				var eff_scale := scale * float(fam.get("scale_mul", 1.0))
+				# distant-skyline low-detail buildings are authored huge for the horizon; a
+				# per-asset scale_mul stacks on top (e.g. parasols halved within their family).
+				var eff_scale := scale * float(fam.get("scale_mul", 1.0)) \
+						* float(asset_ov.get("scale_mul", 1.0))
 				prefab_items[name] = {"mode": mode, "ov": asset_ov, "scale": eff_scale}
 			"exclude":
 				pass
-	palette_items.sort()
 
 	var mats := {}  # kit-wide material dedup: material_key -> duplicated Material
-	if not palette_block.is_empty() and not palette_items.is_empty():
-		_build_palette(kit, source, scale, palette_block, palette_items, palette_overrides, mats)
+	if not palette_block.is_empty():
+		var outs := palette_groups.keys()
+		outs.sort()
+		for out: String in outs:
+			var grp: Dictionary = palette_groups[out]
+			(grp.items as Array).sort()
+			var pb := palette_block.duplicate()
+			pb["output"] = out
+			_build_palette(kit, source, scale, pb, grp.items, grp.overrides, mats)
 	if not prefab_items.is_empty():
 		_build_prefabs(kit, source, scale, prefab_items, mats)
 	_report(kit, families, c.counts)
@@ -143,7 +156,7 @@ func _report(kit: String, families: Array, counts: Dictionary) -> void:
 # -------------------------------------------------------------------- palette
 
 func _build_palette(kit: String, source: String, scale: float, palette: Dictionary,
-		items: Array[String], overrides: Dictionary, mats: Dictionary) -> void:
+		items: Array, overrides: Dictionary, mats: Dictionary) -> void:
 	var output := String(palette["output"])
 	var cell: Array = palette.get("cell_size", [1, 1, 1])
 	var ml := load(output) as MeshLibrary if ResourceLoader.exists(output) else MeshLibrary.new()
@@ -154,6 +167,14 @@ func _build_palette(kit: String, source: String, scale: float, palette: Dictiona
 	for id in ml.get_item_list():
 		existing[ml.get_item_name(id)] = id
 	var ids := Recipe.assign_item_ids(existing, items)
+	# prune items this meshlib no longer produces (a removed GLB, or a family rerouted to
+	# another overlay meshlib) — kept items keep their ids, so innocent painted cells survive.
+	var keep := {}
+	for n in items:
+		keep[n] = true
+	for id in ml.get_item_list():
+		if not keep.has(ml.get_item_name(id)):
+			ml.remove_item(id)
 
 	for name in items:
 		var geo := _load_geometry(source, name)
@@ -213,34 +234,34 @@ func _build_prefabs(kit: String, source: String, scale: float, items: Dictionary
 			off += Vector3(-ctr.x, -geo.aabb.position.y * pscale, -ctr.z)
 		var xform := Transform3D(Basis.from_scale(Vector3.ONE * pscale), off)
 
-		var root := Node3D.new()
-		root.name = name.to_pascal_case()
-		root.set_script(piece_script)
-		root.set("collision_mode", mode)
+		var piece_root := Node3D.new()
+		piece_root.name = name.to_pascal_case()
+		piece_root.set_script(piece_script)
+		piece_root.set("collision_mode", mode)
 
 		var model: Node3D = (geo.scene as PackedScene).instantiate()
 		model.name = "Model"
 		model.transform = xform
-		root.add_child(model)
-		model.owner = root
+		piece_root.add_child(model)
+		model.owner = piece_root
 
-		_add_dev_collision(root, mode, geo.pairs, xform, mats)
+		_add_dev_collision(piece_root, mode, geo.pairs, xform, mats)
 
 		var packed := PackedScene.new()
 		var path := out_dir.path_join(name + ".tscn")
-		if packed.pack(root) != OK or _save_scene_stable(packed, path) != OK:
+		if packed.pack(piece_root) != OK or _save_scene_stable(packed, path) != OK:
 			_error("%s: failed to save prefab %s" % [kit, path])
-		root.free()
+		piece_root.free()
 
 
-func _add_dev_collision(root: Node3D, mode: String, pairs: Array,
+func _add_dev_collision(piece_root: Node3D, mode: String, pairs: Array,
 		xform: Transform3D, mats: Dictionary) -> void:
 	if mode == "none":
 		return
 	var body := StaticBody3D.new()
 	body.name = "DevCollision"
-	root.add_child(body)
-	body.owner = root
+	piece_root.add_child(body)
+	body.owner = piece_root
 	var shapes: Array[Dictionary] = []
 	match mode:
 		"box":
@@ -264,7 +285,7 @@ func _add_dev_collision(root: Node3D, mode: String, pairs: Array,
 		cs.shape = shapes[i].shape
 		cs.transform = shapes[i].xform
 		body.add_child(cs)
-		cs.owner = root
+		cs.owner = piece_root
 
 
 ## V-HACD decomposition for open structures (grandstands, gantries, dock houses);

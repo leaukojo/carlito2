@@ -222,7 +222,7 @@ func _commit(world_xform: Transform3D) -> void:
 ## Route a palette-tile pick to the built-in GridMap workflow (never reimplement
 ## painting). Selects — creating if absent — the AuthoringRoot GridMap that uses this kit's
 ## meshlib, so the built-in palette (with LK1b thumbnails) opens ready to paint.
-func select_tile(kit: String, name: String) -> void:
+func select_tile(kit: String, name: String, meshlib_path := "") -> void:
 	# Painting tiles is the built-in GridMap workflow, so drop any armed prefab — otherwise
 	# the ghost stays on the cursor and swallows the clicks meant for the GridMap.
 	disarm()
@@ -234,7 +234,8 @@ func select_tile(kit: String, name: String) -> void:
 	if authoring == null:
 		push_warning("Kit: this scene has no AuthoringRoot — add one before painting tiles.")
 		return
-	var meshlib_path := "%s/%s.meshlib" % [PALETTE_DIR, kit]
+	if meshlib_path.is_empty():
+		meshlib_path = "%s/%s.meshlib" % [PALETTE_DIR, kit]
 	var meshlib := load(meshlib_path) as MeshLibrary
 	if meshlib == null:
 		push_warning("Kit: no palette meshlib for kit '%s'." % kit)
@@ -242,7 +243,7 @@ func select_tile(kit: String, name: String) -> void:
 
 	var grid := _find_gridmap(authoring, meshlib_path)
 	if grid == null:
-		grid = _create_gridmap(kit, meshlib, authoring, scene_root)
+		grid = _create_gridmap(kit, meshlib_path, meshlib, authoring, scene_root)
 
 	EditorInterface.get_selection().clear()
 	EditorInterface.get_selection().add_node(grid)
@@ -258,9 +259,11 @@ func select_tile(kit: String, name: String) -> void:
 		print("Kit: paint tile '%s' (item %d) in the GridMap palette." % [name, item_id])
 
 
-func _create_gridmap(kit: String, meshlib: MeshLibrary, authoring: Node, scene_root: Node) -> GridMap:
+func _create_gridmap(kit: String, meshlib_path: String, meshlib: MeshLibrary, authoring: Node, scene_root: Node) -> GridMap:
 	var grid := GridMap.new()
-	grid.name = "%sTiles" % kit.capitalize()
+	# Name from the meshlib basename so overlay layers (roads_barrier, racing_sand, ...) get
+	# their own GridMap node instead of colliding with the base "<Kit>Tiles".
+	grid.name = "%sTiles" % meshlib_path.get_file().get_basename().to_pascal_case()
 	grid.mesh_library = meshlib
 	grid.cell_center_y = false
 	var cell := _palette_cell_size(kit)

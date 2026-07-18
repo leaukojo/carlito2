@@ -4,16 +4,16 @@
 [ext_resource type="PackedScene" path="res://kit/raw/commercial/building-n.glb" id="2_x1jp3"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_0wtep"]
-size = Vector3(27.840002, 29.76, 21.840002)
+size = Vector3(20.880001, 22.32, 16.380001)
 
-[node name="BuildingN" type="Node3D" unique_id=1879507437]
+[node name="BuildingN" type="Node3D" unique_id=2064693859]
 script = ExtResource("1_ccif6")
 
 [node name="Model" type="Node3D" parent="." unique_id=1584394410 instance=ExtResource("2_x1jp3")]
-transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 0)
+transform = Transform3D(9, 0, 0, 0, 9, 0, 0, 0, 9, 0, 0, 0)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1804268699]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=2585355]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=90618023]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.536743e-07, 14.88, 9.536743e-07)
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=691195853]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.536743e-07, 11.16, 9.536743e-07)
 shape = SubResource("BoxShape3D_0wtep")
