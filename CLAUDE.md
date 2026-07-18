@@ -17,7 +17,7 @@ Docs map:
 - `docs/systems.md` — runtime systems detail (contract, input, vehicles, telemetry,
   dashboard, bridge, lamps, shell, tractor, boat, levels).
 - `docs/level_kit.md` — authoring kit, editor tools, terrain/scatter/roads, bake pipeline.
-- `docs/making_a_level.md` — author walkthrough (**stale — rewrite pending**, see TODO.md).
+- `docs/making_a_level.md` — author walkthrough (start-to-finish level authoring).
 - `TODO.md` — remaining work (farm/harbor/island levels, docs rewrite, perf pass, engine
   audio, launch checklist).
 

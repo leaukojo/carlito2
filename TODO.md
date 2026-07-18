@@ -22,12 +22,11 @@ Build both from scratch with the authoring tools (`docs/level_kit.md`):
   fix the tool, don't push through; if driving doesn't make the signals perform, the
   content failed.
 
-## 2. Rewrite `docs/making_a_level.md`
+## 2. `docs/making_a_level.md` — done (revisit with Farm)
 
-Around the current workflow: generate terrain → roads + conform → splat paint → scatter →
-dress from the dock → bake. Farm as the worked example. Must be followable by a
-non-designer end to end. The current doc describes deleted tools/levels and a defunct
-lattice — treat it as unusable, not as a base.
+Rewritten around the current workflow (new-scene → terrain → Authoring → roads + conform →
+splat → scatter → dress → spawns → register/bake). When the Farm level lands, swap its
+worked example in as the followable-by-a-non-designer end-to-end reference.
 
 ## 3. Island level
 

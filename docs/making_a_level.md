@@ -1,27 +1,122 @@
 # Making a level
 
-> **PENDING REWRITE** (see `TODO.md`). The previous walkthrough described tools and
-> levels that no longer exist and an obsolete kit lattice, so it has been removed
-> rather than left to mislead (git history has it). Until the rewrite, use
-> `docs/level_kit.md` as the tool reference and `src/levels/dev/kit_fixture.tscn` /
-> `src/levels/dev/terrain_demo.tscn` as small worked examples.
+A start-to-finish walkthrough for authoring one Carlito level. This is the author's
+narrative; the tool reference (every button, every gotcha) is `docs/level_kit.md`, and the
+runtime systems a level plugs into are `docs/systems.md`. Two small worked examples ship in
+the tree: `src/levels/dev/terrain_demo.tscn` (a generated splat island with car + boat
+spawns) and `src/levels/dev/kit_fixture.tscn` (every bake path exercised once).
 
-The shape of the workflow the rewrite will document:
+A level is a **signal playground**, not a mission: build terrain and content that make
+contract signals visibly perform — grades for `engine_load`, hairpins for slip, fields for
+hitch/PTO, water for pitch/roll. Everything below is done **in the Godot editor**; the
+addon's tools live in the **"Kit" bottom panel** (Palette / Terrain / Scatter / Roads tabs).
 
-1. Duplicate `src/levels/base/level.tscn`; create a `LevelInfo` `.tres` and wire it on
-   the root.
-2. Ground: a `HeightmapTerrain` (Generate / sculpt with the terrain brushes, then
-   Auto-splat + splat paint) — or a plain box body for flat levels. Water, if any, is a
-   `WaterSurface` sibling.
-3. Add one `AuthoringRoot` node ("Authoring"); everything the bake processes goes under
-   it.
-4. Roads: `RoadPath` splines (Draw mode, then **Conform terrain**) for organic routes;
-   GridMap palettes (via the palette dock) for city grids.
-5. Splat-paint, then scatter vegetation (`ScatterRegion` Regenerate for mass fill, the
-   scatter brush on a `ScatterCanvas` for hand-dressing) — scatter comes **after**
-   terrain/road edits, or use **Re-snap to ground** to recover.
-6. Dress with prefabs from the palette dock (click-to-place).
-7. `VehicleSpawn` markers for every allowed vehicle (`is_water` for boats).
-8. Register in `src/shell/level_registry.gd`, playtest unbaked (dev collision), then
-   **Bake** on the AuthoringRoot and commit `.tscn` + `.baked.scn` + `.bake.json`.
-   CI fails on stale bakes.
+## 0. New scene + LevelInfo
+
+1. Duplicate `src/levels/base/level.tscn` into `src/levels/<yourlevel>/`. It ships the
+   pieces every level needs and nothing else: `WorldEnvironment`, `Sun`, `ChaseCamera`, and
+   one `Spawn` marker.
+2. Create a `LevelInfo` `.tres` (`src/levels/base/level_info.gd`) and assign it to the root
+   `Level` node's **`info`** property. Set `display_name`, `allowed_vehicles` (contract
+   vehicle tags — `car` / `truck` / `tractor` / `boat`; empty = allow all), and
+   `default_vehicle` (must be in the allow-list). The garage roster and level-select label
+   read this without loading the scene.
+
+## 1. Ground
+
+Two options:
+
+- **Flat level:** a plain box `StaticBody3D` for ground is enough (see the gym).
+- **Terrain:** add a `HeightmapTerrain`. Selecting it jumps the Kit panel to the **Terrain**
+  tab. Pick a preset (character: fractal + island falloff), set `gen_seed` /
+  `feature_scale` / `gen_octaves` / falloff band / `coast_roughness` / `terrace_steps`, set
+  **`height`** (world amplitude in metres), then **Generate terrain**. **Generate new random
+  terrain** rolls a fresh seed. Terrain needs **no AuthoringRoot** to sculpt.
+
+Sculpt with the terrain brushes (raise/lower/smooth/flatten, ramp): `[`/`]` resize, Shift
+smooths, Ctrl inverts, the eyedropper samples a flatten height. Plateau the pads your
+buildings and city grids will sit on — the **"12 m (GridMap cell)" preset** (12 m square,
+edge softness 0, grid-snap) makes flush pads for the roads palette in one click.
+
+Water, if any, is a **`WaterSurface`** sibling of the terrain (both direct children of the
+level, never under Authoring). Put it at sea level — the below-sea sand ring reads as a
+**circular coast** only because water covers the square map edge. Add its kill volume
+(axis-aligned rect, never rotated) for drown-respawn.
+
+## 2. AuthoringRoot
+
+Add one **`AuthoringRoot`** node named "Authoring". **Everything the bake processes goes
+under it** — GridMaps, prefabs, roads, scatter. Terrain and water stay outside it. Placement
+tools refuse to arm without an AuthoringRoot.
+
+## 3. Roads
+
+- **Organic routes:** add a `RoadPath` (under Authoring), select it → **Roads** tab → **Draw**
+  mode. Click to lay points (Free auto-smooths, Straight for exact chords, Arc for 3-click
+  circular arcs); a red ghost = a refused too-tight corner. **Close loop** / **Reverse
+  direction** / **Drape curve onto terrain** as needed. The ribbon comes from curve + profile
+  alone (`city` / `asphalt` / `gravel` presets) — it never reads terrain, so flatten the
+  terrain under it with **Conform terrain** (destructive-by-button).
+- **City grids:** use the **Palette** tab → roads kit → paint the built-in GridMap. Cell is
+  `(12,3,12)`; `road-curve` is the 2×2 sweep, `road-bend` the 1×1 corner. **Conform terrain**
+  (palette toolbar) flattens the pad to the tiles' base plane. Where tiles meet splines, use
+  **ports** (Snap to ports on in Draw, or **Snap ends to ports** after gizmo edits).
+
+## 4. Splat (terrain color)
+
+Back on the **Terrain** tab: **Auto-splat** classifies grass/dirt/sand/rock from slope +
+height (`sand_height` / `dirt_slope_deg` / `rock_slope_deg`), then hand-paint any of the 8
+channels with the paint brush (fill bucket for a base coat). `blend_sharpness` keeps borders
+crisp (low-poly look, not soft fades). Channel colors are the splat material's params; names
+are the node's `channel_names`. Splat **after** roads/conform so conform's height edits are
+reflected.
+
+## 5. Scatter
+
+Vegetation and clutter, ground-snapped and seeded:
+
+- **Mass fill:** `ScatterRegion` (under Authoring) — box/polygon footprint, `items` (each a
+  `ScatterItem` with a prefab PackedScene + weight + collision toggle), density /
+  `placement_seed` / spacing / jitter / slope knobs → **Regenerate**.
+- **Hand-dressing:** `ScatterCanvas` + the scatter brush (Paint / Erase) on the **Scatter**
+  tab.
+
+Scatter comes **last** (terrain → roads + conform → splat → scatter). Any later terrain or
+road-conform edit trips scatter's **stale-ground guard** (config warning + bake gate + CI) —
+recover with **Re-snap to ground** on the scatter node, or Regenerate.
+
+## 6. Prefab dressing
+
+Buildings and props: **Palette** tab → pick a kit/family → click a thumbnail to arm, then
+click-to-place under Authoring (sticky; right-click/Escape disarms). Random-yaw / snap
+toggles on the toolbar. Each prefab's `collision_mode` (`none|box|hull|multiconvex|weld`)
+rides its root; `weld` prefabs join the level-wide drivable body at bake (never use `weld`
+inside scatter — bake error).
+
+## 7. Spawns
+
+Drop a **`VehicleSpawn`** marker for every allowed vehicle. Set its `vehicle_types` filter;
+set **`is_water = true`** for boat spawns (gizmo turns blue). Spawn validation is a bake gate
+— a level whose allowed vehicles have no matching spawn fails the bake.
+
+## 8. Register, playtest, bake
+
+1. Add an entry to `src/shell/level_registry.gd` (`id` / `name` / `scene`; `dev: true` hides
+   it from level-select but keeps CI bake/check + smoke coverage).
+2. **Playtest unbaked** — F6 the scene; authoring content plays directly on dev collision
+   (RoadPath/scatter trimesh + prefab `DevCollision`). The user verifies **by driving**, so
+   confirm the level is actually drivable here.
+3. **Bake** (button on the AuthoringRoot). This merges render meshes per chunk, welds all
+   drivable geometry into one level-wide body, and writes `<level>.baked.scn` +
+   `<level>.bake.json`. Commit the `.tscn`, `.baked.scn`, and `.bake.json` together.
+
+## Before you finish
+
+- **Re-bake + `check_bakes`** — stale bakes are the #1 repeat CI failure:
+  ```
+  & $GODOT --headless --path . res://tools/bake_levels.tscn
+  & $GODOT --headless --path . res://tools/check_bakes.tscn
+  ```
+- Sweep new GDScript warnings; run `powershell -File tools/preflight.ps1` for the full local
+  CI gate.
+- Never commit or push unless explicitly asked.

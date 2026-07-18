@@ -2,8 +2,7 @@
 
 Everything used to build a level: asset kits, editor tools, terrain, scatter, roads, and
 the bake that turns authoring content into what ships. Runtime systems are in
-`docs/systems.md`; the walkthrough for level authors is `docs/making_a_level.md`
-(currently pending a rewrite — see `TODO.md`).
+`docs/systems.md`; the walkthrough for level authors is `docs/making_a_level.md`.
 
 **The bake is the compiler; every authoring tool is a source-code editor.** Authoring
 nodes must be deterministic (seeded) so bakes and CI hashes stay reproducible, and they
