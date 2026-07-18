@@ -229,6 +229,51 @@ func test_snap_direction_snaps_heading_preserving_length_and_y() -> void:
 	assert_vector(Builder.snap_direction(Vector3(0, 3, 0), 45.0)).is_equal(Vector3(0, 3, 0))
 
 
+func test_end_tangent_out_reads_handles() -> void:
+	var c := Curve3D.new()
+	c.add_point(Vector3.ZERO, Vector3.ZERO, Vector3(0, 0, 4))        # start out = +Z
+	c.add_point(Vector3(0, 0, 12), Vector3(0, 0, -4), Vector3.ZERO)  # last in = -Z
+	# first end points AWAY from the road (backward, -Z); last end forward (+Z)
+	assert_vector(Builder.end_tangent_out(c, false)).is_equal_approx(
+			Vector3(0, 0, -1), Vector3.ONE * 0.0001)
+	assert_vector(Builder.end_tangent_out(c, true)).is_equal_approx(
+			Vector3(0, 0, 1), Vector3.ONE * 0.0001)
+
+
+func test_end_tangent_out_chord_fallback_when_no_handles() -> void:
+	var c := Curve3D.new()
+	c.add_point(Vector3.ZERO)          # zero handles (polyline / Straight ends)
+	c.add_point(Vector3(0, 0, 12))
+	# first: (start - second) = -Z away; last: (last - prev) = +Z forward
+	assert_vector(Builder.end_tangent_out(c, false)).is_equal_approx(
+			Vector3(0, 0, -1), Vector3.ONE * 0.0001)
+	assert_vector(Builder.end_tangent_out(c, true)).is_equal_approx(
+			Vector3(0, 0, 1), Vector3.ONE * 0.0001)
+
+
+func test_end_tangent_out_degenerate_is_zero() -> void:
+	var c := Curve3D.new()
+	c.add_point(Vector3.ZERO)
+	assert_bool(Builder.end_tangent_out(c, true) == Vector3.ZERO).is_true()
+	assert_bool(Builder.end_tangent_out(null, false) == Vector3.ZERO).is_true()
+
+
+func test_first_coincident_index_flags_zero_length_segments() -> void:
+	var clean := Curve3D.new()
+	clean.add_point(Vector3.ZERO)
+	clean.add_point(Vector3(0, 0, 12))
+	clean.add_point(Vector3(0, 0, 24))
+	assert_int(Builder.first_coincident_index(clean)).is_equal(-1)
+	# points 1 and 2 coincide (the snapped-end stacking that spawned the Curve3D errors)
+	var dup := Curve3D.new()
+	dup.add_point(Vector3.ZERO)
+	dup.add_point(Vector3(0, 0, 12))
+	dup.add_point(Vector3(0, 0, 12))
+	dup.add_point(Vector3(0, 0, 24))
+	assert_int(Builder.first_coincident_index(dup)).is_equal(2)
+	assert_int(Builder.first_coincident_index(null)).is_equal(-1)
+
+
 # ------------------------------------------------------------------ cross-section
 
 
@@ -256,6 +301,35 @@ func test_gravel_cross_section_drops_zero_width_strips() -> void:
 	var cs: Dictionary = p.call("cross_section")
 	assert_int((cs.points as PackedVector2Array).size()).is_equal(6)
 	assert_that(cs.mats).is_equal(PackedInt32Array([2, 2, 0, 2, 2]))
+
+
+func test_base_depth_zero_is_a_plain_road() -> void:
+	# The bridge base is opt-in: base_depth 0 (the default) leaves every non-bridge
+	# profile byte-identical, so no existing bake changes.
+	var p: Resource = Profile.new()
+	p.set("base_depth", 0.0)
+	var cs: Dictionary = p.call("cross_section")
+	assert_int((cs.points as PackedVector2Array).size()).is_equal(8)
+	assert_that(cs.mats).is_equal(PackedInt32Array([2, 2, 1, 0, 1, 2, 2]))
+	assert_int((p.call("materials") as Array).size()).is_equal(4)   # base slot present
+
+
+func test_base_depth_appends_box_below_outer_edges() -> void:
+	var p: Resource = Profile.new()   # defaults: outer half-width 4.75, skirt y -0.3
+	p.set("base_depth", 2.0)
+	var cs: Dictionary = p.call("cross_section")
+	var points: PackedVector2Array = cs.points
+	assert_int(points.size()).is_equal(11)
+	assert_that(cs.mats).is_equal(PackedInt32Array([2, 2, 1, 0, 1, 2, 2, 3, 3, 3]))
+	# box continues the open polyline: right wall down, bottom right->left, left wall up
+	assert_float(points[8].x).is_equal_approx(4.75, 0.0001)
+	assert_float(points[8].y).is_equal_approx(-2.3, 0.0001)    # right wall bottom
+	assert_float(points[9].x).is_equal_approx(-4.75, 0.0001)
+	assert_float(points[9].y).is_equal_approx(-2.3, 0.0001)    # bottom-left
+	assert_float(points[10].x).is_equal_approx(-4.75, 0.0001)
+	assert_float(points[10].y).is_equal_approx(-0.3, 0.0001)   # left wall top
+	# the box hangs straight down — no extra lateral reach for conform / the fold limit
+	assert_float(float(p.call("full_half_width"))).is_equal_approx(4.75, 0.0001)
 
 
 # ---------------------------------------------------------------------- extrusion
@@ -328,6 +402,37 @@ func _assert_up_facing(surfaces: Dictionary) -> void:
 func test_extrude_winding_up_facing_both_directions() -> void:
 	_assert_up_facing(_extrude_straight(false, Vector3.ZERO, Vector3(0, 0, 12)))
 	_assert_up_facing(_extrude_straight(false, Vector3(0, 0, 12), Vector3.ZERO))
+
+
+## Every triangle's Godot front face (= -geometric cross) must align with its authored
+## outward vertex normal (cross . normal < 0). Generalizes _assert_up_facing to the bridge
+## base, whose walls face sideways and bottom faces down — so a single-sided material can
+## never render the box inside-out.
+func _assert_faces_outward(surfaces: Dictionary) -> void:
+	for slot in surfaces:
+		var pos: PackedVector3Array = surfaces[slot][Mesh.ARRAY_VERTEX]
+		var nrm: PackedVector3Array = surfaces[slot][Mesh.ARRAY_NORMAL]
+		var idx: PackedInt32Array = surfaces[slot][Mesh.ARRAY_INDEX]
+		for i in range(0, idx.size(), 3):
+			var cross := (pos[idx[i + 1]] - pos[idx[i]]).cross(pos[idx[i + 2]] - pos[idx[i]])
+			assert_bool(cross.dot(nrm[idx[i]]) < -1e-6).is_true()
+
+
+func test_extrude_bridge_base_all_faces_outward() -> void:
+	var p: Resource = Profile.new()
+	p.set("base_depth", 2.0)
+	var cs: Dictionary = p.call("cross_section")
+	var curve := _straight(Vector3.ZERO, Vector3(0, 0, 12))
+	var offsets := Builder.adaptive_offsets(curve, 6.0, 6.0)
+	var surfaces := Builder.extrude(curve, cs.points, cs.mats, offsets, false)
+	_assert_faces_outward(surfaces)
+	# the base slot exists and includes a downward-facing bottom strip
+	assert_bool(surfaces.has(Profile.SLOT_BASE)).is_true()
+	var found_down := false
+	for n: Vector3 in (surfaces[Profile.SLOT_BASE][Mesh.ARRAY_NORMAL] as PackedVector3Array):
+		if n.y < -0.9:
+			found_down = true
+	assert_bool(found_down).is_true()
 
 
 func test_extrude_banking_rotates_about_tangent() -> void:

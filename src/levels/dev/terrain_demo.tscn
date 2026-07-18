@@ -14,6 +14,7 @@
 [ext_resource type="Script" uid="uid://cpl5vh8pdc04w" path="res://kit/helpers/road_path.gd" id="11_h35jj"]
 [ext_resource type="Resource" uid="uid://dr65wywfdruc0" path="res://kit/roads/city_profile.tres" id="11_voicv"]
 [ext_resource type="Resource" uid="uid://3r6iaciwp2fk" path="res://kit/roads/asphalt_profile.tres" id="12_40d31"]
+[ext_resource type="Resource" uid="uid://cbr1dgepr0f1l" path="res://kit/roads/bridge_profile.tres" id="12_pi343"]
 [ext_resource type="Texture2D" uid="uid://qbm7w1a6po7c" path="res://src/levels/dev/terrain_demo_island_splat2.png" id="13_40d31"]
 [ext_resource type="Environment" uid="uid://bjh6g6yntyvh1" path="res://src/levels/base/default_env.tres" id="14_env"]
 
@@ -30,12 +31,19 @@ _data = {
 }
 point_count = 14
 
-[sub_resource type="Curve3D" id="Curve3D_voicv"]
+[sub_resource type="Curve3D" id="Curve3D_pi343"]
 _data = {
-"points": PackedVector3Array(0, 0, 0, 4, 0, 0, -24, 30.12, -6, -9.95402, 1.3333141, 0.80156416, 9.9305315, -1.3301679, -0.7996727, 5.517845, 29.515688, 0.46963882, -9.078371, 0.6189593, 4.268997, 12.290983, -0.83799374, -5.77969, 32.694824, 22.525883, -10.565446, -12.258239, 3.2978175, 4.902581, 6.930307, -1.8644512, -2.7717187, 68.859215, 25.197102, -29.315893, -5.6669292, 3.3390312, 3.9905567, 5.2077518, -3.0684776, -3.6672118, 84.69851, 8.535401, -31.363888, 0, 0, 0, 0, 0, 0, 96.6485, 8.823281, -48.884644),
-"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0)
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -42.59301, 25.398006, 16.055128, 0, 0, 0, 0, 0, 0, 15.105639, 25.201962, 20.863241),
+"tilts": PackedFloat32Array(0, 0)
 }
-point_count = 6
+point_count = 2
+
+[sub_resource type="Curve3D" id="Curve3D_nay4p"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 3.986161, -0.013543932, 0.33217263, 15.105639, 25.201962, 20.863241, 0, 0, 0, 0, 0, 0, 15.105639, 25.201962, 20.863241, 0, 0, 0, 0, 0, 0, 15.105639, 25.201962, 20.863241, 0, 0, 0, 5.695442, -6.357829e-07, 0.80170757, 15.105639, 25.201962, 20.863241, 0, 0, 0, 10.784739, -1.3904415e-05, 1.5064042, 32.191967, 25.20196, 23.268364, -3.5637798, 1.3904415e-05, 10.289767, 3.5637798, -1.3904415e-05, -10.289767, 56.884583, 25.20192, 8.15292, 9.406236, 1.3904415e-05, 5.4865804, -9.406236, -1.3904415e-05, -5.4865804, 46.8302, 25.20188, -18.996874, 9.26935, 0.9498267, -2.5120766, -71.84407, -7.3618345, 19.470387, 18.248455, 25.20184, -14.383221, 17.063646, -0.000184205, -72.82648, -15.610286, 0.00016851572, 66.623634, -196.18701, 0.3, 46.86297, 0, 0, 0, 0, 0, 0, 7.117279, 25.20196, 33.12388),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+point_count = 10
 
 [sub_resource type="ShaderMaterial" id="SplatMat"]
 render_priority = 0
@@ -116,13 +124,21 @@ metadata/_custom_type_script = "uid://cpl5vh8pdc04w"
 [node name="Path" type="Path3D" parent="AuthoringRoot/RoadPath" unique_id=1234200791]
 curve = SubResource("Curve3D_u8elx")
 
-[node name="RoadPath2" type="Node3D" parent="AuthoringRoot" unique_id=1120261279]
+[node name="RoadPath2" type="Node3D" parent="AuthoringRoot" unique_id=1248639886]
 script = ExtResource("11_h35jj")
 profile = ExtResource("11_voicv")
 metadata/_custom_type_script = "uid://cpl5vh8pdc04w"
 
-[node name="Path" type="Path3D" parent="AuthoringRoot/RoadPath2" unique_id=1338968182]
-curve = SubResource("Curve3D_voicv")
+[node name="Path" type="Path3D" parent="AuthoringRoot/RoadPath2" unique_id=2088226641]
+curve = SubResource("Curve3D_pi343")
+
+[node name="RoadPath3" type="Node3D" parent="AuthoringRoot" unique_id=1820028708]
+script = ExtResource("11_h35jj")
+profile = ExtResource("12_pi343")
+metadata/_custom_type_script = "uid://cpl5vh8pdc04w"
+
+[node name="Path" type="Path3D" parent="AuthoringRoot/RoadPath3" unique_id=395369448]
+curve = SubResource("Curve3D_nay4p")
 
 [node name="Island" type="StaticBody3D" parent="." unique_id=1504712988]
 script = ExtResource("5_terrain")

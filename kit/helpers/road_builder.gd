@@ -114,6 +114,44 @@ static func snap_direction(dir: Vector3, step_deg: float) -> Vector3:
 	return Vector3(cos(heading) * len_xz, dir.y, sin(heading) * len_xz)
 
 
+## First curve point index that coincides with its predecessor (a zero-length segment),
+## or -1 when the curve is clean. Coincident control points make Curve3D's bake spam
+## "Zero length interval." / "The target vector can't be zero." (verified), so the draw
+## tool refuses clicks that would create one and RoadPath warns when the gizmo already did.
+## Pure — additive, no bake output.
+static func first_coincident_index(curve: Curve3D) -> int:
+	if curve == null:
+		return -1
+	for i in range(1, curve.point_count):
+		if curve.get_point_position(i).is_equal_approx(curve.get_point_position(i - 1)):
+			return i
+	return -1
+
+
+## Outward end tangent of an open curve at one end (curve-local, unit): the direction a
+## road CONTINUES past that end — used by the draw tool's road-to-road snapping to lock a
+## joined road's handle collinear with this one (a seamless deck join). Reads the endpoint
+## handle (get_point_in at the last point / get_point_out at the first, negated to point
+## AWAY from the road), falling back to the chord toward the adjacent point when the handle
+## is zero (polyline / Straight ends). Vector3.ZERO for a < 2-point curve. Additive — no
+## bake output, no BAKER_VERSION bump.
+static func end_tangent_out(curve: Curve3D, at_last: bool) -> Vector3:
+	if curve == null or curve.point_count < 2:
+		return Vector3.ZERO
+	var n := curve.point_count
+	if at_last:
+		var h := curve.get_point_in(n - 1)
+		if h.length_squared() > 1e-12:
+			return (-h).normalized()
+		var chord := curve.get_point_position(n - 1) - curve.get_point_position(n - 2)
+		return chord.normalized() if chord.length_squared() > 1e-12 else Vector3.ZERO
+	var h0 := curve.get_point_out(0)
+	if h0.length_squared() > 1e-12:
+		return (-h0).normalized()
+	var chord0 := curve.get_point_position(0) - curve.get_point_position(1)
+	return chord0.normalized() if chord0.length_squared() > 1e-12 else Vector3.ZERO
+
+
 ## 3-click circular arc (start point, tangent direction, end point — the
 ## Cities: Skylines pattern) as Curve3D point data:
 ## {start_out: Vector3, points: [{pos, in, out}, ...], radius: float}.

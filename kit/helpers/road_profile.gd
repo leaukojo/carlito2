@@ -15,6 +15,7 @@ extends Resource
 const SLOT_SURFACE := 0
 const SLOT_EDGE_LINE := 1
 const SLOT_SHOULDER := 2
+const SLOT_BASE := 3
 
 ## Half the paved driving surface: the full road is two lanes, lane_width each side.
 @export var lane_width := 3.5:
@@ -41,6 +42,13 @@ const SLOT_SHOULDER := 2
 	set(value):
 		drop_run = value
 		emit_changed()
+## Bridge underside: a solid box (two vertical walls + a bottom strip) hanging this far
+## below the road's outer edge. 0 = no base (default) — every non-bridge profile stays
+## byte-identical. Deep enough should reach below the gap it spans (e.g. under sea level).
+@export var base_depth := 0.0:
+	set(value):
+		base_depth = value
+		emit_changed()
 @export var surface_material: Material:
 	set(value):
 		surface_material = value
@@ -52,6 +60,10 @@ const SLOT_SHOULDER := 2
 @export var shoulder_material: Material:
 	set(value):
 		shoulder_material = value
+		emit_changed()
+@export var base_material: Material:
+	set(value):
+		base_material = value
 		emit_changed()
 
 
@@ -80,12 +92,26 @@ func cross_section() -> Dictionary:
 			points.append(Vector2(xs[i], ys[i]))
 		points.append(Vector2(xs[i + 1], ys[i + 1]))
 		mats.append(slots[i])
+	# Bridge base: continue the open polyline around a box below the outer edges — right
+	# wall down, bottom right->left, left wall back up to the top-left corner. The
+	# extruder winds all three strips outward-facing for free (top faces up; the box
+	# faces out/down — road_builder's RH-normal is the inverse of Godot's front face).
+	# NOT routed through the lateral-only zero-width filter above (it would drop the
+	# vertical walls); base_depth > 0 guarantees non-degenerate walls, 2*half-width the
+	# bottom. paved/full_half_width are unchanged — the box adds no lateral reach.
+	if base_depth > 0.0 and points.size() >= 2:
+		var left := points[0]
+		var right := points[points.size() - 1]
+		points.append(Vector2(right.x, right.y - base_depth))   # right wall
+		points.append(Vector2(left.x, left.y - base_depth))     # bottom
+		points.append(left)                                     # left wall
+		mats.append_array(PackedInt32Array([SLOT_BASE, SLOT_BASE, SLOT_BASE]))
 	return {"points": points, "mats": mats}
 
 
 ## Slot index -> Material, matching cross_section().mats.
 func materials() -> Array:
-	return [surface_material, edge_line_material, shoulder_material]
+	return [surface_material, edge_line_material, shoulder_material, base_material]
 
 
 ## Half-width of the flattened band conform targets (lane + line + shoulder).

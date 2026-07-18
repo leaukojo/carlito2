@@ -127,9 +127,10 @@ func _build() -> void:
 	_snap_ports = CheckBox.new()
 	_snap_ports.text = "Snap to ports"
 	_snap_ports.button_pressed = true
-	_snap_ports.tooltip_text = "Drawn end points near an open city-tile edge capture " \
-			+ "onto its port with the tangent locked perpendicular to the face; " \
-			+ "arriving at a port ends the draw."
+	_snap_ports.tooltip_text = "Drawn end points near an open city-tile edge — or " \
+			+ "another RoadPath's endpoint — capture onto it with the tangent locked " \
+			+ "along the outward face/road direction (a seamless join); arriving at " \
+			+ "one ends the draw."
 	_snap_ports.toggled.connect(func(on: bool): snap_ports_changed.emit(on))
 	add_child(_snap_ports)
 

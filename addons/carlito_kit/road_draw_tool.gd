@@ -250,6 +250,15 @@ func _commit_point(world: Vector3) -> void:
 	var prev_handles := {}         # planned Catmull-Rom rewrite of the previous point
 	var zero_prev_out := false     # straight mode: chord needs the previous out gone
 	if not stub:
+		# Refuse a point that lands on the previous one — a zero-length segment makes the
+		# Curve3D bake spam "Zero length interval." (e.g. clicking twice on the same
+		# snapped end). Same refuse-with-status pattern as the fold guard.
+		if idx >= 1 and local.is_equal_approx(curve.get_point_position(idx - 1)):
+			var msg := "Point refused: it lands on the previous point (a zero-length " \
+					+ "segment) — click farther along."
+			push_warning("Kit: " + msg)
+			draw_status.emit(msg)
+			return
 		if straight:
 			zero_prev_out = idx >= 1 and curve.get_point_out(idx - 1) != Vector3.ZERO
 		elif smooth_corners and idx >= 2:
@@ -561,13 +570,70 @@ func reverse_road() -> void:
 
 # ------------------------------------------------------------------ ports
 
-## Rebuild the port cache from the current grid. Cheap enough per activation; never
-## per-frame (ghost updates only read the cache).
+## Rebuild the port cache from the current grid AND every other RoadPath's endpoints.
+## Cheap enough per activation; never per-frame (ghost updates only read the cache) —
+## the other roads don't change while the selected one is being drawn.
 func _refresh_ports() -> void:
 	_ports = []
-	if _grid == null or not is_instance_valid(_grid) or not _grid.is_inside_tree():
-		return
-	_ports = RoadPortsScript.enumerate_ports(_grid, _load_table(), _grid.global_transform)
+	if _grid != null and is_instance_valid(_grid) and _grid.is_inside_tree():
+		_ports = RoadPortsScript.enumerate_ports(_grid, _load_table(), _grid.global_transform)
+	_ports.append_array(_enumerate_road_ends())
+
+
+## Other RoadPaths' first/last curve points under the same Authoring root, shaped as snap
+## "ports" ({position, normal, cell}) so nearest_port + the handle-lock path treat a
+## road-to-road join exactly like a tile port. `normal` is the road's OUTWARD end tangent
+## (RoadBuilder.end_tangent_out): locking a joined road's handle along it keeps the two
+## tangents collinear = seamless deck (the ribbon is direction-invariant). Excludes the
+## road being drawn and undrawn stub roads. `cell` is a sentinel — road ends never reach
+## the GridMap-repaint code that reads it.
+func _enumerate_road_ends() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if not is_instance_valid(_road):
+		return out
+	var root := _authoring_root(_road)
+	if root == null:
+		return out
+	var roads: Array[Node] = []
+	_collect_roads(root, roads)
+	for r in roads:
+		if r == _road:
+			continue
+		var path := r.get_node_or_null(^"Path") as Path3D
+		if path == null or path.curve == null or path.curve.point_count < 2 \
+				or _is_default_stub(path.curve):
+			continue
+		var curve := path.curve
+		var xform := path.global_transform
+		for at_last: bool in [false, true]:
+			var t: Vector3 = RoadBuilderScript.end_tangent_out(curve, at_last)
+			if t == Vector3.ZERO:
+				continue
+			var idx := (curve.point_count - 1) if at_last else 0
+			out.append({
+				"position": xform * curve.get_point_position(idx),
+				"normal": (xform.basis * t).normalized(),
+				"cell": Vector3i.ZERO,
+			})
+	return out
+
+
+## First Authoring ancestor (duck-typed marker, like RoadPath._find_authoring_ancestor).
+static func _authoring_root(node: Node) -> Node:
+	var n := node.get_parent()
+	while n != null:
+		if n.has_method("is_carlito_authoring"):
+			return n
+		n = n.get_parent()
+	return null
+
+
+## Every RoadPath under `node` (duck-typed marker, the CLI-robust rule).
+static func _collect_roads(node: Node, out: Array[Node]) -> void:
+	if node.has_method("is_carlito_road"):
+		out.append(node)
+	for child in node.get_children():
+		_collect_roads(child, out)
 
 
 ## Nearest open port a click at `world` would capture, or {}.

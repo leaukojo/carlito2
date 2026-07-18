@@ -243,17 +243,27 @@ func _get_configuration_warnings() -> PackedStringArray:
 	var path := get_node_or_null(^"Path") as Path3D
 	if path == null or path.curve == null or path.curve.point_count < 2:
 		warnings.append("The Path child's curve needs at least 2 points.")
-	elif profile != null:
-		# The draw tool refuses clicks under the fold limit, but the built-in Path3D
-		# gizmo bypasses it: below the half-width the extruder pinches the inside
-		# edge into a slit. Same floor as the draw guard (_fold_guard_ok).
-		var radius: float = RoadBuilder.min_turn_radius(path.curve,
-				max_segment_length, max_segment_angle_deg)
-		if radius < profile.full_half_width():
-			warnings.append(("Turn radius %.1f m is under the ribbon's %.1f m " +
-					"half-width — the inside edge pinches into a slit there. " +
-					"Widen the turn (Arc draw mode keeps radii safe).") % [
-					radius, profile.full_half_width()])
+	else:
+		# Coincident consecutive points (e.g. two gizmo points dragged together, or a
+		# click stacked on a snapped end) make a zero-length segment — Curve3D's bake
+		# then spams "Zero length interval." / "The target vector can't be zero." Delete
+		# the duplicate to silence it (the draw tool refuses new ones).
+		var dup: int = RoadBuilder.first_coincident_index(path.curve)
+		if dup >= 0:
+			warnings.append(("Curve points %d and %d coincide (a zero-length segment) — " +
+					"delete the duplicate or Curve3D spams 'Zero length interval' errors.") % [
+					dup - 1, dup])
+		if profile != null:
+			# The draw tool refuses clicks under the fold limit, but the built-in Path3D
+			# gizmo bypasses it: below the half-width the extruder pinches the inside
+			# edge into a slit. Same floor as the draw guard (_fold_guard_ok).
+			var radius: float = RoadBuilder.min_turn_radius(path.curve,
+					max_segment_length, max_segment_angle_deg)
+			if radius < profile.full_half_width():
+				warnings.append(("Turn radius %.1f m is under the ribbon's %.1f m " +
+						"half-width — the inside edge pinches into a slit there. " +
+						"Widen the turn (Arc draw mode keeps radii safe).") % [
+						radius, profile.full_half_width()])
 	return warnings
 
 
@@ -427,6 +437,11 @@ func _conform_terrain() -> void:
 		return
 	if profile == null:
 		push_warning("RoadPath: assign a profile before conforming.")
+		return
+	if profile.base_depth > 0.0:
+		# A bridge (base_depth > 0) spans the gap on its own box — flattening terrain to
+		# the deck would defeat the point (and bury the piers). Conform is a no-op.
+		push_warning("RoadPath '%s': bridge profile (base_depth > 0) — Conform skipped; the bridge carries over the gap instead of flattening it." % name)
 		return
 	var path := get_node_or_null(^"Path") as Path3D
 	if path == null or path.curve == null or path.curve.point_count < 2:
