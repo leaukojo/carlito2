@@ -105,8 +105,10 @@ static func default_channel_names() -> PackedStringArray:
 ## Island preset only: how ragged the coastline is. 0 = perfectly round island, 1 = deep
 ## bays and jutting headlands. The map border always reaches sea level regardless.
 @export_range(0.0, 1.0) var coast_roughness := 0.5
-## Number of plateau bands — buildable flats for villages/farms. < 2 disables terracing.
-@export_range(0, 12) var terrace_steps := 4
+## Plateau band height in metres — buildable flats for villages/farms. 3 m = the roads
+## GridMap vertical cell, so multiples of 3 keep plateaus grid-aligned (painted road tiles
+## sit flush, Conform becomes a touch-up). 0 disables terracing.
+@export_range(0.0, 24.0, 0.5) var terrace_step := 3.0
 ## Portion of each terrace band that stays dead flat; the rest ramps between plateaus.
 @export_range(0.0, 0.9) var terrace_flat := 0.6
 ## Runs the noise generator from the current gen_seed. Same generator as "Generate new
@@ -125,6 +127,7 @@ static func default_channel_names() -> PackedStringArray:
 @export var splatmap: Texture2D:
 	set(value):
 		splatmap = value
+		_splat_dirty = true
 		_push_splat_param()
 		source_image_replaced.emit("splat")
 ## Weights for paint channels 4..7 (RGBA). Optional: without it the terrain is a plain
@@ -132,12 +135,17 @@ static func default_channel_names() -> PackedStringArray:
 @export var splatmap2: Texture2D:
 	set(value):
 		splatmap2 = value
+		_splat_dirty = true
 		_push_splat_param()
 		source_image_replaced.emit("splat2")
 ## Display names for the eight paint channels, shown in the brush panel's channel picker.
 ## Names only — a channel's COLOR is the matching shader param on `material` (see
 ## CHANNEL_PARAMS); rename and recolor per level to taste.
 @export var channel_names := default_channel_names()
+## Tire grip multiplier per paint channel 0..7 (1.0 = the vehicle's spec grip; lower =
+## slippery, e.g. ice/mud). RayWheel scales mu_long/mu_lat by the weighted splat mix under
+## each contact (see grip_at). All-1.0 default = no effect, so unpainted levels are unchanged.
+@export var channel_grip := PackedFloat32Array([1, 1, 1, 1, 1, 1, 1, 1])
 ## Beaches appear below this world height (the band fades out over another half of it);
 ## above, grass.
 @export var sand_height := 2.0
@@ -149,6 +157,14 @@ static func default_channel_names() -> PackedStringArray:
 ## on slopes, rock on cliffs. Overwrites hand painting (undoable).
 @warning_ignore("unused_private_class_variable")
 @export_tool_button("Auto-splat") var _auto_splat_action := _auto_splat
+
+
+# Decoded splatmap copies kept for the per-tick grip query (get_splat_weights): decoding a
+# Texture2D every wheel every frame would be ruinous, so they are cached and only re-decoded
+# when a splatmap is replaced (_splat_dirty, set in the setters above).
+var _splat_img: Image
+var _splat2_img: Image
+var _splat_dirty := true
 
 
 func _ready() -> void:
@@ -294,6 +310,91 @@ func contains_xz(world_pos: Vector3) -> bool:
 	return absf(lx) <= terrain_size.x * 0.5 and absf(lz) <= terrain_size.y * 0.5
 
 
+## The eight paint weights under `world_pos`'s XZ: [0..3] = splatmap.RGBA, [4..7] =
+## splatmap2.RGBA (all-zero when the second map is absent), bilinearly sampled from the cached
+## splat Images. Uses the SAME world->(u,v) mapping as height_at, i.e. the shader's global
+## terrain UV, so the friction lookup lines up with what's drawn. Raw weights on purpose (no
+## `blend_sharpness` pow — that only crispens the visual border; grip fades smoothly across a
+## painted seam, which is the sensible physical behavior). All-zero when no splatmap is set.
+func get_splat_weights(world_pos: Vector3) -> PackedFloat32Array:
+	var weights := PackedFloat32Array([0, 0, 0, 0, 0, 0, 0, 0])
+	_ensure_splat_cache()
+	if _splat_img == null:
+		return weights
+	var dims := _grid_dims()
+	var span_x := float(dims.x - 1)
+	var span_z := float(dims.y - 1)
+	var lx := world_pos.x - global_position.x
+	var lz := world_pos.z - global_position.z
+	var u := clampf((lx + span_x * 0.5) / span_x, 0.0, 1.0)
+	var v := clampf((lz + span_z * 0.5) / span_z, 0.0, 1.0)
+	var c0 := _sample_rgba_bilinear(_splat_img, u, v)
+	weights[0] = c0.r; weights[1] = c0.g; weights[2] = c0.b; weights[3] = c0.a
+	if _splat2_img != null:
+		var c1 := _sample_rgba_bilinear(_splat2_img, u, v)
+		weights[4] = c1.r; weights[5] = c1.g; weights[6] = c1.b; weights[7] = c1.a
+	return weights
+
+
+## Tire grip multiplier under `world_pos`: the paint-weight-blended channel_grip, normalized
+## by total weight. 1.0 (spec grip) when unpainted or with no splatmap. RayWheel scales its
+## friction coefficients by this. Cheap: <= 8 cached-Image bilinear reads.
+func grip_at(world_pos: Vector3) -> float:
+	if splatmap == null:
+		return 1.0
+	var weights := get_splat_weights(world_pos)
+	var total := 0.0
+	var grip := 0.0
+	for i in 8:
+		var w := weights[i]
+		total += w
+		grip += w * (channel_grip[i] if i < channel_grip.size() else 1.0)
+	if total < 0.001:
+		return 1.0
+	return grip / total
+
+
+## Decode both splatmaps once into uncompressed working Images for get_splat_weights; only
+## re-runs after a splatmap is replaced (_splat_dirty). Same decompress dance as _read_image.
+func _ensure_splat_cache() -> void:
+	if not _splat_dirty:
+		return
+	_splat_img = _decode_texture(splatmap)
+	_splat2_img = _decode_texture(splatmap2)
+	_splat_dirty = false
+
+
+## Uncompressed decoded copy of `tex`, or null when unset (shared by the splat cache).
+static func _decode_texture(tex: Texture2D) -> Image:
+	if tex == null:
+		return null
+	var img := tex.get_image()
+	if img == null:
+		return null
+	if img.is_compressed():
+		img = img.duplicate()
+		img.decompress()
+	return img
+
+
+## Bilinear RGBA lookup at normalized (u, v) in [0,1] — the all-channel sibling of
+## _sample_red_bilinear, used by get_splat_weights.
+func _sample_rgba_bilinear(img: Image, u: float, v: float) -> Color:
+	var iw := img.get_width()
+	var ih := img.get_height()
+	var fx := u * float(iw - 1)
+	var fy := v * float(ih - 1)
+	var x0 := int(floor(fx))
+	var y0 := int(floor(fy))
+	var x1 := mini(x0 + 1, iw - 1)
+	var y1 := mini(y0 + 1, ih - 1)
+	var tx := fx - float(x0)
+	var ty := fy - float(y0)
+	var top := img.get_pixel(x0, y0).lerp(img.get_pixel(x1, y0), tx)
+	var bot := img.get_pixel(x0, y1).lerp(img.get_pixel(x1, y1), tx)
+	return top.lerp(bot, ty)
+
+
 ## Bilinear red-channel lookup at normalized (u, v) in [0,1]. Smoother than the mesh's
 ## nearest sampling, so a placed prop sits on the interpolated surface, not a vertex step.
 func _sample_red_bilinear(img: Image, u: float, v: float) -> float:
@@ -360,7 +461,7 @@ func _apply_chunks(cols: int, rows: int, heights: PackedFloat32Array) -> void:
 		add_child(container)
 	for child in container.get_children():
 		child.free()
-	# A dead-flat terrain (FLAT preset, null heightmap, or an all-uniform image) renders
+	# A dead-flat terrain (null heightmap or an all-uniform image) renders
 	# as one two-triangle quad — the few-polygon path. Any relief re-densifies here on
 	# the next full rebuild. Collision is untouched: still the one HeightMapShape3D.
 	if TerrainGen.is_uniform(heights):
@@ -466,8 +567,8 @@ func _generate_with_seed(seed_value: int) -> void:
 		return
 	var dims := _grid_dims()
 	var img := TerrainGen.generate_heights(preset, seed_value, feature_scale, gen_octaves,
-			falloff_start, falloff_end, dims.x, dims.y, terrace_steps, terrace_flat,
-			coast_roughness)
+			falloff_start, falloff_end, dims.x, dims.y, terrace_step / maxf(height, 0.001),
+			terrace_flat, coast_roughness)
 	var props := {}
 	if seed_value != gen_seed:
 		props[&"gen_seed"] = [gen_seed, seed_value]

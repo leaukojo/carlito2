@@ -47,7 +47,10 @@ level, never under Authoring). Put it at sea level — the below-sea sand ring r
 
 Add one **`AuthoringRoot`** node named "Authoring". **Everything the bake processes goes
 under it** — GridMaps, prefabs, roads, scatter. Terrain and water stay outside it. Placement
-tools refuse to arm without an AuthoringRoot.
+tools refuse to arm without an AuthoringRoot. Placed prefabs land in per-kit **`<Kit>Props`**
+folders (plain identity `Node3D`s the bake sees straight through); GridMaps / RoadPaths /
+scatter stay top-level. **Tidy authoring** (palette toolbar) reorganizes an existing flat
+AuthoringRoot into those folders in one undo step.
 
 ## 3. Roads
 
@@ -59,8 +62,10 @@ tools refuse to arm without an AuthoringRoot.
   terrain under it with **Conform terrain** (destructive-by-button).
 - **City grids:** use the **Palette** tab → roads kit → paint the built-in GridMap. Cell is
   `(12,3,12)`; `road-curve` is the 2×2 sweep, `road-bend` the 1×1 corner. **Conform terrain**
-  (palette toolbar) flattens the pad to the tiles' base plane. Where tiles meet splines, use
-  **ports** (Snap to ports on in Draw, or **Snap ends to ports** after gizmo edits).
+  (palette toolbar) flattens the pad under *every* painted tile GridMap **and** every placed
+  prefab building (Commercial/Industrial/Suburban/Racing structures) to its base plane in one
+  pass. Where tiles meet splines, use **ports** (Snap to ports on in Draw, or **Snap ends to
+  ports** after gizmo edits).
 
 ## 4. Splat (terrain color)
 
@@ -88,7 +93,8 @@ recover with **Re-snap to ground** on the scatter node, or Regenerate.
 ## 6. Prefab dressing
 
 Buildings and props: **Palette** tab → pick a kit/family → click a thumbnail to arm, then
-click-to-place under Authoring (sticky; right-click/Escape disarms). Random-yaw / snap
+click-to-place (sticky; right-click/Escape disarms) — each drop lands in its kit's
+`<Kit>Props` folder under Authoring. Random-yaw / snap
 toggles on the toolbar. Each prefab's `collision_mode` (`none|box|hull|multiconvex|weld`)
 rides its root; `weld` prefabs join the level-wide drivable body at bake (never use `weld`
 inside scatter — bake error).

@@ -10,7 +10,7 @@ extends RefCounted
 ## normalized height [0,1]; the node's `height` export is the world amplitude (meters of
 ## a white pixel). The splatmap is an RGBA weight image: R=grass, G=dirt, B=sand, A=rock.
 
-enum Preset { ISLAND, ROLLING_HILLS, PLAINS, DUNES, FLAT }
+enum Preset { ISLAND, ROLLING_HILLS, PLAINS, DUNES }
 
 ## Per-preset character: fractal type, frequency multiplier (relative to feature_scale),
 ## default octave count, relative amplitude (fraction of `height` the preset peaks at, so
@@ -31,13 +31,6 @@ const PRESETS := {
 	Preset.DUNES: {
 		"fractal": FastNoiseLite.FRACTAL_RIDGED, "freq_mult": 1.2,
 		"amplitude": 0.4, "falloff": false,
-	},
-	# Dead-flat plane at sea level: a sculptable blank slate (the heightmap PNG still
-	# exists at full resolution, so the brush can add relief later). While the terrain
-	# STAYS uniform, HeightmapTerrain renders it as a single quad — see is_uniform.
-	Preset.FLAT: {
-		"fractal": FastNoiseLite.FRACTAL_FBM, "freq_mult": 1.0,
-		"amplitude": 0.0, "falloff": false,
 	},
 }
 
@@ -83,25 +76,30 @@ static func island_falloff(r: float, start: float, end: float) -> float:
 	return 1.0 - t * t * (3.0 - 2.0 * t)
 
 
-## Terrace the normalized height into `steps` plateau bands (buildable flats for
-## villages/farms). flat_frac in [0,1) is the portion of each band that
-## stays dead flat; the rest ramps between plateaus. Band centres are preserved
-## (terrace(h) == h at the middle of every ramp), so overall relief is unchanged.
-## steps < 2 is a no-op.
-static func terrace(h: float, steps: int, flat_frac: float) -> float:
-	if steps < 2:
+## Terrace the normalized height into plateau bands of height `step01` (band height as a
+## fraction of the terrain amplitude — i.e. step_metres / terrain height — so a metres
+## step lands the same regardless of world scale). Buildable flats for villages/farms.
+## Each flat plateau level is FLOOR-snapped to the 8-bit heightmap grid
+## (floorf(level * 255.0) / 255.0), mirroring the road-conform floor rule so a stored
+## plateau never sits above the grid plane: the sub-1/255 residual hides under the tile
+## deck and Conform becomes a no-op / touch-up on plateaus. flat_frac in [0,1) is the
+## portion of each band that stays dead flat; the rest ramps between plateaus.
+## step01 <= 0.0 or >= 1.0 is a no-op (terracing disabled / band taller than the terrain).
+static func terrace(h: float, step01: float, flat_frac: float) -> float:
+	if step01 <= 0.0 or step01 >= 1.0:
 		return h
-	var t := h * float(steps)
+	var t := h / step01
 	var f := floorf(t)
 	var frac := t - f
 	var ramp := _smooth01((frac - flat_frac * 0.5) / maxf(1.0 - flat_frac, 0.001))
-	return clampf((f + ramp) / float(steps), 0.0, 1.0)
+	var level := floorf(f * step01 * 255.0) / 255.0
+	return clampf(level + ramp * step01, 0.0, 1.0)
 
 
 ## Build the normalized heightmap image (8-bit greyscale, the existing pipeline format).
 ## cols x rows should be the terrain's vertex grid so 1 px = 1 vertex. Terracing (when
-## terrace_steps >= 2) is applied last — after amplitude and falloff — so island coasts
-## step into concentric plateau rings.
+## terrace_step01 is in (0,1)) is applied last — after amplitude and falloff — so island
+## coasts step into concentric plateau rings.
 ##
 ## coast_roughness [0,1] perturbs the island falloff's radial distance with a dedicated
 ## coast noise, turning the perfect circle into bays and headlands (0 = round; higher =
@@ -110,7 +108,7 @@ static func terrace(h: float, steps: int, flat_frac: float) -> float:
 ## == 0 the output is byte-identical to the pre-roughness generator (back-compat pin).
 static func generate_heights(preset: Preset, seed_value: int, feature_scale: float,
 		octaves: int, falloff_start: float, falloff_end: float,
-		cols: int, rows: int, terrace_steps := 0, terrace_flat := 0.6,
+		cols: int, rows: int, terrace_step01 := 0.0, terrace_flat := 0.6,
 		coast_roughness := 0.0) -> Image:
 	var cfg: Dictionary = PRESETS[preset]
 	var noise := make_noise(preset, seed_value, feature_scale, octaves)
@@ -137,7 +135,7 @@ static func generate_heights(preset: Preset, seed_value: int, feature_scale: flo
 							* island_falloff(r, 0.92, 1.0)
 				else:
 					h *= island_falloff(r, falloff_start, falloff_end)
-			h = terrace(h, terrace_steps, terrace_flat)
+			h = terrace(h, terrace_step01, terrace_flat)
 			img.set_pixel(x, y, Color(h, h, h))
 	return img
 

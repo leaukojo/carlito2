@@ -54,7 +54,11 @@ Hybrid: **GridMap palettes** for road/tile kits only; everything else is a **`Ki
 prefab** (`kit/helpers/kit_piece.gd`) whose `collision_mode`
 (`none|box|hull|multiconvex|weld`) rides the prefab root; its `DevCollision` body makes
 unbaked levels playable. All authoring lives under one **`AuthoringRoot`** node
-(`kit/helpers/authoring_root.gd`, `chunk_size` knob + editor **Bake** button). Detection
+(`kit/helpers/authoring_root.gd`, `chunk_size` knob + editor **Bake** button). Placed
+prefabs are grouped into per-kit **`<Kit>Props`** folders (plain identity `Node3D`s the
+baker recurses straight through — `_collect` accumulates transforms); GridMaps / RoadPaths
+/ scatter stay direct children. **Tidy authoring** (palette toolbar → `placement_tool.tidy_authoring`)
+sorts an existing flat AuthoringRoot into those folders in one undo step. Detection
 everywhere is duck-typed marker methods (`is_carlito_authoring` / `is_carlito_kit_piece`
 / `is_carlito_scatter` / `is_carlito_road`), never class_name.
 
@@ -505,12 +509,18 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   points to their nearest ports within 6 m + locks tangents, one undo step.
   **Height agreement:** put port cells on a flattened pad — either the terrain-brush
   grid-snap 12 m flatten, or the palette toolbar's **Conform terrain** button
-  (`addons/carlito_kit/tile_conform.gd` + `RoadBuilder.conform_rects`, tested): flattens
-  every overlapping terrain to the painted cells' **base plane**, footprints from the
-  item mesh AABB in the painted orientation (so 2×2 / 3×3 overhang cells are covered),
-  4 m falloff beyond the union, targets **ROUND-quantized** (closest 8-bit height either
-  side of the base — the deck hides the residual, unlike road ribbons which floor), one
-  undo per terrain. Road Conform's plateau meets the tile at road − ε and `edge_drop`
+  (`addons/carlito_kit/tile_conform.gd` + `RoadBuilder.conform_rects`, tested):
+  `conform_all` flattens every overlapping terrain to the **base plane** of **every**
+  painted tile GridMap under Authoring (meshlib not in `CONFORM_EXCLUDE_MESHLIBS`) **plus**
+  every placed prefab building whose recipe family is in `CONFORM_PREFAB_FAMILIES` (both
+  easy-to-edit lists at the top of the file; prefab footprint = merged world AABB of its
+  mesh descendants, target = the piece's world origin Y). Tile footprints come from the
+  item mesh AABB in the painted orientation (so 2×2 / 3×3 overhang cells are covered), 4 m
+  falloff beyond the union, targets **ROUND-quantized** (closest 8-bit height either side
+  of the base — the deck hides the residual, unlike road ribbons which floor), one undo per
+  terrain. Grid-aligned plateaus (terrain `terrace_step`, default 3 m = the roads GridMap
+  vertical cell) mean painted road pads usually sit flush already, so Conform becomes a
+  touch-up rather than a required step. Road Conform's plateau meets the tile at road − ε and `edge_drop`
   absorbs the quantization as usual. **Width:** the tiles' measured deck runs curb-to-curb ±4.8
   (9.6 m) with the white curb line AT ±4.8, so `asphalt_profile.tres` sets
   `lane_width = 4.8` — the ribbon's asphalt spans the full 9.6 m deck and its white

@@ -26,6 +26,8 @@ var telemetry: VehicleTelemetry  ## built in _ready via _make_telemetry (subclas
 var spawn_transform: Transform3D
 
 var _steer := 0.0
+var _grip_terrains: Array[Node] = []  ## painted terrains the wheels sample for surface grip
+var _terrains_found := false           ## one-shot guard for the terrain scan below
 var _prev_velocity := Vector3.ZERO  ## last tick's linear_velocity, for accel/impact
 var _impact_hold := 0.0             ## decaying peak of the impact magnitude
 var _lamps := LampSet.new()         ## drives the scene-authored §6 lamps from input
@@ -77,6 +79,12 @@ func _physics_process(delta: float) -> void:
 	var axle_torque := drivetrain.process(
 			delta, absf(input.throttle), drive_omega, ground_speed, input.gear_request, input.gear_auto)
 
+	# Discover the level's painted terrains once — the level and its terrain siblings are
+	# guaranteed in-tree by the first physics tick. Wheels sample these for surface grip.
+	if not _terrains_found:
+		_grip_terrains = _find_grip_terrains()
+		_terrains_found = true
+
 	var space := get_world_3d().direct_space_state
 	for w in wheels:
 		w.steer_angle = -_steer * deg_to_rad(spec.max_steer_deg) if w.steered else 0.0
@@ -85,7 +93,7 @@ func _physics_process(delta: float) -> void:
 		if w.is_rear:
 			brake_t += input.handbrake * spec.handbrake_torque
 			w.lat_grip_scale = lerpf(1.0, spec.handbrake_grip, input.handbrake)
-		w.tick(self, spec, space, drive_t, brake_t, delta)
+		w.tick(self, spec, space, drive_t, brake_t, delta, _grip_terrains)
 
 	_update_telemetry(input, delta)
 	_lamps.apply(input.brake_lamp, input.lights, input.turn_left, input.turn_right)
@@ -116,6 +124,28 @@ func _make_telemetry() -> VehicleTelemetry:
 ## never fork _physics_process / _update_telemetry.
 func _tick_extras(_input: InputRouter.VehicleInput, _delta: float) -> void:
 	pass
+
+
+## Collect the painted terrains under the owning level for the wheels' surface-grip query.
+## Walks up to the level (duck-typed by set_vehicle) then scans its subtree for the terrain
+## contract (grip_at + contains_xz) — no HeightmapTerrain / Level type dependency.
+func _find_grip_terrains() -> Array[Node]:
+	var out: Array[Node] = []
+	var root := get_parent()
+	while root != null and not root.has_method("set_vehicle"):
+		root = root.get_parent()
+	if root == null:
+		root = get_parent()   # not under a Level (e.g. a test rig): scan the immediate parent
+	if root != null:
+		_collect_grip_terrains(root, out)
+	return out
+
+
+static func _collect_grip_terrains(node: Node, out: Array[Node]) -> void:
+	if node.has_method("grip_at") and node.has_method("contains_xz"):
+		out.append(node)
+	for child in node.get_children():
+		_collect_grip_terrains(child, out)
 
 
 func _update_telemetry(input: InputRouter.VehicleInput, delta: float) -> void:

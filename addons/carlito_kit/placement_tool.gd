@@ -203,18 +203,105 @@ func _commit(world_xform: Transform3D) -> void:
 	if node == null:
 		return
 	node.name = _armed_name.to_pascal_case()
-	# AuthoringRoot may be translated; store the placement as a local transform under it.
+	# New placements live in a per-kit "<Kit>Props" folder (identity transform under
+	# AuthoringRoot) so the AuthoringRoot child list stays short and grouped by kit.
+	var folder := _find_or_make_props_folder(authoring, _armed_kit, scene_root)
+	# AuthoringRoot may be translated; the folder is at identity, so the stored local
+	# transform is the same as it would be directly under AuthoringRoot.
 	var local := (authoring as Node3D).global_transform.affine_inverse() * world_xform
 
 	# custom_context pins the action to the edited scene's undo history — without it the
 	# manager infers the global history from the orphan node and errors "history mismatch".
 	_undo.create_action("Place " + _armed_name, UndoRedo.MERGE_DISABLE, scene_root)
-	_undo.add_do_method(authoring, "add_child", node)
+	_undo.add_do_method(folder, "add_child", node)
 	_undo.add_do_method(node, "set_owner", scene_root)
 	_undo.add_do_property(node, "transform", local)
 	_undo.add_do_reference(node)
-	_undo.add_undo_method(authoring, "remove_child", node)
+	_undo.add_undo_method(folder, "remove_child", node)
 	_undo.commit_action()
+
+
+## Find-or-create the per-kit "<Kit>Props" folder directly under AuthoringRoot (identity
+## transform, owned by the scene). Missing folders are created in their own undo action
+## (same pattern as _create_gridmap), so identity folders keep local transforms unchanged.
+func _find_or_make_props_folder(authoring: Node, kit: String, scene_root: Node) -> Node3D:
+	var folder_name := "%sProps" % kit.to_pascal_case()
+	var existing := _find_props_folder(authoring, folder_name)
+	if existing != null:
+		return existing
+	var folder := Node3D.new()
+	folder.name = folder_name
+	_undo.create_action("Add %s folder" % folder_name, UndoRedo.MERGE_DISABLE, scene_root)
+	_undo.add_do_method(authoring, "add_child", folder)
+	_undo.add_do_method(folder, "set_owner", scene_root)
+	_undo.add_do_reference(folder)
+	_undo.add_undo_method(authoring, "remove_child", folder)
+	_undo.commit_action()
+	return folder
+
+
+## Reorganize an existing level: move every KitPiece that is a DIRECT child of AuthoringRoot
+## into its per-kit "<Kit>Props" folder (created as needed). One undo action; the folders
+## sit at identity so local transforms are preserved without touching them. GridMaps,
+## RoadPaths, scatter nodes, folders, and pieces whose kit isn't derivable stay put.
+func tidy_authoring() -> void:
+	var scene_root := EditorInterface.get_edited_scene_root()
+	if scene_root == null:
+		push_warning("Kit: open a level scene before tidying.")
+		return
+	var authoring := _find_authoring(scene_root)
+	if authoring == null:
+		push_warning("Kit: this scene has no AuthoringRoot to tidy.")
+		return
+
+	# Loose direct-child pieces and the folder each should move into.
+	var moves := []      # [ {piece, folder_name} ]
+	var needed := {}     # folder_name -> true, for folders that must be created
+	for child in authoring.get_children():
+		if not child.has_method("is_carlito_kit_piece"):
+			continue
+		var kit := _piece_kit(child)
+		if kit.is_empty():
+			continue
+		var folder_name := "%sProps" % kit.to_pascal_case()
+		moves.append({"piece": child, "folder_name": folder_name})
+		if _find_props_folder(authoring, folder_name) == null:
+			needed[folder_name] = true
+	if moves.is_empty():
+		print("Kit: nothing to tidy — no loose kit pieces under AuthoringRoot.")
+		return
+
+	_undo.create_action("Tidy authoring", UndoRedo.MERGE_DISABLE, scene_root)
+	# DO (forward): create the missing folders, then move each piece into its folder.
+	var new_folders: Array[Node3D] = []
+	var folder_by_name := {}
+	for folder_name in needed:
+		var folder := Node3D.new()
+		folder.name = folder_name
+		folder_by_name[folder_name] = folder
+		new_folders.append(folder)
+		_undo.add_do_method(authoring, "add_child", folder)
+		_undo.add_do_method(folder, "set_owner", scene_root)
+		_undo.add_do_reference(folder)
+	for m in moves:
+		var fn: String = m.folder_name
+		m["folder"] = folder_by_name[fn] if folder_by_name.has(fn) \
+				else _find_props_folder(authoring, fn)
+	for m in moves:
+		_undo.add_do_method(authoring, "remove_child", m.piece)
+		_undo.add_do_method(m.folder, "add_child", m.piece)
+		_undo.add_do_method(m.piece, "set_owner", scene_root)
+	# UNDO executes in reverse registration order. Register folder removals FIRST so they
+	# run LAST; register each piece as [setowner, add-to-authoring, remove-from-folder] so
+	# it reverses to [remove-from-folder, add-to-authoring, setowner] — remove before add.
+	for folder in new_folders:
+		_undo.add_undo_method(authoring, "remove_child", folder)
+	for m in moves:
+		_undo.add_undo_method(m.piece, "set_owner", scene_root)
+		_undo.add_undo_method(authoring, "add_child", m.piece)
+		_undo.add_undo_method(m.folder, "remove_child", m.piece)
+	_undo.commit_action()
+	print("Kit: tidied %d piece(s) into per-kit folders." % moves.size())
 
 
 # ------------------------------------------------------------------ palette tiles
@@ -297,6 +384,25 @@ static func _find_authoring(node: Node) -> Node:
 		if found != null:
 			return found
 	return null
+
+
+## The identity "<Kit>Props" folder directly under AuthoringRoot, or null. Guards against
+## matching a placed piece that happens to share the name (duck-typed, never class_name).
+static func _find_props_folder(authoring: Node, folder_name: String) -> Node3D:
+	for child in authoring.get_children():
+		if child is Node3D and child.name == folder_name \
+				and not child.has_method("is_carlito_kit_piece"):
+			return child
+	return null
+
+
+## The kit of a placed prefab, from the parent dir of its scene_file_path
+## (res://kit/prefabs/<kit>/<name>.tscn). "" if it wasn't instanced from a kit prefab.
+static func _piece_kit(piece: Node) -> String:
+	var path := piece.scene_file_path
+	if path.is_empty():
+		return ""
+	return path.get_base_dir().get_file()
 
 
 static func _find_gridmap(node: Node, meshlib_path: String) -> GridMap:

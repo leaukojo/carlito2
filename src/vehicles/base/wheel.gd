@@ -27,6 +27,7 @@ var compression := 0.0
 var in_contact := false
 var suspension_force := 0.0
 var slip := 0.0         ## |longitudinal slip ratio|, for telemetry
+var surface_grip := 1.0  ## grip multiplier from the painted terrain under the contact (F3 readout)
 
 var _prev_compression := 0.0
 var _spin_angle := 0.0
@@ -48,10 +49,12 @@ func reset() -> void:
 	in_contact = false
 	suspension_force = 0.0
 	slip = 0.0
+	surface_grip = 1.0
 
 
 func tick(body: RigidBody3D, spec: VehicleSpec, space: PhysicsDirectSpaceState3D,
-		drive_torque: float, brake_torque: float, delta: float) -> void:
+		drive_torque: float, brake_torque: float, delta: float,
+		grip_terrains: Array[Node] = []) -> void:
 	var xform := body.global_transform
 	var up := xform.basis.y
 	var ray_from := xform * anchor
@@ -66,6 +69,7 @@ func tick(body: RigidBody3D, spec: VehicleSpec, space: PhysicsDirectSpaceState3D
 		_prev_compression = 0.0
 		suspension_force = 0.0
 		slip = 0.0
+		surface_grip = 1.0
 		_integrate_spin(drive_torque, 0.0, brake_torque, spec, delta)
 		_update_visual(spec, delta)
 		return
@@ -73,6 +77,15 @@ func tick(body: RigidBody3D, spec: VehicleSpec, space: PhysicsDirectSpaceState3D
 	var contact_point: Vector3 = hit.position
 	var normal: Vector3 = hit.normal
 	var corner_mass := spec.mass / maxf(1.0, spec.wheel_positions.size())
+
+	# Painted-terrain grip under the contact XZ: scales the tire mu below. Lookup is
+	# XZ-based and collider-independent, so it also works where the wheel rests on a
+	# conformed road welded over the terrain. Duck-typed (grip_at/contains_xz) — no type dep.
+	surface_grip = 1.0
+	for terrain in grip_terrains:
+		if terrain.contains_xz(contact_point):
+			surface_grip = terrain.grip_at(contact_point)
+			break
 
 	# Suspension: spring + damper along the body's up axis at the contact point.
 	compression = clampf(ray_len - ray_from.distance_to(contact_point), 0.0, spec.rest_length)
@@ -97,12 +110,18 @@ func tick(body: RigidBody3D, spec: VehicleSpec, space: PhysicsDirectSpaceState3D
 	var v_long := vel.dot(forward)
 	var v_lat := vel.dot(side)
 
+	# Effective tire coefficients: spec grip scaled by the painted-surface grip. Scaling mu
+	# only shrinks force (always stabilizing) — the one-tick velocity clamps below cap by
+	# momentum, independent of mu, so they stay fully in force.
+	var mu_long := spec.mu_long * surface_grip
+	var mu_lat := spec.mu_lat * lat_grip_scale * surface_grip
+
 	# Longitudinal: slip ratio vs the grip curve, capped by the force that would
 	# cancel the slip velocity in one tick (low-speed stability).
 	var slip_vel := omega * spec.wheel_radius - v_long
 	var slip_ratio := slip_vel / maxf(absf(v_long), LOW_SPEED_FLOOR)
 	slip = absf(slip_ratio)
-	var f_long := signf(slip_ratio) * spec.mu_long * suspension_force \
+	var f_long := signf(slip_ratio) * mu_long * suspension_force \
 			* VehicleSpec.sample_curve(spec.grip_curve, absf(slip_ratio))
 	f_long = clampf(f_long,
 			-corner_mass * absf(slip_vel) / delta, corner_mass * absf(slip_vel) / delta)
@@ -110,14 +129,13 @@ func tick(body: RigidBody3D, spec: VehicleSpec, space: PhysicsDirectSpaceState3D
 	# Lateral: slip angle vs the same curve, capped by the force that would zero
 	# lateral velocity in one tick (kills parked-car jitter, the classic 60 Hz failure).
 	var slip_angle := atan2(absf(v_lat), maxf(absf(v_long), LOW_SPEED_FLOOR))
-	var mu_lat := spec.mu_lat * lat_grip_scale
 	var f_lat := -signf(v_lat) * mu_lat * suspension_force \
 			* VehicleSpec.sample_curve(spec.grip_curve, slip_angle)
 	f_lat = clampf(f_lat,
 			-corner_mass * absf(v_lat) / delta, corner_mass * absf(v_lat) / delta)
 
 	# Friction circle: combined demand cannot exceed the grip budget.
-	var budget_long := spec.mu_long * suspension_force
+	var budget_long := mu_long * suspension_force
 	var budget_lat := mu_lat * suspension_force
 	if budget_long > 0.0 and budget_lat > 0.0:
 		var demand := sqrt(pow(f_long / budget_long, 2.0) + pow(f_lat / budget_lat, 2.0))

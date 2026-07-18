@@ -45,27 +45,41 @@ func test_remap01_endpoints_and_clamp() -> void:
 # --- terrace ---
 
 
-func test_terrace_off_below_two_steps() -> void:
-	assert_float(Gen.terrace(0.37, 0, 0.6)).is_equal(0.37)
-	assert_float(Gen.terrace(0.37, 1, 0.6)).is_equal(0.37)
+func test_terrace_off_when_step_out_of_range() -> void:
+	# step01 <= 0 disables terracing; step01 >= 1 (band taller than the terrain) too.
+	assert_float(Gen.terrace(0.37, 0.0, 0.6)).is_equal(0.37)
+	assert_float(Gen.terrace(0.37, 1.0, 0.6)).is_equal(0.37)
+	assert_float(Gen.terrace(0.37, 1.5, 0.6)).is_equal(0.37)
 
 
 func test_terrace_flat_zone_snaps_to_plateau() -> void:
-	# 4 steps, half of each band flat: band [0.25, 0.5) is plateau 0.25 until the ramp.
-	# h = 0.30 -> frac 0.2, inside the flat half -> stays at the plateau.
-	assert_float(Gen.terrace(0.30, 4, 0.5)).is_equal_approx(0.25, 0.001)
-	assert_float(Gen.terrace(0.27, 4, 0.5)).is_equal_approx(0.25, 0.001)
+	# step01 = 0.25, half of each band flat: band [0.25, 0.5) is the plateau whose flat
+	# level is floor-snapped to the 8-bit grid, floor(1*0.25*255)/255 = 63/255, until the
+	# ramp. h = 0.30 -> t 1.2, frac 0.2, inside the flat half -> stays at the plateau.
+	assert_float(Gen.terrace(0.30, 0.25, 0.5)).is_equal_approx(63.0 / 255.0, 0.001)
+	assert_float(Gen.terrace(0.27, 0.25, 0.5)).is_equal_approx(63.0 / 255.0, 0.001)
 
 
-func test_terrace_preserves_band_centres() -> void:
-	# The ramp midpoint maps to itself, so terracing never shifts overall relief.
-	assert_float(Gen.terrace(0.375, 4, 0.5)).is_equal_approx(0.375, 0.001)
-	assert_float(Gen.terrace(0.625, 4, 0.5)).is_equal_approx(0.625, 0.001)
+func test_terrace_flat_levels_land_on_grid() -> void:
+	# Every flat plateau level must be exactly floor(f*step01*255)/255 — the grid-aligned
+	# plane painted tiles rest on. Probe the flat zone (frac small) of several bands.
+	var step01 := 0.2
+	for k in [1, 2, 3, 4]:
+		var h := (float(k) + 0.02) * step01           # just inside band k's flat zone
+		var expected := floorf(float(k) * step01 * 255.0) / 255.0
+		assert_float(Gen.terrace(h, step01, 0.6)).is_equal_approx(expected, 1e-6)
+
+
+func test_terrace_preserves_band_centres_within_grid() -> void:
+	# The ramp midpoint still maps close to itself (relief preserved); the grid floor-snap
+	# only nudges it down by < 1/255, so it lands within a grid step of h.
+	assert_float(Gen.terrace(0.375, 0.25, 0.5)).is_equal_approx(0.375, 1.0 / 255.0 + 0.001)
+	assert_float(Gen.terrace(0.625, 0.25, 0.5)).is_equal_approx(0.625, 1.0 / 255.0 + 0.001)
 
 
 func test_terrace_endpoints() -> void:
-	assert_float(Gen.terrace(0.0, 4, 0.5)).is_equal(0.0)
-	assert_float(Gen.terrace(1.0, 4, 0.5)).is_equal(1.0)
+	assert_float(Gen.terrace(0.0, 0.25, 0.5)).is_equal(0.0)
+	assert_float(Gen.terrace(1.0, 0.25, 0.5)).is_equal(1.0)
 
 
 # --- radius ---
@@ -153,14 +167,6 @@ func test_presets_scale_amplitude() -> void:
 	assert_float(hills_max).is_less_equal(0.5 + 0.01)
 	assert_float(plains_max).is_less_equal(0.15 + 0.01)
 	assert_float(plains_max).is_greater(0.0)
-
-
-func test_flat_preset_is_all_zero() -> void:
-	# FLAT is a sea-level blank slate: every pixel exactly 0 regardless of seed/terracing.
-	var img := Gen.generate_heights(Gen.Preset.FLAT, 7, 20.0, 3, 0.55, 0.95, 9, 9, 4, 0.6)
-	for y in 9:
-		for x in 9:
-			assert_float(img.get_pixel(x, y).r).is_equal(0.0)
 
 
 func test_is_uniform() -> void:

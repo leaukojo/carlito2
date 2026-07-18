@@ -9,6 +9,12 @@ extends Label
 const REFRESH := 0.25  ## s between text rebuilds (per-frame churn is pointless and noisy)
 
 var _accum := 0.0
+var _level: Node  ## active level, for the per-wheel surface-grip readout (set by the shell)
+
+
+## The shell rebinds this whenever it swaps the level/vehicle (mirrors Dashboard.bind).
+func set_level(level: Node) -> void:
+	_level = level
 
 
 func _ready() -> void:
@@ -51,3 +57,18 @@ func _refresh() -> void:
 			+ Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)) * 1000.0
 	text = "FPS %d  (%.1f ms)\ndraw calls %d\nprimitives %d\nVRAM %.1f MB\nnodes %d" % [
 		Engine.get_frames_per_second(), frame_ms, draw_calls, prims, vram, nodes]
+	text += _grip_line()
+
+
+## Per-wheel painted-surface grip of the active vehicle (1.00 on unpainted ground), or "" when
+## there's no vehicle / it has no wheels (the boat). Wheel order is FL FR RL RR.
+func _grip_line() -> String:
+	if _level == null:
+		return ""
+	var vehicle: BaseVehicle = _level.get("vehicle")
+	if vehicle == null or vehicle.wheels.is_empty():
+		return ""
+	var parts := PackedStringArray()
+	for w in vehicle.wheels:
+		parts.append("%.2f" % w.surface_grip)
+	return "\ngrip " + " ".join(parts)

@@ -25,6 +25,13 @@ func _ramp_x() -> ImageTexture:
 	return _tex(img)
 
 
+# Uniform RGBA splat texture (float format so weights are exact — see the class doc gotcha).
+func _splat(color: Color) -> ImageTexture:
+	var img := Image.create(2, 2, false, Image.FORMAT_RGBAF)
+	img.fill(color)
+	return _tex(img)
+
+
 # In-tree so global_position resolves (height_at returns world-space Y).
 func _terrain(size: Vector2, height: float, pos := Vector3.ZERO) -> HeightmapTerrain:
 	var t: HeightmapTerrain = auto_free(TerrainScript.new())
@@ -113,3 +120,54 @@ func test_contains_xz_extent() -> void:
 	assert_bool(t.contains_xz(Vector3(11.9, 0, 1.9))).is_true()
 	assert_bool(t.contains_xz(Vector3(12.5, 0, 0))).is_false()
 	assert_bool(t.contains_xz(Vector3(10, 0, -2.5))).is_false()
+
+
+# --- splat-paint friction: get_splat_weights + grip_at ---
+# Only binary-exact float32 values (0, 0.25, 0.5, 0.75, 1.0) so is_equal is safe.
+
+
+func test_splat_weights_single_channel() -> void:
+	var t := _terrain(Vector2(4, 4), 10.0)
+	t.splatmap = _splat(Color(1, 0, 0, 0))   # channel 0 fully painted
+	var w := t.get_splat_weights(Vector3.ZERO)
+	assert_int(w.size()).is_equal(8)
+	assert_float(w[0]).is_equal(1.0)
+	assert_float(w[1]).is_equal(0.0)
+	assert_float(w[3]).is_equal(0.0)
+	assert_float(w[4]).is_equal(0.0)   # no splatmap2 -> channels 4..7 zero
+
+
+func test_splat_weights_blend() -> void:
+	var t := _terrain(Vector2(4, 4), 10.0)
+	t.splatmap = _splat(Color(0.5, 0.5, 0, 0))
+	var w := t.get_splat_weights(Vector3.ZERO)
+	assert_float(w[0]).is_equal(0.5)
+	assert_float(w[1]).is_equal(0.5)
+
+
+func test_grip_default_table_is_neutral() -> void:
+	var t := _terrain(Vector2(4, 4), 10.0)
+	t.splatmap = _splat(Color(1, 0, 0, 0))   # painted, but default channel_grip is all 1.0
+	assert_float(t.grip_at(Vector3.ZERO)).is_equal(1.0)
+
+
+func test_grip_scales_by_channel() -> void:
+	var t := _terrain(Vector2(4, 4), 10.0)
+	t.splatmap = _splat(Color(1, 0, 0, 0))
+	t.channel_grip = PackedFloat32Array([0.25, 1, 1, 1, 1, 1, 1, 1])
+	assert_float(t.grip_at(Vector3.ZERO)).is_equal(0.25)
+
+
+func test_grip_blends_channels() -> void:
+	var t := _terrain(Vector2(4, 4), 10.0)
+	t.splatmap = _splat(Color(0.5, 0.5, 0, 0))
+	t.channel_grip = PackedFloat32Array([0.5, 1, 1, 1, 1, 1, 1, 1])
+	# (0.5*0.5 + 0.5*1.0) / (0.5 + 0.5) = 0.75
+	assert_float(t.grip_at(Vector3.ZERO)).is_equal(0.75)
+
+
+func test_grip_unpainted_is_one() -> void:
+	var t := _terrain(Vector2(4, 4), 10.0)
+	assert_float(t.grip_at(Vector3.ZERO)).is_equal(1.0)   # no splatmap
+	t.splatmap = _splat(Color(0, 0, 0, 0))                # all-zero weights: still neutral
+	assert_float(t.grip_at(Vector3.ZERO)).is_equal(1.0)

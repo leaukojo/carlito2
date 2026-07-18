@@ -8,6 +8,7 @@ extends Node3D
 @onready var _hint: Label = $UI/Label
 @onready var _dashboard: Dashboard = $UI/Dashboard
 @onready var _touch: TouchControls = $UI/TouchControls
+@onready var _debug: DebugOverlay = $UI/DebugOverlay
 
 var _level: Node3D = null
 var _select: LevelSelect = null
@@ -72,6 +73,7 @@ func _load_level(scene_path: String) -> void:
 ## garage swaps the vehicle (its type drives which dashboard cluster is built).
 func _bind_hud() -> void:
 	_dashboard.bind(_level)
+	_debug.set_level(_level)  # F3 overlay reads the active vehicle's per-wheel surface grip
 	Bridge.bind(_level)  # telemetry source for the ~20 Hz outbound publish (web only)
 
 

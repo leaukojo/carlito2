@@ -1,4 +1,4 @@
-[gd_scene load_steps=33 format=3]
+[gd_scene load_steps=32 format=3]
 
 [ext_resource type="Script" path="res://src/levels/base/level.gd" id="1_level"]
 [ext_resource type="Resource" path="res://src/levels/gym/gym_info.tres" id="2_info"]
@@ -10,6 +10,8 @@
 [ext_resource type="Texture2D" path="res://src/levels/gym/bumps_mixed.png" id="8_bmixed"]
 [ext_resource type="Script" path="res://src/water/water_surface.gd" id="9_water"]
 [ext_resource type="Environment" path="res://src/levels/base/default_env.tres" id="10_env"]
+[ext_resource type="Texture2D" path="res://src/levels/gym/friction_pad_splat.png" id="11_padsplat"]
+[ext_resource type="Shader" path="res://kit/terrain/terrain_splat.gdshader" id="12_splatsh"]
 
 [sub_resource type="StandardMaterial3D" id="GroundMat"]
 albedo_color = Color(0.34, 0.42, 0.29, 1)
@@ -35,23 +37,11 @@ albedo_color = Color(0.4, 0.36, 0.28, 1)
 [sub_resource type="StandardMaterial3D" id="GrassMat"]
 albedo_color = Color(0.3, 0.45, 0.24, 1)
 
-[sub_resource type="BoxShape3D" id="StripShape"]
-size = Vector3(24, 0.12, 80)
-
-[sub_resource type="BoxMesh" id="StripMesh"]
-size = Vector3(24, 0.12, 80)
-
-[sub_resource type="StandardMaterial3D" id="IceMat"]
-albedo_color = Color(0.6, 0.78, 0.9, 1)
-
-[sub_resource type="PhysicsMaterial" id="IcePhys"]
-friction = 0.1
-
-[sub_resource type="StandardMaterial3D" id="MudMat"]
-albedo_color = Color(0.42, 0.3, 0.18, 1)
-
-[sub_resource type="PhysicsMaterial" id="MudPhys"]
-friction = 0.6
+[sub_resource type="ShaderMaterial" id="PadMat"]
+shader = ExtResource("12_splatsh")
+shader_parameter/grass_color = Color(0.6, 0.78, 0.9, 1)
+shader_parameter/dirt_color = Color(0.42, 0.3, 0.18, 1)
+shader_parameter/splatmap = ExtResource("11_padsplat")
 
 [sub_resource type="StandardMaterial3D" id="ConeMat"]
 albedo_color = Color(0.95, 0.45, 0.05, 1)
@@ -159,29 +149,15 @@ shape = SubResource("RampShape")
 mesh = SubResource("RampMesh")
 surface_material_override/0 = SubResource("RampMat")
 
-[node name="FrictionStrips" type="Node3D" parent="."]
-
-[node name="Ice" type="StaticBody3D" parent="FrictionStrips"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0, -45)
-physics_material_override = SubResource("IcePhys")
-
-[node name="Collision" type="CollisionShape3D" parent="FrictionStrips/Ice"]
-shape = SubResource("StripShape")
-
-[node name="Mesh" type="MeshInstance3D" parent="FrictionStrips/Ice"]
-mesh = SubResource("StripMesh")
-surface_material_override/0 = SubResource("IceMat")
-
-[node name="Mud" type="StaticBody3D" parent="FrictionStrips"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -45)
-physics_material_override = SubResource("MudPhys")
-
-[node name="Collision" type="CollisionShape3D" parent="FrictionStrips/Mud"]
-shape = SubResource("StripShape")
-
-[node name="Mesh" type="MeshInstance3D" parent="FrictionStrips/Mud"]
-mesh = SubResource("StripMesh")
-surface_material_override/0 = SubResource("MudMat")
+[node name="FrictionPad" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, -45)
+script = ExtResource("4_terrain")
+terrain_size = Vector2(48, 80)
+height = 0.0
+material = SubResource("PadMat")
+splatmap = ExtResource("11_padsplat")
+channel_names = PackedStringArray("Ice", "Mud", "Sand", "Rock", "Snow", "Mud", "Asphalt", "Gravel")
+channel_grip = PackedFloat32Array(0.12, 0.55, 1, 1, 1, 1, 1, 1)
 
 [node name="Slalom" type="Node3D" parent="."]
 
@@ -342,8 +318,8 @@ pixel_size = 0.02
 billboard = 1
 font_size = 48
 outline_size = 16
-text = "Ice strip
-PhysicsMaterial friction 0.1"
+text = "Ice zone
+splat channel grip 0.12"
 
 [node name="MudLabel" type="Label3D" parent="Labels"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 1.8, -45)
@@ -351,8 +327,8 @@ pixel_size = 0.02
 billboard = 1
 font_size = 48
 outline_size = 16
-text = "Mud strip
-PhysicsMaterial friction 0.6"
+text = "Mud zone
+splat channel grip 0.55"
 
 [node name="SlalomLabel" type="Label3D" parent="Labels"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -92)
