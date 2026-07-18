@@ -11,6 +11,7 @@ signal close_requested
 signal smooth_corners_changed(on: bool)
 signal snap_ports_changed(on: bool)
 signal snap_ends_requested
+signal reverse_requested
 signal draw_submode_changed(mode: int)
 signal angle_snap_changed(step_deg: float)
 
@@ -39,6 +40,7 @@ var _smooth: CheckBox
 var _snap_ports: CheckBox
 var _close: Button
 var _snap_ends: Button
+var _reverse: Button
 var _has_road := false
 
 
@@ -145,6 +147,13 @@ func _build() -> void:
 	_snap_ends.pressed.connect(func(): snap_ends_requested.emit())
 	add_child(_snap_ends)
 
+	_reverse = Button.new()
+	_reverse.text = "Reverse direction"
+	_reverse.tooltip_text = "Reverse the curve's point order so Draw continues from " \
+			+ "the other end (the ribbon itself is unchanged). One undo step."
+	_reverse.pressed.connect(func(): reverse_requested.emit())
+	add_child(_reverse)
+
 	var hint := Label.new()
 	hint.text = "Select a RoadPath, pick Draw, then click the ground in the 3D view " \
 			+ "to append curve points (each click is one undo step). Shapes: Free " \
@@ -207,6 +216,7 @@ func set_has_road(has: bool) -> void:
 	_snap_ports.disabled = not has
 	_close.disabled = not has
 	_snap_ends.disabled = not has
+	_reverse.disabled = not has
 	set_radius_display("", false)
 	if has:
 		_status.text = "RoadPath selected — ready to draw."

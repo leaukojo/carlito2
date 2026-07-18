@@ -24,12 +24,12 @@ extends Node3D
 ## NOTE: no editor-only type annotations anywhere in this @tool script (they would break
 ## the exported build's parse — see HeightmapTerrain._commit_generated).
 
-## Conform samples the curve at this fixed arc step (m): deterministic and independent
-## of the render tessellation, so the flatten result never depends on view settings.
-const CONFORM_STEP := 0.5
-const ASPHALT_PROFILE_PATH := "res://kit/roads/asphalt_profile.tres"
+## Default for fresh roads: the city preset (its flat colors are sampled from the
+## roads-GridMap tiles' colormap swatches, so spline roads match tile-city streets
+## out of the box; asphalt/gravel presets remain for highways/tracks).
+const DEFAULT_PROFILE_PATH := "res://kit/roads/city_profile.tres"
 
-## Cross-section + materials. Auto-assigned the asphalt preset in the editor when null
+## Cross-section + materials. Auto-assigned the city preset in the editor when null
 ## via a plain property set, so it serializes as an ExtResource and gather_bake_inputs
 ## hash-tracks it (a preload export default equal to the stored value would be omitted
 ## from the .tscn — invisible to the input hash). The baker errors on a null profile.
@@ -73,6 +73,10 @@ const ASPHALT_PROFILE_PATH := "res://kit/roads/asphalt_profile.tres"
 ## their handles. Editor-only, one undoable action.
 @warning_ignore("unused_private_class_variable")
 @export_tool_button("Smooth curve (Catmull-Rom)") var _smooth_action := _smooth_curve
+## Reverse the curve's point order so Draw mode appends from the other end (the
+## ribbon itself is direction-invariant). Editor-only, one undoable action.
+@warning_ignore("unused_private_class_variable")
+@export_tool_button("Reverse direction") var _reverse_action := _reverse_curve
 
 @export_group("Conform terrain")
 ## Blend band (m) beyond the full ribbon half-width over which the flatten fades out.
@@ -99,7 +103,7 @@ func _ready() -> void:
 	_ensure_path()
 	if Engine.is_editor_hint() and profile == null:
 		# plain property set -> serializes as ExtResource (see the export's doc)
-		profile = load(ASPHALT_PROFILE_PATH)
+		profile = load(DEFAULT_PROFILE_PATH)
 	_rebuild_road()
 
 
@@ -366,6 +370,50 @@ func _set_curve_handles(ins: PackedVector3Array, outs: PackedVector3Array) -> vo
 		path.curve.set_point_out(i, outs[i])
 
 
+func _reverse_curve() -> void:
+	if not Engine.is_editor_hint():
+		return
+	var path := get_node_or_null(^"Path") as Path3D
+	if path == null or path.curve == null or path.curve.point_count < 2:
+		push_warning("RoadPath: the curve needs at least 2 points to reverse.")
+		return
+	# Untyped singleton fetch — the HeightmapTerrain._commit_generated rule.
+	var undo_redo = Engine.get_singleton(&"EditorInterface").get_editor_undo_redo()
+	undo_redo.create_action("Reverse road '%s' direction" % name)
+	undo_redo.add_do_method(self, &"_apply_reverse")
+	undo_redo.add_undo_method(self, &"_apply_reverse")
+	undo_redo.commit_action()
+
+
+## Undo/redo helper: reverse the curve's point order in place (its own inverse, so
+## do and undo share it). Reversing a Bezier segment (A, A+out_a, B+in_b, B) yields
+## (B, B+in_b, A+out_a, A): per point the handles SWAP (in <-> out), no negation.
+## Tilts ride their point. RoadBuilder's frames flip the right vector with the
+## tangent, so the ribbon's winding/geometry are invariant (tested in test_road.gd) —
+## only the draw tool's append end moves, which is the point of the button.
+func _apply_reverse() -> void:
+	var path := get_node_or_null(^"Path") as Path3D
+	if path == null or path.curve == null:
+		return
+	var curve := path.curve
+	var n := curve.point_count
+	var pos := PackedVector3Array()
+	var ins := PackedVector3Array()
+	var outs := PackedVector3Array()
+	var tilts := PackedFloat32Array()
+	for i in n:
+		var j := n - 1 - i
+		pos.append(curve.get_point_position(j))
+		ins.append(curve.get_point_out(j))
+		outs.append(curve.get_point_in(j))
+		tilts.append(curve.get_point_tilt(j))
+	for i in n:
+		curve.set_point_position(i, pos[i])
+		curve.set_point_in(i, ins[i])
+		curve.set_point_out(i, outs[i])
+		curve.set_point_tilt(i, tilts[i])
+
+
 # --------------------------------------------------------------- conform terrain
 # Editor-only, destructive-by-button (the terrain-Generate discipline). The heavy lifting
 # is pure (RoadBuilder.conform_heights); the PNG write / reimport / undo action reuses
@@ -390,13 +438,32 @@ func _conform_terrain() -> void:
 		push_warning("RoadPath: the curve has no length.")
 		return
 
-	# Deterministic world-space centerline samples at a fixed arc step (incl. endpoint).
+	# World-space centerline samples AT the extrusion's ring offsets, so conform
+	# targets the exact chordal ribbon surface (conform_heights lerps between
+	# samples = the ribbon's linear run between rings). A fixed fine step here would
+	# target the analytic curve instead, which sits ABOVE the chords over a crest
+	# (the tip-over into a descent) by up to ~seg_len * seg_angle / 8 — more than
+	# conform_epsilon, so the flattened terrain poked through the ribbon exactly
+	# where roads start downhill. adaptive_offsets is deterministic (curve + the two
+	# segment params), so the flatten result still never depends on view settings.
 	var to_world := global_transform * path.transform
-	var count := maxi(2, int(ceil(length / CONFORM_STEP)) + 1)
+	var offsets := RoadBuilder.adaptive_offsets(curve, max_segment_length,
+			max_segment_angle_deg)
 	var world := PackedVector3Array()
-	for i in count:
-		var o := length * float(i) / float(count - 1)
+	for o in offsets:
 		world.append(to_world * curve.sample_baked(o))
+	# The actual deck: a flat full-width strip extruded on the SAME frames as the
+	# ribbon (incl. seam/end tangents, fold clamp and banking). conform_heights
+	# rasterizes its triangles as the plateau — the centerline projection alone
+	# mis-heights the deck edges of segments that are both steep and yawing (the
+	# ruled surface shifts along-slope by up to half_width * sin(swing/2) * grade).
+	var fw: float = profile.full_half_width()
+	var deck_surfaces: Dictionary = RoadBuilder.extrude(curve,
+			PackedVector2Array([Vector2(-fw, 0), Vector2(fw, 0)]),
+			PackedInt32Array([0]), offsets, banking)
+	var deck_world := PackedVector3Array()
+	for v in RoadBuilder.faces_from_surfaces(deck_surfaces):
+		deck_world.append(to_world * v)
 
 	var terrains: Array[Node] = []
 	ScatterBase.find_terrains_under(owner if owner != null else self, terrains)
@@ -426,13 +493,19 @@ func _conform_terrain() -> void:
 					w.z - t3d.global_position.z, clampf(tn, 0.0, 1.0)))
 		if clamped:
 			push_warning("RoadPath: parts of '%s' sit outside terrain '%s's height range — the flatten clamps there." % [name, t.name])
+		var deck := PackedVector3Array()
+		for w in deck_world:
+			deck.append(Vector3(w.x - t3d.global_position.x,
+					w.z - t3d.global_position.z,
+					clampf((w.y - conform_epsilon - t3d.global_position.y) / amp,
+							0.0, 1.0)))
 		var dims: Vector2i = t._grid_dims()
 		# Plateau spans the FULL ribbon half-width (skirt included): terrain under the
 		# skirt sits at a predictable road - epsilon and always crosses the skirt on
 		# its slope; the falloff to original terrain starts beyond the ribbon.
 		var dirty := RoadBuilder.conform_heights(img, samples,
 				profile.full_half_width(), conform_falloff,
-				float(dims.x - 1), float(dims.y - 1))
+				float(dims.x - 1), float(dims.y - 1), deck)
 		if not dirty.has_area():
 			continue
 		t._commit_generated("Conform terrain to road '%s'" % name,

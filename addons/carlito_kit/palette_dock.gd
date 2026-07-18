@@ -17,6 +17,7 @@ signal prefab_armed(kit: String, name: String)
 signal tile_selected(kit: String, name: String)
 signal settings_changed(random_yaw: bool, snap_enabled: bool, snap_step: float, yaw_deg: float)
 signal autofloor_changed(on: bool)
+signal conform_tiles_requested
 
 # Per kit, ordered families: { kit -> [ { label, items:[ {kit,name,kind,thumb} ] } ] ].
 var _catalog: Dictionary = {}
@@ -212,6 +213,17 @@ func _build_ui() -> void:
 			+ "you don't set the GridMap floor by hand. [ / ] rotate; Ctrl-click erases."
 	_autofloor_btn.toggled.connect(func(on: bool): autofloor_changed.emit(on))
 	toolbar.add_child(_autofloor_btn)
+
+	toolbar.add_child(VSeparator.new())
+
+	var conform_btn := Button.new()
+	conform_btn.text = "Conform terrain"
+	conform_btn.tooltip_text = "Flatten the terrain under every painted tile of the " \
+			+ "road GridMap to the tiles' base height (footprint incl. multi-cell " \
+			+ "overhangs, 4 m fade-out) — the pad-flattening brush pass, automated. " \
+			+ "Destructive; one undo step per terrain."
+	conform_btn.pressed.connect(func(): conform_tiles_requested.emit())
+	toolbar.add_child(conform_btn)
 
 	_apply_kit_snap()  # seed the step from the initial tab's grid
 

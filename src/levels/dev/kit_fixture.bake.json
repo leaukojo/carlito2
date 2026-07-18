@@ -1,7 +1,7 @@
 {
 	"baker_version": 6,
 	"chunk_size": 48.0,
-	"input_hash": "8b703f92a25dfb70d6efb7afcf2379598d52819aa0dd47bf62e03040bd641837",
+	"input_hash": "993d21882a7a7ffe406a432b86e4aba8689f26f5c73a010f368262e534d2ead2",
 	"level": "res://src/levels/dev/kit_fixture.tscn",
 	"stats": {
 		"bodies": 9,

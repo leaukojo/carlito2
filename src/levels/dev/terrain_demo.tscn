@@ -12,6 +12,7 @@
 [ext_resource type="Script" uid="uid://bqwd2fww3l5yg" path="res://src/water/water_surface.gd" id="9_water"]
 [ext_resource type="Script" uid="uid://t88htpmwukbg" path="res://kit/helpers/authoring_root.gd" id="10_40d31"]
 [ext_resource type="Script" uid="uid://cpl5vh8pdc04w" path="res://kit/helpers/road_path.gd" id="11_h35jj"]
+[ext_resource type="Resource" uid="uid://dr65wywfdruc0" path="res://kit/roads/city_profile.tres" id="11_voicv"]
 [ext_resource type="Resource" uid="uid://3r6iaciwp2fk" path="res://kit/roads/asphalt_profile.tres" id="12_40d31"]
 [ext_resource type="Texture2D" uid="uid://qbm7w1a6po7c" path="res://src/levels/dev/terrain_demo_island_splat2.png" id="13_40d31"]
 [ext_resource type="Environment" uid="uid://bjh6g6yntyvh1" path="res://src/levels/base/default_env.tres" id="14_env"]
@@ -28,6 +29,13 @@ _data = {
 "tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 }
 point_count = 14
+
+[sub_resource type="Curve3D" id="Curve3D_voicv"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 4, 0, 0, -24, 30.12, -6, -9.95402, 1.3333141, 0.80156416, 9.9305315, -1.3301679, -0.7996727, 5.517845, 29.515688, 0.46963882, -9.078371, 0.6189593, 4.268997, 12.290983, -0.83799374, -5.77969, 32.694824, 22.525883, -10.565446, -12.258239, 3.2978175, 4.902581, 6.930307, -1.8644512, -2.7717187, 68.859215, 25.197102, -29.315893, -5.6669292, 3.3390312, 3.9905567, 5.2077518, -3.0684776, -3.6672118, 84.69851, 8.535401, -31.363888, 0, 0, 0, 0, 0, 0, 96.6485, 8.823281, -48.884644),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0)
+}
+point_count = 6
 
 [sub_resource type="ShaderMaterial" id="SplatMat"]
 render_priority = 0
@@ -103,11 +111,18 @@ metadata/_editor_floor_ = Vector3(0, 10, 0)
 [node name="RoadPath" type="Node3D" parent="AuthoringRoot" unique_id=584347843]
 script = ExtResource("11_h35jj")
 profile = ExtResource("12_40d31")
-conform_epsilon = 0.4
 metadata/_custom_type_script = "uid://cpl5vh8pdc04w"
 
 [node name="Path" type="Path3D" parent="AuthoringRoot/RoadPath" unique_id=1234200791]
 curve = SubResource("Curve3D_u8elx")
+
+[node name="RoadPath2" type="Node3D" parent="AuthoringRoot" unique_id=1120261279]
+script = ExtResource("11_h35jj")
+profile = ExtResource("11_voicv")
+metadata/_custom_type_script = "uid://cpl5vh8pdc04w"
+
+[node name="Path" type="Path3D" parent="AuthoringRoot/RoadPath2" unique_id=1338968182]
+curve = SubResource("Curve3D_voicv")
 
 [node name="Island" type="StaticBody3D" parent="." unique_id=1504712988]
 script = ExtResource("5_terrain")

@@ -17,6 +17,7 @@ const ScatterPanel := preload("res://addons/carlito_kit/scatter_panel.gd")
 const RoadDrawTool := preload("res://addons/carlito_kit/road_draw_tool.gd")
 const RoadPanel := preload("res://addons/carlito_kit/road_panel.gd")
 const GridMapPaintTool := preload("res://addons/carlito_kit/gridmap_paint_tool.gd")
+const TileConform := preload("res://addons/carlito_kit/tile_conform.gd")
 
 var _strip: EditorExportPlugin
 var _dock: Control
@@ -53,6 +54,9 @@ func _enter_tree() -> void:
 	_dock.tile_selected.connect(_on_tile_selected)
 	_dock.settings_changed.connect(_on_settings_changed)
 	_dock.autofloor_changed.connect(_on_autofloor_changed)
+	_dock.conform_tiles_requested.connect(func():
+		TileConform.conform(_find_road_gridmap(),
+				EditorInterface.get_edited_scene_root()))
 	_tool.yaw_changed.connect(func(deg): _dock.set_yaw_display(deg))
 
 	_brush = TerrainBrush.new(get_undo_redo())
@@ -90,6 +94,7 @@ func _enter_tree() -> void:
 	_road_panel.smooth_corners_changed.connect(func(on): _road_tool.smooth_corners = on)
 	_road_panel.snap_ports_changed.connect(func(on): _road_tool.snap_ports = on)
 	_road_panel.snap_ends_requested.connect(func(): _road_tool.snap_ends())
+	_road_panel.reverse_requested.connect(func(): _road_tool.reverse_road())
 	_road_panel.draw_submode_changed.connect(func(m): _road_tool.set_submode(m))
 	_road_panel.angle_snap_changed.connect(func(deg): _road_tool.angle_snap_deg = deg)
 	_road_tool.draw_status.connect(func(msg): _road_panel.show_warning(msg))

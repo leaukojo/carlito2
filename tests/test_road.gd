@@ -584,6 +584,163 @@ func test_conform_heights_sloped_road_stays_below_ribbon() -> void:
 			assert_bool(stored >= t_proj - step - 1e-4).is_true()
 
 
+## Over a crest (a road tipping over into a descent) the analytic curve rides ABOVE
+## the ribbon's chords, so conform samples must be taken AT the extrusion's
+## adaptive_offsets rings (the RoadPath._conform_terrain convention) — a fixed fine
+## step targets the analytic curve and the flattened terrain pokes through the ribbon.
+## Both samplings share conform_heights; only the sampling differs, like the caller.
+func test_conform_at_ring_offsets_stays_below_crest_chords() -> void:
+	# A 17-degree vertical circular arc (r = 50 m) cresting at z = -12 then
+	# descending: uniform curvature, so the coarse ~5 m splits sit just under the
+	# 6-degree bisection threshold and keep the maximal chord rise (~L * theta / 8
+	# ~ 6 cm of curve-above-chord).
+	var r := 50.0
+	var sweep := deg_to_rad(17.0)
+	var k := 4.0 / 3.0 * tan(sweep * 0.25) * r
+	var t1 := Vector3(0, -sin(sweep), cos(sweep))
+	var curve := Curve3D.new()
+	curve.add_point(Vector3(0, 3.5, -12), Vector3.ZERO, Vector3(0, 0, k))
+	curve.add_point(Vector3(0, 3.5 - r * (1.0 - cos(sweep)), -12 + r * sin(sweep)),
+			-t1 * k, Vector3.ZERO)
+	var length := curve.get_baked_length()
+	var eps := 0.02
+	var amp := 5.0
+	var offsets := Builder.adaptive_offsets(curve, 6.0, 6.0)
+	var rings := PackedVector3Array()
+	for o in offsets:
+		rings.append(curve.sample_baked(o))
+
+	# fixture precondition: somewhere the analytic curve sits above the chord by more
+	# than eps, else neither sampling could differ and the test proves nothing
+	var max_rise := 0.0
+	for i in rings.size() - 1:
+		var mid := curve.sample_baked((offsets[i] + offsets[i + 1]) * 0.5)
+		max_rise = maxf(max_rise, mid.y - (rings[i].y + rings[i + 1].y) * 0.5)
+	assert_bool(max_rise > eps + 1e-3).is_true()
+
+	var fine := PackedVector3Array()   # the old fixed-0.5 m sampling
+	var count := maxi(2, int(ceil(length / 0.5)) + 1)
+	for i in count:
+		var w := curve.sample_baked(length * float(i) / float(count - 1))
+		fine.append(Vector3(w.x, w.z, (w.y - eps) / amp))
+	var at_rings := PackedVector3Array()
+	for w in rings:
+		at_rings.append(Vector3(w.x, w.z, (w.y - eps) / amp))
+
+	var img_old := Image.create(40, 40, false, Image.FORMAT_L8)
+	img_old.fill(Color(0.9, 0.9, 0.9))
+	var img_new := img_old.duplicate() as Image
+	Builder.conform_heights(img_old, fine, 2.5, 3.0, 39.0, 39.0)
+	Builder.conform_heights(img_new, at_rings, 2.5, 3.0, 39.0, 39.0)
+
+	# plateau pixels along the centerline column: stored height vs the chordal ribbon
+	var above_old := 0
+	var above_new := 0
+	for pz in range(9, 22):
+		var lz := float(pz) - 19.5
+		for px in range(17, 23):
+			if absf(float(px) - 19.5) > 2.5:
+				continue
+			var chord := _chord_height_along_z(rings, lz)
+			if is_nan(chord):
+				continue
+			assert_bool(img_new.get_pixel(px, pz).r * amp <= chord - eps + 1e-4).is_true()
+			if img_old.get_pixel(px, pz).r * amp > chord + 1e-4:
+				above_old += 1
+			if img_new.get_pixel(px, pz).r * amp > chord + 1e-4:
+				above_new += 1
+	assert_int(above_old).is_greater(0)   # the old sampling really did overshoot
+	assert_int(above_new).is_equal(0)
+
+
+## On a segment that is both STEEP and YAWING the ruled deck surface between rings
+## shifts along-slope by up to half_width * sin(swing/2) * grade, so the centerline
+## XZ-projection mis-heights the deck edges by tens of centimetres — conform must
+## rasterize the actual deck triangles (the `deck` argument, extruded on the ribbon's
+## own frames). Ground truth here is the REAL ribbon's surface-slot triangles.
+func test_conform_deck_raster_stays_below_ruled_surface_on_steep_bend() -> void:
+	var curve := Curve3D.new()
+	curve.add_point(Vector3(0, 18, -15), Vector3.ZERO, Vector3(0, -4, 6))
+	curve.add_point(Vector3(6, 6, 0), Vector3(-4, 4, -4), Vector3(4, -4, 4))
+	curve.add_point(Vector3(16, 2, 4), Vector3(-4, 1, -1), Vector3.ZERO)
+	var eps := 0.05
+	var amp := 20.0
+	var profile := Profile.new()   # defaults: paved 4.25, full 4.75
+	var offsets := Builder.adaptive_offsets(curve, 6.0, 6.0)
+	var rings := PackedVector3Array()
+	var samples := PackedVector3Array()
+	for o in offsets:
+		var w := curve.sample_baked(o)
+		rings.append(w)
+		samples.append(Vector3(w.x, w.z, (w.y - eps) / amp))
+	var fw: float = profile.full_half_width()
+	var deck_faces := Builder.faces_from_surfaces(Builder.extrude(curve,
+			PackedVector2Array([Vector2(-fw, 0), Vector2(fw, 0)]),
+			PackedInt32Array([0]), offsets, false))
+	var deck := PackedVector3Array()
+	for v in deck_faces:
+		deck.append(Vector3(v.x, v.z, (v.y - eps) / amp))
+
+	var img_old := Image.create(48, 48, false, Image.FORMAT_L8)
+	img_old.fill(Color(0.9, 0.9, 0.9))
+	var img_new := img_old.duplicate() as Image
+	Builder.conform_heights(img_old, samples, fw, 3.0, 47.0, 47.0)
+	Builder.conform_heights(img_new, samples, fw, 3.0, 47.0, 47.0, deck)
+
+	# ground truth: the real ribbon's SURFACE strips (slot 0), rasterized test-side
+	var cs: Dictionary = profile.cross_section()
+	var surf: Array = Builder.extrude(curve, cs["points"], cs["mats"], offsets,
+			false)[Profile.SLOT_SURFACE]
+	var pos: PackedVector3Array = surf[Mesh.ARRAY_VERTEX]
+	var idx: PackedInt32Array = surf[Mesh.ARRAY_INDEX]
+	var above_old := 0
+	var above_new := 0
+	var covered := 0
+	for pz in 48:
+		for px in 48:
+			var expected := _surface_height_at(pos, idx,
+					float(px) - 23.5, float(pz) - 23.5)
+			if is_nan(expected):
+				continue
+			covered += 1
+			assert_bool(img_new.get_pixel(px, pz).r * amp <= expected - eps + 1e-3).is_true()
+			if img_old.get_pixel(px, pz).r * amp > expected + 1e-3:
+				above_old += 1
+			if img_new.get_pixel(px, pz).r * amp > expected + 1e-3:
+				above_new += 1
+	assert_int(covered).is_greater(50)    # the fixture actually exercises the deck
+	assert_int(above_old).is_greater(0)   # projection-only sampling really overshot
+	assert_int(above_new).is_equal(0)
+
+
+## Height of the ribbon surface triangles at local (x, z), NAN when outside them all.
+func _surface_height_at(pos: PackedVector3Array, idx: PackedInt32Array,
+		x: float, z: float) -> float:
+	for t in range(0, idx.size(), 3):
+		var a := pos[idx[t]]
+		var b := pos[idx[t + 1]]
+		var c := pos[idx[t + 2]]
+		var den := (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x)
+		if absf(den) < 1e-9:
+			continue
+		var w1 := ((x - a.x) * (c.z - a.z) - (z - a.z) * (c.x - a.x)) / den
+		var w2 := ((b.x - a.x) * (z - a.z) - (b.z - a.z) * (x - a.x)) / den
+		if w1 < -1e-6 or w2 < -1e-6 or w1 + w2 > 1.0 + 1e-6:
+			continue
+		return a.y + w1 * (b.y - a.y) + w2 * (c.y - a.y)
+	return NAN
+
+
+## Ribbon chord height at local z for a straight-in-plan road along +z (NAN outside).
+func _chord_height_along_z(rings: PackedVector3Array, lz: float) -> float:
+	for i in rings.size() - 1:
+		if lz >= rings[i].z and lz <= rings[i + 1].z:
+			var span := rings[i + 1].z - rings[i].z
+			var t := 0.0 if span <= 0.0 else (lz - rings[i].z) / span
+			return lerpf(rings[i].y, rings[i + 1].y, t)
+	return NAN
+
+
 # --------------------------------------------------------- baker: chunk bucketing
 
 
@@ -632,6 +789,129 @@ func test_split_arrays_by_chunk_transform_keys_only() -> void:
 	# output verts stay in source space
 	assert_bool(Array((shifted[Vector2i(1, 0)] as Array)[Mesh.ARRAY_VERTEX] as PackedVector3Array)
 			.has(Vector3(40, 0, 0))).is_true()
+
+
+## conform_rects: the rect interior is a hard plateau at the ROUND-quantized target,
+## the falloff ring blends toward it, and pixels beyond the reach are untouched.
+func test_conform_rects_plateau_falloff_and_round_quantize() -> void:
+	var img := Image.create(16, 16, false, Image.FORMAT_L8)
+	img.fill(Color(0.6, 0.6, 0.6))   # 0.6 * 255 = 153 exact (0.5 would truncate)
+	var rects: Array[Rect2] = [Rect2(-3, -3, 6, 6)]
+	# 0.2004 * 255 = 51.1 -> ROUND lands on 51 (floor would too — the round-vs-floor
+	# distinction is asserted in the two-rect test below with a .6 fraction)
+	Builder.conform_rects(img, rects, PackedFloat32Array([0.2004]), 2.0, 15.0, 15.0)
+	for pz in range(5, 11):
+		for px in range(5, 11):   # lx/lz in [-2.5, 2.5] — inside the rect
+			assert_int(roundi(img.get_pixel(px, pz).r * 255.0)).is_equal(51)
+	# falloff ring: pulled toward the target but not on it
+	var ring := img.get_pixel(3, 8).r   # lx = -4.5, 1.5 m outside the rect
+	assert_bool(ring > 51.0 / 255.0 and ring < 0.6).is_true()
+	# beyond reach: untouched
+	assert_int(roundi(img.get_pixel(0, 8).r * 255.0)).is_equal(153)
+
+
+## Two rects with different targets: the strictly-nearest rect's target wins per
+## pixel, and a target between 8-bit steps ROUND-quantizes to the nearest step
+## (0.6 fraction rounds UP — floor would land one step below).
+func test_conform_rects_nearest_rect_wins_and_rounds_up() -> void:
+	var img := Image.create(16, 16, false, Image.FORMAT_L8)
+	img.fill(Color(0.5, 0.5, 0.5))
+	var rects: Array[Rect2] = [Rect2(-6, -2, 4, 4), Rect2(2, -2, 4, 4)]
+	# 0.8 * 255 = 204.0 exact; 0.2024 * 255 = 51.6 -> round 52 (floor: 51)
+	Builder.conform_rects(img, rects,
+			PackedFloat32Array([0.8, 0.2024]), 2.0, 15.0, 15.0)
+	assert_int(roundi(img.get_pixel(4, 8).r * 255.0)).is_equal(204)   # inside A
+	assert_int(roundi(img.get_pixel(11, 8).r * 255.0)).is_equal(52)   # inside B
+	# gap pixels: each side pulled toward ITS nearest rect's target
+	assert_bool(img.get_pixel(7, 8).r > 0.5).is_true()    # lx = -0.5, nearer A (0.8)
+	assert_bool(img.get_pixel(8, 8).r < 0.5).is_true()    # lx = +0.5, nearer B (0.2)
+
+
+# --------------------------------------------------- tile conform footprints
+
+
+const TileConform := preload("res://addons/carlito_kit/tile_conform.gd")
+
+
+## footprint_rects against the real roads meshlib: a 1x1 tile covers its 12 m cell
+## (any orientation/layer), the XZ-centered 2x2 road-curve covers 24 m around its
+## anchor — the overhang cells a plain occupancy walk would miss.
+func test_tile_footprint_rects_cover_cells_and_overhangs() -> void:
+	var grid: GridMap = auto_free(GridMap.new())
+	grid.mesh_library = load("res://kit/palettes/roads.meshlib")
+	grid.cell_size = Vector3(12, 3, 12)
+	grid.cell_center_y = false
+	var straight := -1
+	var curve_id := -1
+	for i in grid.mesh_library.get_item_list():
+		match grid.mesh_library.get_item_name(i):
+			"road-straight": straight = i
+			"road-curve": curve_id = i
+	assert_int(straight).is_greater(-1)
+	assert_int(curve_id).is_greater(-1)
+	grid.set_cell_item(Vector3i(0, 0, 0), straight, 0)
+	grid.set_cell_item(Vector3i(4, 1, 0), straight, 16)   # yawed, one layer up
+	grid.set_cell_item(Vector3i(0, 0, 4), curve_id, 0)
+
+	var fps: Dictionary = TileConform.footprint_rects(grid)
+	var rects: Array = fps["rects"]
+	var base_ys: PackedFloat32Array = fps["base_ys"]
+	assert_int(rects.size()).is_equal(3)   # sorted cells: (0,0,0), (0,0,4), (4,1,0)
+
+	var r0: Rect2 = rects[0]   # straight at (0,0,0): 12x12 centered on (6, 6)
+	assert_bool(absf(r0.size.x - 12.0) < 0.6 and absf(r0.size.y - 12.0) < 0.6).is_true()
+	assert_bool(r0.get_center().distance_to(Vector2(6, 6)) < 0.6).is_true()
+	assert_float(base_ys[0]).is_equal_approx(0.0, 1e-4)
+
+	var r1: Rect2 = rects[1]   # 2x2 curve at (0,0,4): XZ-centered, ~24 m square
+	assert_bool(absf(r1.size.x - 24.0) < 1.5 and absf(r1.size.y - 24.0) < 1.5).is_true()
+	assert_bool(r1.get_center().distance_to(Vector2(6, 54)) < 1.5).is_true()
+
+	var r2: Rect2 = rects[2]   # yawed straight at (4,1,0): still its 12 m cell, base +3
+	assert_bool(absf(r2.size.x - 12.0) < 0.6 and absf(r2.size.y - 12.0) < 0.6).is_true()
+	assert_bool(r2.get_center().distance_to(Vector2(54, 6)) < 0.6).is_true()
+	assert_float(base_ys[2]).is_equal_approx(3.0, 1e-4)
+
+
+# ----------------------------------------------------------------- reverse curve
+
+
+## _apply_reverse (the Reverse direction button's do/undo payload, its own inverse):
+## same shape traversed the other way — per point the in/out handles SWAP (a reversed
+## Bezier segment (A, A+out_a, B+in_b, B) reads (B, B+in_b, A+out_a, A)) and tilts
+## ride their point. Off-tree node, no _ready side effects (the baker fixture pattern).
+func test_road_path_reverse_swaps_handles_and_preserves_shape() -> void:
+	var road: Node3D = auto_free(Node3D.new())
+	road.set_script(RoadPathScript)
+	var path := Path3D.new()
+	path.name = "Path"
+	var curve := Curve3D.new()
+	curve.add_point(Vector3(0, 1, 0), Vector3.ZERO, Vector3(2, 0, 6))
+	curve.add_point(Vector3(4, 2, 20), Vector3(-1, 0, -5), Vector3(1, 0, 5))
+	curve.add_point(Vector3(0, 0.5, 40), Vector3(0, 0, -6), Vector3.ZERO)
+	curve.set_point_tilt(1, 0.3)
+	path.curve = curve
+	road.add_child(path)
+	var length := curve.get_baked_length()
+	var orig := PackedVector3Array()
+	for i in 9:
+		orig.append(curve.sample_baked(length * float(i) / 8.0))
+
+	road._apply_reverse()
+	assert_float(curve.get_baked_length()).is_equal_approx(length, 0.01)
+	for i in 9:
+		var p := curve.sample_baked(curve.get_baked_length() * float(i) / 8.0)
+		assert_bool(p.distance_to(orig[8 - i]) < 0.01).is_true()
+	assert_bool(curve.get_point_out(0).is_equal_approx(Vector3(0, 0, -6))).is_true()
+	assert_bool(curve.get_point_in(2).is_equal_approx(Vector3(2, 0, 6))).is_true()
+	assert_bool(curve.get_point_in(1).is_equal_approx(Vector3(1, 0, 5))).is_true()
+	assert_bool(curve.get_point_out(1).is_equal_approx(Vector3(-1, 0, -5))).is_true()
+	assert_float(curve.get_point_tilt(1)).is_equal_approx(0.3, 1e-6)
+
+	road._apply_reverse()   # involution: back to the original
+	assert_bool(curve.get_point_position(0).is_equal_approx(Vector3(0, 1, 0))).is_true()
+	assert_bool(curve.get_point_out(0).is_equal_approx(Vector3(2, 0, 6))).is_true()
+	assert_bool(curve.get_point_in(1).is_equal_approx(Vector3(-1, 0, -5))).is_true()
 
 
 # ------------------------------------------------------------ baker: road collect

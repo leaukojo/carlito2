@@ -410,13 +410,15 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
 - **`RoadPath`** (`kit/helpers/road_path.gd`, under `Authoring`): owns a **serialized
   `Path3D` child "Path"** (edit with the built-in path gizmo or the addon's Draw mode;
   the curve is the bake input) and extrudes a low-poly ribbon from a **`RoadProfile`**
-  (`kit/helpers/road_profile.gd`; presets `kit/roads/asphalt_profile.tres` — painted
-  edge line — and `gravel_profile.tres`; flat-color materials as inline SubResources so
+  (`kit/helpers/road_profile.gd`; presets `kit/roads/city_profile.tres` — flat colors
+  sampled from the roads-GridMap tiles' colormap swatches so spline roads match
+  tile-city streets — `asphalt_profile.tres` — painted edge line — and
+  `gravel_profile.tres`; flat-color materials as inline SubResources so
   a color edit re-stales bakes through the one .tres hash). The ribbon derives from the
   **curve + profile alone** (never reads the terrain), so bake output depends only on
   the scene file. Preview is unowned; the **dev trimesh exists only outside the editor**
   (unbaked play drivable; editor rays never hit our own ribbon). Profile default: editor
-  `_ready` assigns the asphalt preset via a **plain property set** so it serializes as
+  `_ready` assigns the city preset via a **plain property set** so it serializes as
   an ExtResource the input hash sees — never a preload export default (equal-to-default
   is omitted from the .tscn, a hash hole); the baker errors on a null profile.
 - **Pure math is `RoadBuilder`** (`kit/helpers/road_builder.gd`, tested in
@@ -460,7 +462,10 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   tinted red — with a live min-radius readout on the panel — when the candidate turns
   tighter than the fold limit. The panel's **Close loop** button appends a point ON
   the first point with Catmull-Rom seam tangents on both sides (C1 through the seam —
-  the duplicated ring welds at bake) and exits Draw. RoadPath buttons: **Drape curve
+  the duplicated ring welds at bake) and exits Draw. The panel's **Reverse direction**
+  button (also on the RoadPath inspector) reverses the curve's point order — per point
+  the in/out handles swap, tilts ride along, the ribbon is direction-invariant — so
+  Draw appends from the other end. RoadPath buttons: **Drape curve
   onto terrain** (re-snaps every existing point's Y to terrain + clearance; points
   over no terrain keep their Y) and **Smooth curve (Catmull-Rom)** (handles for every
   interior point — the rescue for hand-kinked curves); each is one undoable action.
@@ -499,9 +504,15 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   Path3D gizmo can't be intercepted, so dragged ends are fixed up with the panel's
   **Snap ends to ports** button (destructive-by-button): snaps the road's first/last
   points to their nearest ports within 6 m + locks tangents, one undo step.
-  **Height agreement:** put port cells on a flattened pad (terrain-brush grid-snap 12 m
-  flatten); Conform's plateau meets the tile at road − ε and `edge_drop` absorbs the
-  quantization as usual. **Width:** the tiles' measured deck runs curb-to-curb ±4.8
+  **Height agreement:** put port cells on a flattened pad — either the terrain-brush
+  grid-snap 12 m flatten, or the palette toolbar's **Conform terrain** button
+  (`addons/carlito_kit/tile_conform.gd` + `RoadBuilder.conform_rects`, tested): flattens
+  every overlapping terrain to the painted cells' **base plane**, footprints from the
+  item mesh AABB in the painted orientation (so 2×2 / 3×3 overhang cells are covered),
+  4 m falloff beyond the union, targets **ROUND-quantized** (closest 8-bit height either
+  side of the base — the deck hides the residual, unlike road ribbons which floor), one
+  undo per terrain. Road Conform's plateau meets the tile at road − ε and `edge_drop`
+  absorbs the quantization as usual. **Width:** the tiles' measured deck runs curb-to-curb ±4.8
   (9.6 m) with the white curb line AT ±4.8, so `asphalt_profile.tres` sets
   `lane_width = 4.8` — the ribbon's asphalt spans the full 9.6 m deck and its white
   edge line sits at ±4.8 flush with the tile's; line + shoulder extend outside like the
@@ -510,12 +521,20 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   handle tangent (BAKER_VERSION v6) — the finite difference bends with immediate
   curvature and yawed port-snapped ends against the tile face.
 - **Conform terrain is destructive-by-button** (the same discipline as terrain
-  Generate): samples the curve every 0.5 m (deterministic,
-  tessellation-independent), flattens every overlapping `HeightmapTerrain` to road
-  height − `conform_epsilon`. Per pixel the target is **lerped at the projection onto
-  the nearest centerline segment** (never the nearest point sample — that is off by up
-  to half the sample spacing × the grade and pokes terrain through the ribbon on grades
-  > ~20%; regression-tested at 8-bit precision). The flatten plateau is the **full
+  Generate): samples the curve at the **extrusion's `adaptive_offsets` rings**
+  (deterministic — curve + the two segment params; NOT a fixed fine step, which would
+  target the analytic curve where it rides above the ribbon's chords over a crest and
+  poke terrain through right where roads tip into a descent), flattens every
+  overlapping `HeightmapTerrain`
+  to road height − `conform_epsilon`. Where a pixel lies under the deck, its target
+  comes from **rasterizing the actual deck triangles** (a full-width strip extruded on
+  the ribbon's own frames, incl. seam/end tangents, fold clamp and banking) — the
+  centerline XZ-projection alone mis-heights the deck edges of segments that are both
+  steep and yawing (the ruled surface shifts along-slope by up to
+  half-width × sin(swing/2) × grade — tens of cm at authoring extremes; regression-
+  tested against the real ribbon surface). Beyond the deck (the falloff ring) the
+  target is lerped at the projection onto the nearest centerline segment (never the
+  nearest point sample — off by up to half the sample spacing × the grade). The flatten plateau is the **full
   ribbon half-width incl. the drop skirt** (`full_half_width()`), so terrain under the
   skirt sits at a predictable road − ε and always crosses the skirt on its slope;
   `conform_falloff` smoothsteps out beyond the ribbon. Targets are **floor-quantized to

@@ -551,6 +551,14 @@ func snap_ends() -> void:
 	_undo.commit_action()
 
 
+## Panel button passthrough: reverse the selected road's curve so Draw appends from
+## the other end. The guard + undo action live on RoadPath (_reverse_curve).
+func reverse_road() -> void:
+	if not _target_valid():
+		return
+	_road.call(&"_reverse_curve")
+
+
 # ------------------------------------------------------------------ ports
 
 ## Rebuild the port cache from the current grid. Cheap enough per activation; never

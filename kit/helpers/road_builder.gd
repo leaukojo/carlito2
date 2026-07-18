@@ -470,7 +470,14 @@ static func flatten_weight(dist: float, half_width: float, falloff: float) -> fl
 ## Flatten the greyscale height image under a road. `samples` are
 ## (local_x, local_z, target_norm) triples — terrain-LOCAL, node-origin-relative XZ
 ## (the height_at convention) packed as Vector3(x, z, target); target_norm is the
-## normalized [0,1] road height. Pixel mapping mirrors HeightmapTerrain.height_at
+## normalized [0,1] road height. Callers sample AT the extrusion's adaptive_offsets
+## rings: the lerp between consecutive samples then IS the ribbon's chordal surface,
+## so the flatten can never target the analytic curve where it rides above the
+## chords over a crest. `deck` (optional, same packing per vertex, 3 verts per
+## triangle) is the actual full-width deck strip extruded on the ribbon's frames;
+## where a pixel lands inside a deck triangle its plane height replaces the
+## centerline projection (see the raster pass below — the projection is wrong at the
+## edges of steep yawing segments). Pixel mapping mirrors HeightmapTerrain.height_at
 ## exactly: px = (lx + span_x*0.5) / span_x * (iw-1), separate x/z pixel scales (the
 ## brush_ops anisotropy convention). Per pixel the strictly-nearest centerline SEGMENT
 ## wins (first segment wins ties — deterministic) and the target is LERPED at the
@@ -487,7 +494,8 @@ static func flatten_weight(dist: float, half_width: float, falloff: float) -> fl
 ## epsilon + one height step). Returns the tight dirty Rect2i in pixels (empty if
 ## unchanged). Same inputs -> identical bytes.
 static func conform_heights(img: Image, samples: PackedVector3Array, half_width: float,
-		falloff: float, span_x: float, span_z: float) -> Rect2i:
+		falloff: float, span_x: float, span_z: float,
+		deck := PackedVector3Array()) -> Rect2i:
 	var iw := img.get_width()
 	var ih := img.get_height()
 	if samples.is_empty() or iw < 2 or ih < 2:
@@ -557,23 +565,151 @@ static func conform_heights(img: Image, samples: PackedVector3Array, half_width:
 					dist2[bi] = d2
 					target[bi] = lerpf(a.z, b.z, t)
 
-	# apply pass
+	# Deck raster pass: where the pixel center lies inside an actual ribbon-deck
+	# triangle (`deck`: terrain-local (x, z, target_norm) verts, 3 per triangle —
+	# the caller extrudes a flat full-width strip on the SAME frames as the ribbon),
+	# override the projected target with the triangle's plane height and pin the
+	# distance to 0 (plateau). The centerline projection above assumes the deck's
+	# lateral axis is perpendicular to the chord; on a segment that is both steep
+	# and yawing, the real ruled surface between rings shifts along-slope by up to
+	# half_width * sin(swing/2) * grade — tens of centimetres at authoring extremes,
+	# way past conform_epsilon, poking terrain through the ribbon edges of steep
+	# bends. Only the rasterized triangles are trustworthy where the ribbon actually
+	# is; the projection remains for the falloff ring beyond the deck (where the
+	# blend back to original terrain makes its error invisible). Raster order is the
+	# triangle order (deterministic); shared edges agree by plane continuity.
+	for ti in range(0, deck.size() - 2, 3):
+		var ta := deck[ti]
+		var tb := deck[ti + 1]
+		var tc := deck[ti + 2]
+		var abx := tb.x - ta.x
+		var abz := tb.y - ta.y
+		var acx := tc.x - ta.x
+		var acz := tc.y - ta.y
+		var den := abx * acz - abz * acx
+		if absf(den) < 1e-9:
+			continue
+		var x0 := clampi(int(floor((minf(ta.x, minf(tb.x, tc.x)) + span_x * 0.5) * sx)),
+				min_px, max_px)
+		var x1 := clampi(int(ceil((maxf(ta.x, maxf(tb.x, tc.x)) + span_x * 0.5) * sx)),
+				min_px, max_px)
+		var z0 := clampi(int(floor((minf(ta.y, minf(tb.y, tc.y)) + span_z * 0.5) * sz)),
+				min_pz, max_pz)
+		var z1 := clampi(int(ceil((maxf(ta.y, maxf(tb.y, tc.y)) + span_z * 0.5) * sz)),
+				min_pz, max_pz)
+		for pz in range(z0, z1 + 1):
+			var pmz := float(pz) / sz - span_z * 0.5
+			for px in range(x0, x1 + 1):
+				var pmx := float(px) / sx - span_x * 0.5
+				var apx := pmx - ta.x
+				var apz := pmz - ta.y
+				var w1 := (apx * acz - apz * acx) / den
+				var w2 := (abx * apz - abz * apx) / den
+				if w1 < -1e-6 or w2 < -1e-6 or w1 + w2 > 1.0 + 1e-6:
+					continue
+				var bi := (pz - min_pz) * rw + (px - min_px)
+				dist2[bi] = 0.0
+				target[bi] = ta.z + w1 * (tb.z - ta.z) + w2 * (tc.z - ta.z)
+
+	return _apply_targets(img, dist2, target, min_px, min_pz, max_px, max_pz, rw,
+			half_width, falloff, false)
+
+
+## Flatten under a set of axis-aligned XZ rects (GridMap tile footprints), each with
+## its own normalized [0,1] target height. Same terrain-local conventions and pixel
+## mapping as conform_heights; the plateau is the rect interior (distance 0 — callers
+## pass the tile's actual XZ footprint), the strictly-nearest rect wins per pixel
+## (first wins ties — pass rects in sorted-cell order, deterministic) and
+## flatten_weight smoothsteps out over `falloff` beyond the union. Targets are
+## ROUND-quantized, not floor: tiles sit ON the terrain, so the closest 8-bit height
+## either side of the cell base is the best meet — the deck (surface_y above the
+## base) hides the residual, unlike a road ribbon where storing above the surface
+## would poke through. Returns the tight dirty Rect2i in pixels (empty if unchanged).
+## Same inputs -> identical bytes.
+static func conform_rects(img: Image, rects: Array[Rect2], targets: PackedFloat32Array,
+		falloff: float, span_x: float, span_z: float) -> Rect2i:
+	var iw := img.get_width()
+	var ih := img.get_height()
+	if rects.is_empty() or rects.size() != targets.size() or iw < 2 or ih < 2:
+		return Rect2i()
+	var sx := float(iw - 1) / maxf(span_x, 0.001)   # pixels per meter
+	var sz := float(ih - 1) / maxf(span_z, 0.001)
+	var reach := maxf(falloff, 0.0)
+
+	# padded bounding pixel rect over all rects
+	var min_px := iw
+	var max_px := -1
+	var min_pz := ih
+	var max_pz := -1
+	for r in rects:
+		min_px = mini(min_px, int(floor((r.position.x - reach + span_x * 0.5) * sx)) - 1)
+		max_px = maxi(max_px, int(ceil((r.end.x + reach + span_x * 0.5) * sx)) + 1)
+		min_pz = mini(min_pz, int(floor((r.position.y - reach + span_z * 0.5) * sz)) - 1)
+		max_pz = maxi(max_pz, int(ceil((r.end.y + reach + span_z * 0.5) * sz)) + 1)
+	min_px = clampi(min_px, 0, iw - 1)
+	max_px = clampi(max_px, 0, iw - 1)
+	min_pz = clampi(min_pz, 0, ih - 1)
+	max_pz = clampi(max_pz, 0, ih - 1)
+	if max_px < min_px or max_pz < min_pz:
+		return Rect2i()
+	var rw := max_px - min_px + 1
+	var rh := max_pz - min_pz + 1
+
+	# nearest-rect pass: per pixel, keep the smallest squared distance to any rect
+	# (0 inside it) + that rect's target
+	var dist2 := PackedFloat32Array()
+	dist2.resize(rw * rh)
+	dist2.fill(INF)
+	var target := PackedFloat32Array()
+	target.resize(rw * rh)
+	for ri in rects.size():
+		var r := rects[ri]
+		var x0 := clampi(int(floor((r.position.x - reach + span_x * 0.5) * sx)), min_px, max_px)
+		var x1 := clampi(int(ceil((r.end.x + reach + span_x * 0.5) * sx)), min_px, max_px)
+		var z0 := clampi(int(floor((r.position.y - reach + span_z * 0.5) * sz)), min_pz, max_pz)
+		var z1 := clampi(int(ceil((r.end.y + reach + span_z * 0.5) * sz)), min_pz, max_pz)
+		for pz in range(z0, z1 + 1):
+			var pmz := float(pz) / sz - span_z * 0.5
+			var dzm := maxf(maxf(r.position.y - pmz, pmz - r.end.y), 0.0)
+			for px in range(x0, x1 + 1):
+				var pmx := float(px) / sx - span_x * 0.5
+				var dxm := maxf(maxf(r.position.x - pmx, pmx - r.end.x), 0.0)
+				var d2 := dxm * dxm + dzm * dzm
+				var bi := (pz - min_pz) * rw + (px - min_px)
+				if d2 < dist2[bi]:
+					dist2[bi] = d2
+					target[bi] = targets[ri]
+
+	return _apply_targets(img, dist2, target, min_px, min_pz, max_px, max_pz, rw,
+			0.0, falloff, true)
+
+
+## Shared apply pass for conform_heights / conform_rects: blend each pixel toward its
+## quantized target by flatten_weight(nearest distance), tracking the dirty rect.
+## round_quantize: floor for road ribbons (never store above the surface), round for
+## tile bases (closest meet either side; the deck hides the residual).
+static func _apply_targets(img: Image, dist2: PackedFloat32Array,
+		target: PackedFloat32Array, min_px: int, min_pz: int, max_px: int,
+		max_pz: int, rw: int, half_width: float, falloff: float,
+		round_quantize: bool) -> Rect2i:
+	var reach := half_width + maxf(falloff, 0.0)
 	var reach2 := reach * reach
-	var dminx := iw
-	var dminz := ih
+	var dminx := img.get_width()
+	var dminz := img.get_height()
 	var dmaxx := -1
 	var dmaxz := -1
 	for pz in range(min_pz, max_pz + 1):
 		for px in range(min_px, max_px + 1):
 			var bi := (pz - min_pz) * rw + (px - min_px)
 			var d2 := dist2[bi]
-			if d2 >= reach2:
-				continue
+			if d2 > reach2:   # strict: at reach the weight is 0 anyway, and a
+				continue      # zero-falloff rect plateau (d2 == reach2 == 0) must apply
 			var w := flatten_weight(sqrt(d2), half_width, falloff)
 			if w <= 0.0:
 				continue
 			var old := img.get_pixel(px, pz).r
-			var q := floorf(clampf(target[bi], 0.0, 1.0) * 255.0) / 255.0
+			var t := clampf(target[bi], 0.0, 1.0) * 255.0
+			var q := (roundf(t) if round_quantize else floorf(t)) / 255.0
 			var nv := lerpf(old, q, w)
 			if clampi(roundi(nv * 255.0), 0, 255) == roundi(old * 255.0):
 				continue
