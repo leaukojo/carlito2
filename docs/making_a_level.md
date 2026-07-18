@@ -39,8 +39,10 @@ Two options:
 no Conform pass:
 
 1. Keep the terrain node's **Y on the 3 m lattice** (normally 0; Generate warns if not).
-2. Set **`height = 51`** — 3 m grid levels then store byte-exactly in the 8-bit heightmap
-   (any other height leaves up to ~`height/510` m of residual, hidden by the tile deck).
+2. Pick a **`height` that stores 3 m levels byte-exactly**: the 8-bit heightmap steps by
+   `height/255` m, so 3 m is exact whenever `765 / height` is a whole number — i.e.
+   `height = 765 / n`: **25.5, 30.6, 38.25, 42.5, 45, 51, 63.75, 76.5, 85, 153** …
+   Any other height leaves up to ~`height/510` m of residual, hidden by the tile deck.
 3. Pick **`terrace_levels`** for plateau size: bands are `n × 3 m` (3 = 9 m bands), always
    grid-aligned; 0 turns terracing off.
 4. **Generate** (alignment is baked in at generation — changing `height` or moving the
