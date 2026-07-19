@@ -873,7 +873,10 @@ static func check_level_file(level_path: String) -> Dictionary:
 	var level_root := packed.instantiate()
 	var authoring := find_authoring(level_root)
 	# read everything BEFORE freeing the tree: a freed node compares equal to null
-	var has_authoring := authoring != null
+	# An AuthoringRoot with no children is an empty canvas (a freshly scaffolded level):
+	# the baker produces nothing for it, so demanding a bake output would fail CI on a
+	# level nobody has authored yet. Anything painted into it re-arms the check.
+	var has_authoring := authoring != null and authoring.get_child_count() > 0
 	var chunk_size := float(authoring.get("chunk_size")) if has_authoring else 0.0
 	var scatter_errors := scatter_ground_errors(level_root)
 	level_root.free()

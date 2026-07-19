@@ -7,7 +7,7 @@ extends Node
 ##
 ## Runs as a GAME-MODE tool scene, not --script (level scenes pull in scripts that only
 ## compile with autoloads registered — the bake_levels rationale). Run after --import:
-##   godot --headless --path . res://tools/paint_road_asphalt.tscn -- src/levels/dev/terrain_demo.tscn
+##   godot --headless --path . res://tools/paint_road_asphalt.tscn -- src/levels/island/level_1/level_1.tscn
 ## then re-import so the edited PNGs are picked up:
 ##   godot --headless --path . --import
 ##
@@ -20,7 +20,7 @@ const CENTERLINE_STEP := 0.5   ## m between centerline samples (short segments =
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
-	var level_path := "res://src/levels/dev/terrain_demo.tscn"
+	var level_path := "res://src/levels/island/level_1/level_1.tscn"
 	if not args.is_empty():
 		level_path = "res://" + String(args[0]).trim_prefix("res://")
 

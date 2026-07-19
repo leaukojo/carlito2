@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ccxtejrd5ucko"
-path="res://.godot/imported/bumps_mixed.png-de0d7af99725c8b84c094afef7b8a395.ctex"
+uid="uid://b1mnjoldsbirw"
+path="res://.godot/imported/level_3_island_splat.png-99726f4145ddca6f5b08a3f5e61a3faf.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://src/levels/gym/bumps_mixed.png"
-dest_files=["res://.godot/imported/bumps_mixed.png-de0d7af99725c8b84c094afef7b8a395.ctex"]
+source_file="res://src/levels/island/level_3/level_3_island_splat.png"
+dest_files=["res://.godot/imported/level_3_island_splat.png-99726f4145ddca6f5b08a3f5e61a3faf.ctex"]
 
 [params]
 
@@ -31,10 +31,10 @@ process/channel_remap/red=0
 process/channel_remap/green=1
 process/channel_remap/blue=2
 process/channel_remap/alpha=3
-process/fix_alpha_border=true
+process/fix_alpha_border=false
 process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

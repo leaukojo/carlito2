@@ -113,23 +113,9 @@ everywhere is duck-typed marker methods (`is_carlito_authoring` / `is_carlito_ki
   CRLF-normalized text hashing) vs the manifest, and checks the manifest's `output_hash`
   against the `.baked.scn` on disk so an edited or truncated bake cannot read fresh;
   ci.yml fails on missing/stale. The baked-level headless
-  smoke (`CARLITO_LEVEL` env picks a registry id) runs against **`kit_fixture`**.
-
-## kit_fixture — the permanent CI bake canary
-
-`src/levels/dev/kit_fixture.tscn` (registered `dev: true`): a minimal level — a road
-loop from the roads palette, one prefab of each collision mode, a weld ramp, a car
-spawn — plus one permanent canary for every bake path: `TreeScatter` (80 tree_default,
-MultiMesh path, collision), `GrassScatter` (20 grass, merge path, collision-off),
-`GrassCanvas` (36 grass, `ScatterCanvas`, merge path), `SplineRoad` (a RoadPath
-S-curve at y = 0.05 on the south strip, profile set explicitly — headless runs never hit
-the editor auto-assign), and `SocketRoad` (a RoadPath whose first point is placed on a
-port of a lone straight tile east of the loop via `RoadPorts` — the tile↔spline socket
-canary; the closed loop itself has zero open ports). It is expanded programmatically by
-`tools/build_kit_fixture.gd`
-(flat ground y = 0, no editor; no terrain, so the scatter ground hash `""` matches).
-Rebuild it with `godot --headless res://tools/build_kit_fixture.tscn` (a game-mode tool;
-hand-authoring GridMap cell/orientation data is fragile), then re-bake.
+  smoke (`CARLITO_LEVEL` env picks a registry id) runs against **`level_1`**. A level
+  whose `AuthoringRoot` is still empty (a freshly scaffolded canvas) is skipped, not
+  reported missing — the first thing painted into it re-arms the check.
 
 ## Palette dock & click-to-place
 
@@ -243,11 +229,12 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   splatmap is sampled by a 3D shader; the default detect_3d would silently reimport it
   VRAM-compressed and break `get_image()`) and **`process/fix_alpha_border=false`** (it
   rewrites RGB wherever alpha == 0, corrupting grass/dirt/sand weights where rock == 0).
-- Demo: `src/levels/dev/terrain_demo.tscn` (a real Level, registered `dev: true`): a
-  generated 256 m terraced island (seed 567998) with its auto-splat, a car spawn on the
-  central plateau, a boat spawn in the surrounding `WaterSurface` sea (G swaps),
-  drown-respawn included. Regenerating from the recorded knobs reproduces the committed
-  PNGs.
+- Demo: `src/levels/island/level_1/level_1.tscn`: a generated 512 m terraced island
+  (seed 499399) with its auto-splat, a car spawn on the central plateau, a boat spawn in
+  the surrounding `WaterSurface` sea (G swaps), drown-respawn included. Regenerating from
+  the recorded knobs reproduces the committed PNGs. Levels 2-5
+  (`src/levels/island/level_<n>/`) are the same shape with different seeds and an empty
+  `AuthoringRoot` — blank canvases scaffolded by `tools/gen_islands.gd`.
 
 ## Terrain brushes
 

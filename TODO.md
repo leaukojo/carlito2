@@ -16,8 +16,8 @@ Build both from scratch with the authoring tools (`docs/level_kit.md`):
   prefabs, shoreline rock/vegetation scatter. Signal spec: a course — wake ramp off the
   boat launch, tight buoy turns — that makes `pitch`/`roll` perform.
 - Register both, bake, CI green, F3 under the ~500 draw-call budget in the worst view.
-- Add a second CI baked-smoke run with `CARLITO_LEVEL: farm` (kit_fixture stays the
-  permanent minimal canary, so shipped levels can change freely without retargeting CI).
+- Add a second CI baked-smoke run with `CARLITO_LEVEL: farm` (`level_1` stays the
+  primary baked-smoke target).
 - Acceptance on both axes: if dressing feels like manual labor, that is a tool defect —
   fix the tool, don't push through; if driving doesn't make the signals perform, the
   content failed.
@@ -71,21 +71,8 @@ silent in menus.
 
 ## 6. Launch checklist
 
-- [ ] **Revert the dev-level test scaffolding** (temporary debug access to kit_fixture /
-      terrain_demo from the main menu):
-      1. `src/ui/level_select.gd` — restore the `dev` skip in the level loop
-         (`if entry.get("dev", false): continue`).
-      2. `src/shell/level_registry.gd` — remove the `terrain_demo` entry (tagged
-         "Temporary").
-      3. `tools/build_kit_fixture.gd` — remove the boat-test rig: the
-         `_make_water()` / `_make_boat_spawn()` calls in `_ready()`, both functions, and
-         `WATER_POS`.
-      4. `src/levels/dev/kit_fixture_info.tres` — `allowed_vehicles` back to
-         `PackedStringArray("car")`.
-      5. Rebuild + re-bake: `build_kit_fixture.tscn`, then `bake_levels.tscn`, then
-         `check_bakes.tscn` (expect fresh). After deregistering terrain_demo its
-         `.baked.scn`/`.bake.json` are only used by F6 — keep or delete.
-      6. `tests/test_shell_menus.gd` — restore the assertion that dev entries are hidden.
+- [ ] Levels 2-5 authored (they ship as blank generated islands today) — or trimmed from
+      the registry if the shipped set is smaller.
 - [ ] All levels playable at 60 fps in the deployed build; hard-reload not required after
       redeploys (cache-busting proves itself).
 - [ ] Update README status; credit any new assets.
@@ -104,9 +91,8 @@ silent in menus.
 
 ## Scene-file size (investigated 2026-07-12 — no action needed yet)
 
-The largest authored scene is `kit_fixture.tscn` (~25 KB, 351 lines, longest line
-~3.9 K chars — the 80-tree scatter `stored_transforms` array); `gym.tscn` ~14 KB;
-`terrain_demo.tscn` ~5 KB. Nothing is near a size that hurts the editor, git, or
+The largest authored scene is `level_1.tscn` (~78 KB — the scatter `stored_transforms`
+arrays dominate). Nothing is near a size that hurts the editor, git, or
 tooling, and no tool in the repo emits a "scene too large" warning at these sizes — if
 that warning reappears, record which tool printed it. Converting authoring scenes to
 binary `.scn` was considered and **rejected for now**: binary scenes are unreadable to

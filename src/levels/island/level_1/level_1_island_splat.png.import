@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bt6ad3h0elmey"
-path="res://.godot/imported/hill_heightmap.png-1b7bab20e74513037b803d66efddd6ea.ctex"
+uid="uid://cyia3e0h3irgf"
+path="res://.godot/imported/level_1_island_splat.png-9e8e9eb5308b385aa85dfa0620f6d1ed.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://src/levels/gym/hill_heightmap.png"
-dest_files=["res://.godot/imported/hill_heightmap.png-1b7bab20e74513037b803d66efddd6ea.ctex"]
+source_file="res://src/levels/island/level_1/level_1_island_splat.png"
+dest_files=["res://.godot/imported/level_1_island_splat.png-9e8e9eb5308b385aa85dfa0620f6d1ed.ctex"]
 
 [params]
 
@@ -31,10 +31,10 @@ process/channel_remap/red=0
 process/channel_remap/green=1
 process/channel_remap/blue=2
 process/channel_remap/alpha=3
-process/fix_alpha_border=true
+process/fix_alpha_border=false
 process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

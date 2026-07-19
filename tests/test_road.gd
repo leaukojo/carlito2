@@ -53,7 +53,7 @@ func test_min_turn_radius_pure_crest_is_infinite() -> void:
 
 
 func test_min_turn_radius_flags_hairpin_below_half_width() -> void:
-	# the terrain_demo pathology: two near-coincident clicks across a 4 m drop; the
+	# the level_1 pathology: two near-coincident clicks across a 4 m drop; the
 	# smoothed middle point hairpins the curve far under the ~6 m ribbon half-width
 	var c := Curve3D.new()
 	c.add_point(Vector3(9.947, 23.362, 58.729))
@@ -595,7 +595,7 @@ func test_extrude_closed_square_loop_seam_rings_coincide() -> void:
 ## the finite difference — a port-snapped end that bends right after the port must stay
 ## perpendicular to its locked handle or the seam gaps on one side (the "slit").
 func test_extrude_open_end_rings_perpendicular_to_handles() -> void:
-	# the kit_fixture SocketRoad shape: out-handle +X off the port, immediate hard bend
+	# the socket-road shape: out-handle +X off the port, immediate hard bend
 	var c := Curve3D.new()
 	c.add_point(Vector3(36, 0.12, -18), Vector3.ZERO, Vector3(4, 0, 0))
 	c.add_point(Vector3(46, 0.05, -24), Vector3(-3, 0, 1.8), Vector3(3, 0, -1.8))

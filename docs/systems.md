@@ -256,8 +256,8 @@ lock the rears — drift comes from the grip cut, not brake torque.
   `_steer` as %), and `trim` (**modeled honest value** like engine_load: `trim_step`
   chases forward throttle). The boat's PITCH/ROLL bars are pure contract metadata (`warn`
   30/45); `rudder_actual`/`trim` are bridge-only (no honest warn).
-- The gym's walled pool basin holds a `WaterSurface` — the standing boat/drown-respawn
-  regression rig (drive the car in → drown respawn); the boat is in the gym roster.
+- Every island level's sea is a `WaterSurface` — the boat/drown-respawn rig (drive the
+  car in → drown respawn); the boat is in every island roster.
 
 ## Level framework
 
@@ -276,15 +276,11 @@ lock the rears — drift comes from the grip cut, not brake torque.
   `get_splat_weights` still returns the raw weights).
 - `level.tscn` is the authoring template (env + sun + camera + one spawn); duplicate it to
   start a level.
-- `src/levels/gym/gym.tscn` is the fully dressed dev gym: flat zone, two ramps, a
-  heightmap hill, painted ice/mud grip strips (splat `channel_grip` 0.12/0.55 on a flat
-  HeightmapTerrain — the drive-verify rig for surface grip), a slalom cone line, and
-  the walled pool with water. The gym
-  roster is car/truck/tractor/boat. The gym is hand-built with no kit content (no
-  AuthoringRoot) — it is physics test equipment, and the bake check skips it.
+- `src/levels/island/level_1/` .. `level_5/` are the five playable islands: generated
+  terraced terrain + auto-splat + sea, roster car/truck/tractor/boat. `level_1` is
+  dressed (roads, props, scatter) and is the CI baked-level smoke target; 2-5 are blank
+  canvases with an empty `AuthoringRoot`, one per independent experiment.
 - `src/levels/dev/flat.tscn` is a bare test plane for isolated wheel checks.
-- `src/levels/dev/kit_fixture.tscn` and `src/levels/dev/terrain_demo.tscn` are dev
-  fixtures — see `docs/level_kit.md`.
 - Loading a stranger's level is arbitrary code execution (a `.tscn` can embed scripts) —
   third-party level sharing stays out of scope until there is a validation/sandboxing
   story.

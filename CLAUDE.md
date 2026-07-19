@@ -56,7 +56,7 @@ src/input/    InputRouter autoload + input sources; ALL input arbitration lives 
 src/vehicles/ base/ (BaseVehicle, VehicleSpec, wheels, drivetrain) + car/ truck/ tractor/
               boat/ + kenney/ variant bodies (vehicle_catalog.gd maps variants → families)
 src/levels/   base/ (Level scene, LevelInfo, markers, HeightmapTerrain) + garage/ showroom
-              + gym/ + dev/ fixtures
+              + island/level_1..level_5/ (the five playable islands) + dev/ flat plane
 src/ui/       dashboard, touch controls, menus
 src/water/    water surface + height sampling API
 kit/          level-authoring kit: recipes, meshlibs, prefabs, @tool helpers, bake tool
@@ -190,8 +190,10 @@ junctions, lane markings, traffic.
   terrain are direct children of the level, never under `Authoring`.
 - Day/night is a Level concern (N key), not a bridge signal.
 - Under `--headless` the shell auto-loads the first registry level (CI smoke can't click).
-- The gym is hand-built physics test equipment (no AuthoringRoot; the bake check skips
-  it). Its pool is the boat/drown-respawn regression rig.
+- Levels 2-5 are blank canvases: generated terrain + auto-splat + sea and an EMPTY
+  `AuthoringRoot`. An empty AuthoringRoot is skipped by the bake check (nothing to bake);
+  the first thing painted into it re-arms the stale-bake gate. Scaffolded by
+  `tools/gen_islands.gd` — re-running it OVERWRITES those levels, so it is one-shot.
 
 **Kit, bake & editor tools** (detail: `docs/level_kit.md`)
 
@@ -247,8 +249,6 @@ junctions, lane markings, traffic.
   `LevelBaker.BAKE_CODE_INPUTS`. Editing one re-stales every level on its own; still bump
   `BAKER_VERSION` for semantic changes, and re-bake either way. Adding a new bake-adjacent
   file means adding it to that list.
-- Rebuild `kit_fixture` with `godot --headless res://tools/build_kit_fixture.tscn`
-  (hand-authoring GridMap cell data is fragile), then re-bake.
 
 ## Running / testing / exporting
 
@@ -320,7 +320,7 @@ warning classes (shadowing, integer division) are escalated to **errors** in pro
 ## CI / deploy
 
 `.github/workflows/ci.yml`: every push runs import → gdUnit4 → stale-bake check → headless
-smoke (default boot + a baked-level run with `CARLITO_LEVEL: kit_fixture`) → web export;
+smoke (default boot + a baked-level run with `CARLITO_LEVEL: level_1`) → web export;
 pushes to `main` deploy to **https://leaukojo.github.io/carlito2/** via GitHub Pages
 (Actions source). Cache-busting: the export basename embeds the commit SHA, so all heavy
 artifacts (.pck/.wasm/.js/PWA worker) get unique names per deploy; `index.html` is a small

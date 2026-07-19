@@ -74,14 +74,14 @@ jobs:
         run: godot --headless res://tools/check_bakes.tscn
 
       # Baked-level smoke (load -> baked-scene swap -> spawn -> play) against the
-      # permanent kit_fixture canary. CARLITO_LEVEL
+      # dressed level_1 island. CARLITO_LEVEL
       # picks the registry id; boot.gd loads it headless. Same error gate as the default
       # smoke; "still in use"/"leaked at exit"/"Pages in use exist at exit" are known-harmless
       # leak-at-exit noise.
-      - name: Baked-level smoke (kit_fixture)
+      - name: Baked-level smoke (level_1)
         shell: bash
         env:
-          CARLITO_LEVEL: kit_fixture
+          CARLITO_LEVEL: level_1
         run: |
           godot --headless --quit-after 120 2>&1 | tee baked.log
           if grep -E "SCRIPT ERROR|ERROR:" baked.log | grep -vE "still in use at exit|leaked at exit|Pages in use exist at exit"; then

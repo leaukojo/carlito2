@@ -4,6 +4,6 @@
 
 [resource]
 script = ExtResource("1_info")
-display_name = "Terrain Demo"
-allowed_vehicles = PackedStringArray("car", "boat")
+display_name = "Level 3 - Highlands"
+allowed_vehicles = PackedStringArray("car", "truck", "tractor", "boat")
 default_vehicle = "car"

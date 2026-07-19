@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dyqakr52vmxiu"
-path="res://.godot/imported/terrain_demo_island_height.png-1c96796203edc4e910f4d76c0bd6865e.ctex"
+uid="uid://4jp08544bbgp"
+path="res://.godot/imported/level_4_island_height.png-5ef5e82fc2247d11c9ad3d493ae0caf5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://src/levels/dev/terrain_demo_island_height.png"
-dest_files=["res://.godot/imported/terrain_demo_island_height.png-1c96796203edc4e910f4d76c0bd6865e.ctex"]
+source_file="res://src/levels/island/level_4/level_4_island_height.png"
+dest_files=["res://.godot/imported/level_4_island_height.png-5ef5e82fc2247d11c9ad3d493ae0caf5.ctex"]
 
 [params]
 

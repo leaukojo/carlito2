@@ -172,7 +172,7 @@ func test_hash_missing_file_flagged_not_crashing() -> void:
 ## resource edge: without this, editing the extruder's fold clamp and forgetting to bump
 ## BAKER_VERSION left every level "fresh" in CI while shipping the old geometry.
 func test_bake_code_files_are_in_the_input_hash() -> void:
-	var inputs := Baker.gather_bake_inputs("res://src/levels/dev/kit_fixture.tscn")
+	var inputs := Baker.gather_bake_inputs("res://src/levels/island/level_1/level_1.tscn")
 	for code in Baker.BAKE_CODE_INPUTS:
 		assert_bool(inputs.has(code)).override_failure_message(
 				"%s missing from the bake input hash" % code).is_true()

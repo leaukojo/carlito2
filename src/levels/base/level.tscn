@@ -3,7 +3,7 @@
 ; Level template: duplicate this scene, then add
 ; terrain/props, drop VehicleSpawn markers, and point `info` at a LevelInfo .tres.
 ; It ships the pieces every level needs — env, sun, chase camera, one spawn — and
-; nothing else. See src/levels/gym/gym.tscn for a fully dressed example.
+; nothing else. See src/levels/island/level_1/level_1.tscn for a dressed example.
 
 [ext_resource type="Script" path="res://src/levels/base/level.gd" id="1_level"]
 [ext_resource type="Script" path="res://src/vehicles/base/chase_camera.gd" id="2_cam"]

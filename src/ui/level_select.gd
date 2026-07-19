@@ -34,8 +34,6 @@ func _ready() -> void:
 	col.add_child(title)
 
 	for entry in LevelRegistry.LEVELS:
-		# Temporary: dev fixtures (kit_fixture, terrain_demo) are normally hidden as
-		# CI/bake assets, but shown here to facilitate testing (revert this later).
 		var b := Button.new()
 		b.text = entry["name"]
 		b.custom_minimum_size = Vector2(260, 44)

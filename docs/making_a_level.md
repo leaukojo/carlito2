@@ -3,8 +3,9 @@
 A start-to-finish walkthrough for authoring one Carlito level. This is the author's
 narrative; the tool reference (every button, every gotcha) is `docs/level_kit.md`, and the
 runtime systems a level plugs into are `docs/systems.md`. Two small worked examples ship in
-the tree: `src/levels/dev/terrain_demo.tscn` (a generated splat island with car + boat
-spawns) and `src/levels/dev/kit_fixture.tscn` (every bake path exercised once).
+the tree: `src/levels/island/level_1/level_1.tscn` (a dressed, generated splat island with
+car + boat spawns) and levels 2-5 beside it (the same island scaffolding, empty and
+waiting to be authored).
 
 A level is a **signal playground**, not a mission: build terrain and content that make
 contract signals visibly perform — grades for `engine_load`, hairpins for slip, fields for
@@ -26,7 +27,7 @@ addon's tools live in the **"Kit" bottom panel** (Palette / Terrain / Scatter / 
 
 Two options:
 
-- **Flat level:** a plain box `StaticBody3D` for ground is enough (see the gym).
+- **Flat level:** a plain box `StaticBody3D` for ground is enough.
 - **Terrain:** add a `HeightmapTerrain`. Selecting it jumps the Kit panel to the **Terrain**
   tab. Pick a preset (character: fractal + island falloff), set `gen_seed` /
   `feature_scale` / `gen_octaves` / falloff band / `coast_roughness` / `terrace_levels`

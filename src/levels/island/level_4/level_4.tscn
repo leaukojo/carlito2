@@ -1,0 +1,95 @@
+[gd_scene format=3 uid="uid://b73asdjvfv7iu"]
+
+[ext_resource type="Script" uid="uid://dfqaw0jscyvlx" path="res://src/levels/base/level.gd" id="1_level"]
+[ext_resource type="Resource" path="res://src/levels/island/level_4/level_4_info.tres" id="2_info"]
+[ext_resource type="Script" uid="uid://ckxshtqj7odax" path="res://src/vehicles/base/chase_camera.gd" id="3_cam"]
+[ext_resource type="Script" uid="uid://5y8krjlda43v" path="res://src/levels/base/vehicle_spawn.gd" id="4_spawn"]
+[ext_resource type="Script" uid="uid://ctk4ghrrwqt7i" path="res://src/levels/base/heightmap_terrain.gd" id="5_terrain"]
+[ext_resource type="Texture2D" uid="uid://4jp08544bbgp" path="res://src/levels/island/level_4/level_4_island_height.png" id="6_height"]
+[ext_resource type="Texture2D" uid="uid://bbk4a14jol186" path="res://src/levels/island/level_4/level_4_island_splat.png" id="7_splat"]
+[ext_resource type="Shader" uid="uid://bcdkfxw2svriw" path="res://kit/terrain/terrain_splat.gdshader" id="8_shader"]
+[ext_resource type="Script" uid="uid://bqwd2fww3l5yg" path="res://src/water/water_surface.gd" id="9_water"]
+[ext_resource type="Script" uid="uid://t88htpmwukbg" path="res://kit/helpers/authoring_root.gd" id="10_authoring"]
+[ext_resource type="Environment" uid="uid://bjh6g6yntyvh1" path="res://src/levels/base/default_env.tres" id="11_env"]
+
+[sub_resource type="PlaneMesh" id="SeaBedMesh"]
+size = Vector2(560, 560)
+
+[sub_resource type="StandardMaterial3D" id="SeaBedMat"]
+albedo_color = Color(0.83, 0.76, 0.55, 1)
+
+[sub_resource type="ShaderMaterial" id="SplatMat"]
+render_priority = 0
+shader = ExtResource("8_shader")
+shader_parameter/grass_color = Color(0.35, 0.55, 0.25, 1)
+shader_parameter/dirt_color = Color(0.52, 0.4, 0.26, 1)
+shader_parameter/sand_color = Color(0.83, 0.76, 0.55, 1)
+shader_parameter/rock_color = Color(0.45, 0.44, 0.42, 1)
+shader_parameter/color5 = Color(0.92, 0.94, 0.97, 1)
+shader_parameter/color6 = Color(0.3, 0.24, 0.17, 1)
+shader_parameter/color7 = Color(0.22, 0.22, 0.24, 1)
+shader_parameter/color8 = Color(0.62, 0.6, 0.56, 1)
+shader_parameter/splatmap = ExtResource("7_splat")
+shader_parameter/blend_sharpness = 8.0
+shader_parameter/roughness_value = 1.0
+
+[node name="Level4" type="Node3D" unique_id=1960347888]
+script = ExtResource("1_level")
+info = ExtResource("2_info")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=264666575]
+environment = ExtResource("11_env")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1490999694]
+transform = Transform3D(0.866, 0.354, -0.354, 0, 0.707, 0.707, 0.5, -0.612, 0.612, 0, 40, 0)
+light_color = Color(1, 0.96, 0.88, 1)
+shadow_enabled = true
+directional_shadow_max_distance = 150.0
+
+[node name="ChaseCamera" type="Camera3D" parent="." unique_id=522819997]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 6)
+script = ExtResource("3_cam")
+
+[node name="Spawn" type="Marker3D" parent="." unique_id=245184177]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 19.5, -3)
+script = ExtResource("4_spawn")
+vehicle_types = PackedStringArray("car", "truck", "tractor")
+
+[node name="WaterSpawn" type="Marker3D" parent="." unique_id=764744830]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 270, 1.3, 0)
+script = ExtResource("4_spawn")
+vehicle_types = PackedStringArray("boat")
+is_water = true
+
+[node name="Sea" type="Area3D" parent="." unique_id=2039717273]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+script = ExtResource("9_water")
+size = Vector2(560, 560)
+depth = 3.0
+far_sea_extent = 1900.0
+
+[node name="SeaBed" type="MeshInstance3D" parent="." unique_id=167908362]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
+mesh = SubResource("SeaBedMesh")
+surface_material_override/0 = SubResource("SeaBedMat")
+
+[node name="Island" type="StaticBody3D" parent="." unique_id=1703291961]
+script = ExtResource("5_terrain")
+heightmap = ExtResource("6_height")
+terrain_size = Vector2(512, 512)
+height = 51.0
+material = SubResource("SplatMat")
+preset = 2
+gen_seed = 429656
+feature_scale = 140.0
+falloff_start = 0.6
+falloff_end = 0.92
+coast_roughness = 0.9
+splatmap = ExtResource("7_splat")
+channel_names = PackedStringArray("Grass", "Dirt", "Sand", "Rock", "Snow", "Mud", "Asphalt", "Gravel")
+channel_grip = PackedFloat32Array(0.8, 0.7, 0.6, 0.7, 0.75, 0.5, 1, 0.85)
+
+[node name="AuthoringRoot" type="Node3D" parent="." unique_id=1851528191]
+script = ExtResource("10_authoring")
+chunk_size = 64.0
+metadata/_custom_type_script = "uid://t88htpmwukbg"

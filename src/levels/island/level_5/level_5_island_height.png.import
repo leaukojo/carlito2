@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dl6ta8wvfcra1"
-path="res://.godot/imported/friction_pad_splat.png-a8cc8b8ef4cf8d6b99dac5cbfce0f359.ctex"
+uid="uid://o61lgnhuqo8q"
+path="res://.godot/imported/level_5_island_height.png-5a6d4040e2722606149ac3e926ba0702.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://src/levels/gym/friction_pad_splat.png"
-dest_files=["res://.godot/imported/friction_pad_splat.png-a8cc8b8ef4cf8d6b99dac5cbfce0f359.ctex"]
+source_file="res://src/levels/island/level_5/level_5_island_height.png"
+dest_files=["res://.godot/imported/level_5_island_height.png-5a6d4040e2722606149ac3e926ba0702.ctex"]
 
 [params]
 
