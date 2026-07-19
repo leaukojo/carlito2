@@ -435,6 +435,42 @@ func test_extrude_bridge_base_all_faces_outward() -> void:
 	assert_bool(found_down).is_true()
 
 
+## A closed cross-section (RoadProfile's base_depth box) encloses a solid volume, so both
+## ends must be capped. Sweeping it alone produced an open tube: you looked straight down
+## a bridge's open end into its hollow interior, and since the box's walls and floor are
+## welded into the drivable body, a vehicle entering through an open end sat inside it and
+## dropped out through the back faces of the floor.
+func test_extrude_bridge_base_is_capped_at_both_ends() -> void:
+	var p: Resource = Profile.new()
+	p.set("base_depth", 2.0)
+	var cs: Dictionary = p.call("cross_section")
+	var curve := _straight(Vector3.ZERO, Vector3(0, 0, 12))
+	var offsets := Builder.adaptive_offsets(curve, 6.0, 6.0)
+	var surfaces := Builder.extrude(curve, cs.points, cs.mats, offsets, false)
+	# the road runs along +Z, so the caps are the only faces pointing along Z
+	var nrm: PackedVector3Array = surfaces[Profile.SLOT_BASE][Mesh.ARRAY_NORMAL]
+	var back := 0
+	var front := 0
+	for n: Vector3 in nrm:
+		if n.z < -0.99:
+			back += 1
+		elif n.z > 0.99:
+			front += 1
+	assert_int(back).is_greater(0)    # cap at the start ring, facing -T
+	assert_int(front).is_greater(0)   # cap at the end ring, facing +T
+	# caps included, every triangle still fronts along its own normal
+	_assert_faces_outward(surfaces)
+
+
+## Caps are opt-in with the box: an open profile (every non-bridge road) gains nothing, so
+## no existing bake changes shape.
+func test_extrude_plain_profile_has_no_end_caps() -> void:
+	var surfaces := _extrude_straight()
+	for slot in surfaces:
+		for n: Vector3 in (surfaces[slot][Mesh.ARRAY_NORMAL] as PackedVector3Array):
+			assert_float(absf(n.z)).is_less(0.01)   # nothing faces along the road
+
+
 func test_extrude_banking_rotates_about_tangent() -> void:
 	var banked := _extrude_straight(true, Vector3.ZERO, Vector3(0, 0, 12), 0.3)
 	# T = +Z, so tilt 0.3 rotates UP about +Z: (-sin 0.3, cos 0.3, 0)
@@ -575,6 +611,46 @@ func test_extrude_open_end_rings_perpendicular_to_handles() -> void:
 	assert_float(r_last.dot(Vector3(0, 0, 1).normalized())).is_equal_approx(0.0, 0.0001)
 
 
+## The endpoint handle frames the end ring (v6, so port-snapped ends stay square to the
+## tile face) — but only while it still describes the road's direction. A 2 cm handle
+## dragged sideways is authored noise: it yawed the end ring ~90 degrees, the fold clamp
+## saw an enormous swing over the first segment, and the road opened as a pinched bowtie.
+## Past END_TANGENT_MAX_DEV_DEG the finite difference takes over again.
+func test_extrude_wild_end_handle_falls_back_to_finite_difference() -> void:
+	var c := Curve3D.new()
+	# handle 2 cm along +X against a 30 m run down +Z: the curve is heading +Z well
+	# within the 0.1 m finite-difference step
+	c.add_point(Vector3.ZERO, Vector3.ZERO, Vector3(0.02, 0, 0))
+	c.add_point(Vector3(0, 0, 30), Vector3(0, 0, -10), Vector3.ZERO)
+	var cs := _edge_cross_section()
+	var offsets := Builder.adaptive_offsets(c, 6.0, 6.0)
+	var surfaces := Builder.extrude(c, cs.points, cs.mats, offsets, false)
+	var pos: PackedVector3Array = surfaces[0][Mesh.ARRAY_VERTEX]
+	# ring 0 keeps the full 9.5 m width — with the ring yawed to the handle the clamp
+	# pinched it to roughly a third of that
+	assert_float(pos[0].distance_to(pos[1])).is_equal_approx(9.5, 0.001)
+	# and it is framed on the curve's own end tangent, not on the handle
+	var right := (pos[1] - pos[0]).normalized()
+	var expect := Builder.frame_at(c, 0.0, c.get_baked_length(), 0.0, Vector3.RIGHT)
+	assert_vector(right).is_equal_approx(expect.basis.x, Vector3.ONE * 0.001)
+	var handle_right: Vector3 = Builder.frame_from_tangent(
+			Vector3(1, 0, 0), Vector3.ZERO, 0.0, Vector3.RIGHT).basis.x
+	assert_bool(right.distance_to(handle_right) > 0.1).is_true()
+
+
+## A handle that agrees with the curve still wins (the v6 behaviour this bounds, not undoes).
+func test_extrude_sane_end_handle_still_frames_the_ring() -> void:
+	var c := Curve3D.new()
+	c.add_point(Vector3(36, 0.12, -18), Vector3.ZERO, Vector3(4, 0, 0))
+	c.add_point(Vector3(46, 0.05, -24), Vector3(-3, 0, 1.8), Vector3(3, 0, -1.8))
+	var cs := _edge_cross_section()
+	var offsets := Builder.adaptive_offsets(c, 6.0, 6.0)
+	var surfaces := Builder.extrude(c, cs.points, cs.mats, offsets, false)
+	var pos: PackedVector3Array = surfaces[0][Mesh.ARRAY_VERTEX]
+	assert_float((pos[1] - pos[0]).normalized().dot(Vector3(1, 0, 0))) \
+			.is_equal_approx(0.0, 0.0001)
+
+
 func test_extrude_climbing_straight_has_no_roll() -> void:
 	# a road up a slope: the right vector stays horizontal, so each cross-section
 	# vertex pair of the flat surface strip shares one world Y
@@ -582,6 +658,64 @@ func test_extrude_climbing_straight_has_no_roll() -> void:
 	var pos: PackedVector3Array = surfaces[0][Mesh.ARRAY_VERTEX]
 	for i in range(0, pos.size(), 2):
 		assert_float(pos[i].y).is_equal_approx(pos[i + 1].y, 0.0001)
+
+
+# ------------------------------------------------------ closed loops / mirrored paths
+
+
+func test_endpoint_gap_and_is_closed_loop() -> void:
+	var closed := Curve3D.new()
+	closed.add_point(Vector3.ZERO)
+	closed.add_point(Vector3(20, 0, 0))
+	closed.add_point(Vector3(20, 0, 20))
+	closed.add_point(Vector3.ZERO)
+	assert_bool(Builder.is_closed_loop(closed)).is_true()
+	assert_float(Builder.endpoint_gap(closed)).is_equal_approx(0.0, 1e-5)
+	# closed by eye, not by snapping
+	closed.set_point_position(3, Vector3(0.4, 0, 0))
+	assert_bool(Builder.is_closed_loop(closed)).is_false()
+	assert_float(Builder.endpoint_gap(closed)).is_equal_approx(0.4, 1e-5)
+	# too few points to be a loop at all
+	assert_bool(Builder.is_closed_loop(_straight(Vector3.ZERO, Vector3(0, 0, 10)))).is_false()
+	assert_bool(Builder.endpoint_gap(null) == INF).is_true()
+
+
+## A loop closed by eye gets neither the shared seam frame nor a weld: the end rings sit
+## that same distance apart, and past the bake's 1 mm snap that is a real hole in the
+## drivable body. RoadPath must say so — the gap is invisible at gizmo zoom.
+func test_road_path_warns_on_near_closed_loop() -> void:
+	var road: Node3D = auto_free(Node3D.new())
+	road.set_script(RoadPathScript)
+	road.set("profile", load("res://kit/roads/asphalt_profile.tres"))
+	var path := Path3D.new()
+	path.name = "Path"
+	var curve := Curve3D.new()
+	curve.add_point(Vector3.ZERO)
+	curve.add_point(Vector3(30, 0, 0))
+	curve.add_point(Vector3(30, 0, 30))
+	curve.add_point(Vector3(0.4, 0, 0))   # 40 cm short of closing
+	path.curve = curve
+	road.add_child(path)
+	assert_bool("\n".join(road._get_configuration_warnings()).contains("endpoints")) \
+			.is_true()
+	# properly closed: no complaint
+	curve.set_point_position(3, Vector3.ZERO)
+	assert_bool("\n".join(road._get_configuration_warnings()).contains("endpoints")) \
+			.is_false()
+
+
+## A negatively scaled Path3D child would otherwise hand the baker a ribbon wound
+## inside-out — invisible under cull_back, and one-way in the welded drivable body.
+func test_transform_surface_arrays_preserves_winding_when_mirrored() -> void:
+	var surfaces := _extrude_straight()
+	var mirror := Transform3D(Basis.IDENTITY.scaled(Vector3(-1, 1, 1)), Vector3.ZERO)
+	var out: Array = Builder.transform_surface_arrays(surfaces[0], mirror)
+	var pos: PackedVector3Array = out[Mesh.ARRAY_VERTEX]
+	var nrm: PackedVector3Array = out[Mesh.ARRAY_NORMAL]
+	var idx: PackedInt32Array = out[Mesh.ARRAY_INDEX]
+	for i in range(0, idx.size(), 3):
+		var cross := (pos[idx[i + 1]] - pos[idx[i]]).cross(pos[idx[i + 2]] - pos[idx[i]])
+		assert_bool(cross.dot(nrm[idx[i]]) < -1e-6).is_true()
 
 
 # ------------------------------------------------------------------- conform math

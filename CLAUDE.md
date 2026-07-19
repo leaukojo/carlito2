@@ -233,8 +233,11 @@ junctions, lane markings, traffic.
   draw panel's "Smooth corners" behavior: `docs/level_kit.md`.
 - Authoring order: terrain → roads + conform → splat → scatter (conform trips the scatter
   stale guard by design).
-- Bake-adjacent CODE (RoadBuilder, ScatterBase) is invisible to the file-hash net — bump
-  `BAKER_VERSION` + re-bake when its output changes.
+- Bake-adjacent CODE (`level_baker.gd`, `road_builder.gd`, `scatter_base.gd`) reaches no
+  resource dependency edge — GDScript reports none — so it is hashed explicitly via
+  `LevelBaker.BAKE_CODE_INPUTS`. Editing one re-stales every level on its own; still bump
+  `BAKER_VERSION` for semantic changes, and re-bake either way. Adding a new bake-adjacent
+  file means adding it to that list.
 - Rebuild `kit_fixture` with `godot --headless res://tools/build_kit_fixture.tscn`
   (hand-authoring GridMap cell data is fragile), then re-bake.
 

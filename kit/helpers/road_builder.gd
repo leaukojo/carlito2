@@ -6,10 +6,12 @@ extends RefCounted
 ## the baker (a game-mode tool, never the editor) can call it on an untreed level, and it
 ## all gets the Drivetrain test discipline (tests/test_road.gd).
 ##
-## Bake-hash note (the ScatterBase precedent): extrusion runs BY the baker at bake time,
-## so this file is bake-adjacent CODE — invisible to gather_bake_inputs (Godot reports
-## resource deps, not script->script edges), governed by BAKER_VERSION + the re-bake
-## discipline. If a change here alters bake OUTPUT, bump BAKER_VERSION.
+## Bake-hash note (the ScatterBase precedent): extrusion runs BY the baker at bake time, so
+## this file is bake-adjacent CODE. No resource dependency edge reaches it (Godot reports
+## resource deps, not script->script edges), so it is named in LevelBaker.BAKE_CODE_INPUTS
+## and hashed explicitly — editing it re-stales every level by itself. Still bump
+## BAKER_VERSION for semantic changes, so the intent is recorded and old manifests are
+## rejected on version alone.
 ##
 ## Frames: the road frame is built from the tangent + world UP (right vector always
 ## horizontal, pitch follows slope, roll ONLY from explicit curve tilt) — deliberately
@@ -32,6 +34,14 @@ const TANGENT_H := 0.1
 ## Extrude clamps the inside lateral to this fraction of the local radius, so any curve
 ## — hairpins, zero-handle corners — renders fold-free (the inner edge pinches instead).
 const FOLD_MARGIN := 0.95
+## Largest angle (degrees) an endpoint handle may deviate from the curve's own end tangent
+## before extrude falls back to the finite difference. The handle is the better end frame
+## for a port-snapped road (see extrude), but it is authored freely — the built-in Path3D
+## gizmo will happily leave an out-handle near-perpendicular to the first chord. An end
+## ring yawed that far makes the first segment's tangent swing enormous, the fold clamp
+## then pinches ring 0 to nothing, and the road starts as a bowtie instead of a ring.
+## Past this the handle is no longer describing the road's direction.
+const END_TANGENT_MAX_DEV_DEG := 60.0
 
 
 # ------------------------------------------------------------ adaptive sampling
@@ -126,6 +136,26 @@ static func first_coincident_index(curve: Curve3D) -> int:
 		if curve.get_point_position(i).is_equal_approx(curve.get_point_position(i - 1)):
 			return i
 	return -1
+
+
+## Distance between a curve's first and last control positions — the gap a "closed" loop
+## fails to close. INF for a curve too short to be a loop. Single owner of the closed-loop
+## question: extrude's seam handling asks is_closed_loop, and RoadPath warns when this is
+## small but nonzero (a loop closed by eye rather than by snapping).
+static func endpoint_gap(curve: Curve3D) -> float:
+	if curve == null or curve.point_count < 3:
+		return INF
+	return curve.get_point_position(0).distance_to(
+			curve.get_point_position(curve.point_count - 1))
+
+
+## Whether the two end control points coincide, so extrude gives both end rings the
+## bisector of the end tangents and the duplicated ring welds at bake.
+static func is_closed_loop(curve: Curve3D) -> bool:
+	if curve == null or curve.point_count < 3:
+		return false
+	return curve.get_point_position(0).is_equal_approx(
+			curve.get_point_position(curve.point_count - 1))
 
 
 ## Outward end tangent of an open curve at one end (curve-local, unit): the direction a
@@ -334,8 +364,7 @@ static func extrude(curve: Curve3D, points: PackedVector2Array, mats: PackedInt3
 	# Closed loop: the two end rings share an origin, so both get the bisector of the
 	# two end tangents — one shared frame instead of a crease/wedge at the seam.
 	var seam_tangent := Vector3.ZERO
-	if curve.point_count >= 3 and curve.get_point_position(0).is_equal_approx(
-			curve.get_point_position(curve.point_count - 1)):
+	if is_closed_loop(curve):
 		var bis := tangent_at(curve, 0.0, length) + tangent_at(curve, length, length)
 		if bis.length_squared() > 1e-12:
 			seam_tangent = bis.normalized()
@@ -344,16 +373,22 @@ static func extrude(curve: Curve3D, points: PackedVector2Array, mats: PackedInt3
 	# finite difference, which bends with any immediate curvature and yaws the end ring
 	# (a port-snapped end then buries one edge in the tile and gaps the other). Zero
 	# handles (polyline) keep the finite-difference fallback: the first chord is the
-	# exact tangent there anyway.
+	# exact tangent there anyway, and so does a handle that has been dragged more than
+	# END_TANGENT_MAX_DEV_DEG off the curve's own end direction (see the const).
 	var start_tangent := Vector3.ZERO
 	var end_tangent := Vector3.ZERO
 	if seam_tangent == Vector3.ZERO and curve.point_count >= 2:
+		var max_dev := deg_to_rad(END_TANGENT_MAX_DEV_DEG)
 		var h0 := curve.get_point_out(0)
 		if h0.length_squared() > 1e-12:
-			start_tangent = h0.normalized()
+			var cand0 := h0.normalized()
+			if cand0.angle_to(tangent_at(curve, 0.0, length)) <= max_dev:
+				start_tangent = cand0
 		var h1 := curve.get_point_in(curve.point_count - 1)
 		if h1.length_squared() > 1e-12:
-			end_tangent = -h1.normalized()
+			var cand1 := -h1.normalized()
+			if cand1.angle_to(tangent_at(curve, length, length)) <= max_dev:
+				end_tangent = cand1
 
 	var frames: Array[Transform3D] = []
 	var prev_right := Vector3.RIGHT
@@ -401,6 +436,16 @@ static func extrude(curve: Curve3D, points: PackedVector2Array, mats: PackedInt3
 			clamp_pos[i] = minf(clamp_pos[i], limit)
 			clamp_pos[i + 1] = minf(clamp_pos[i + 1], limit)
 
+	# A cross-section whose polyline CLOSES (last point == first) encloses a solid volume —
+	# exactly what RoadProfile emits when base_depth > 0. Sweeping it alone produced an
+	# open tube: you looked straight down a bridge's open end into its hollow interior,
+	# and because the box's walls and floor are welded into the drivable body, a vehicle
+	# that entered through an open end sat inside it and dropped out through the back
+	# faces of the floor. Cap both ends with the section's own triangulation.
+	var closed_section := points.size() >= 4 \
+			and points[0].is_equal_approx(points[points.size() - 1])
+	var cap_slot: int = mats[mats.size() - 1] if closed_section else -1
+
 	# insertion-ordered slot list (deterministic: strip order)
 	var slots: Array[int] = []
 	for m in mats:
@@ -437,6 +482,9 @@ static func extrude(curve: Curve3D, points: PackedVector2Array, mats: PackedInt3
 			for ri in frames.size() - 1:
 				var q := base + ri * 2
 				idx.append_array(PackedInt32Array([q, q + 2, q + 1, q + 1, q + 2, q + 3]))
+		if slot == cap_slot:
+			_append_end_caps(pos, nrm, uv, idx, frames, points, offsets,
+					clamp_neg, clamp_pos)
 		var arrays := []
 		arrays.resize(Mesh.ARRAY_MAX)
 		arrays[Mesh.ARRAY_VERTEX] = pos
@@ -445,6 +493,49 @@ static func extrude(curve: Curve3D, points: PackedVector2Array, mats: PackedInt3
 		arrays[Mesh.ARRAY_INDEX] = idx
 		result[slot] = arrays
 	return result
+
+
+## Triangulate the closed cross-section at the first and last ring and append both caps,
+## using each ring's OWN fold-clamped laterals so a cap always meets the strips it closes.
+##
+## Facing: a cap vertex is origin + R*x + U*y, and R x U == -T, so a triangle whose 2D
+## signed area is positive has its Godot front face along +T. The last ring's cap must
+## face +T (forward, out of the road) and the first ring's -T, so each triangle is emitted
+## in whichever order gives its side the sign it needs. Degenerate rings (a fold clamp
+## tight enough to collapse the section) simply get no cap rather than a fan of slivers.
+static func _append_end_caps(pos: PackedVector3Array, nrm: PackedVector3Array,
+		uv: PackedVector2Array, idx: PackedInt32Array, frames: Array[Transform3D],
+		points: PackedVector2Array, offsets: PackedFloat32Array,
+		clamp_neg: PackedFloat32Array, clamp_pos: PackedFloat32Array) -> void:
+	var n := points.size() - 1   # drop the duplicated closing point
+	for which in 2:
+		var ri := 0 if which == 0 else frames.size() - 1
+		var f := frames[ri]
+		var poly := PackedVector2Array()
+		for i in n:
+			poly.append(Vector2(
+					_clamp_lateral(points[i].x, clamp_neg[ri], clamp_pos[ri]), points[i].y))
+		var tris := Geometry2D.triangulate_polygon(poly)
+		if tris.is_empty():
+			continue
+		var tangent := -f.basis.z
+		var normal := tangent if which == 1 else -tangent
+		var base := pos.size()
+		for i in n:
+			pos.append(f.origin + f.basis.x * poly[i].x + f.basis.y * poly[i].y)
+			nrm.append(normal)
+			uv.append(Vector2(points[i].x, offsets[ri]))
+		var want_positive := which == 1
+		for ti in range(0, tris.size() - 2, 3):
+			var a := tris[ti]
+			var b := tris[ti + 1]
+			var c := tris[ti + 2]
+			var signed_area := (poly[b].x - poly[a].x) * (poly[c].y - poly[a].y) \
+					- (poly[b].y - poly[a].y) * (poly[c].x - poly[a].x)
+			if (signed_area > 0.0) == want_positive:
+				idx.append_array(PackedInt32Array([base + a, base + b, base + c]))
+			else:
+				idx.append_array(PackedInt32Array([base + a, base + c, base + b]))
 
 
 ## Signed lateral clamped to its side's fold limit (INF = untouched).
@@ -471,7 +562,10 @@ static func faces_from_surfaces(surfaces: Dictionary) -> PackedVector3Array:
 
 
 ## Transform surface arrays: positions by the full transform, normals by the
-## inverse-transpose basis re-normalized (for a non-identity Path3D child transform).
+## inverse-transpose basis re-normalized (for a non-identity Path3D child transform), and
+## triangles reversed when the transform mirrors — a Path3D child scaled negatively on one
+## axis would otherwise hand the baker a ribbon wound inside-out (same trap as
+## LevelBaker.SurfaceAccumulator.append).
 static func transform_surface_arrays(arrays: Array, xform: Transform3D) -> Array:
 	var out := arrays.duplicate()
 	var pos: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -488,6 +582,14 @@ static func transform_surface_arrays(arrays: Array, xform: Transform3D) -> Array
 		for i in nn.size():
 			nn[i] = (nb * (src_n as PackedVector3Array)[i]).normalized()
 		out[Mesh.ARRAY_NORMAL] = nn
+	var src_idx: Variant = arrays[Mesh.ARRAY_INDEX]
+	if xform.basis.determinant() < 0.0 and src_idx is PackedInt32Array:
+		var si := src_idx as PackedInt32Array
+		var flipped := si.duplicate()
+		for i in range(0, si.size() - 2, 3):
+			flipped[i + 1] = si[i + 2]
+			flipped[i + 2] = si[i + 1]
+		out[Mesh.ARRAY_INDEX] = flipped
 	return out
 
 

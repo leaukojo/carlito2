@@ -25,7 +25,22 @@ extends RefCounted
 ## closed loops one shared bisector frame at the seam.
 ## v6: open-end rings use the exact endpoint handle tangent (finite difference yawed
 ## port-snapped ends against the tile face).
-const BAKER_VERSION := 6
+## v7: correctness pass — true epsilon welding (was grid snapping), nested KitPieces keep
+## their own collision mode, mirrored transforms keep their winding, finer material keys,
+## chunk keys from mesh AABB centres, bridge-base end caps, bounded end tangents.
+const BAKER_VERSION := 7
+
+## Bake-adjacent CODE that no resource dependency edge can reach: GDScript files report
+## NO dependencies (verified — `ResourceLoader.get_dependencies` on a .gd returns an empty
+## list), so a script is only in the net when a .tscn/.tres names it as an ext_resource.
+## These three shape bake OUTPUT and are named by nothing, so they are hashed explicitly —
+## BAKER_VERSION stays the knob for semantic changes, but forgetting to bump it can no
+## longer ship a silently-stale bake.
+const BAKE_CODE_INPUTS: PackedStringArray = [
+	"res://kit/bake/level_baker.gd",
+	"res://kit/helpers/road_builder.gd",
+	"res://kit/helpers/scatter_base.gd",
+]
 
 ## Scatter: items with at least this many stored instances bake as one
 ## MultiMeshInstance3D per chunk x item (geometry stored once) instead of merging
@@ -70,27 +85,59 @@ static func chunk_local_multimesh_transforms(world_xforms: Array, key: Vector2i,
 	return out
 
 
-## Weld a triangle soup: snap every vertex to a WELD_EPSILON grid so coincident
-## verts become bit-identical, and drop triangles that degenerate. The result is
-## what the Drivable body's ConcavePolygonShape3D gets (§2 rule 2: welded, no
-## interior seams).
+## Weld a triangle soup: every vertex within `epsilon` of an already-seen vertex becomes
+## bit-identical to it, and triangles that degenerate are dropped. The result is what the
+## Drivable body's ConcavePolygonShape3D gets (§2 rule 2: welded, no interior seams).
+##
+## This is a true epsilon MERGE, not a snap-to-grid: rounding each vertex to a grid cell
+## unifies verts that share a cell but leaves verts astride a cell boundary distinct, so
+## two vertices microns apart could still weld into a crack — position-dependent, so it
+## passes every fixture and shows up on exactly one authored level as a wheel that catches
+## at one joint. Instead each vertex probes the 27 cells around it (a match must be within
+## one cell per axis when the cell size IS epsilon) and adopts the first canonical vertex
+## it finds, scanning cells and per-cell lists in a fixed order — so the output stays
+## deterministic for a given input order, which the collect walk guarantees.
 static func weld_faces(faces: PackedVector3Array, epsilon := WELD_EPSILON) -> PackedVector3Array:
 	var out := PackedVector3Array()
-	var canon := {}
+	var cells := {}   # Vector3i cell -> Array[Vector3] canonical verts registered in it
+	var eps2 := epsilon * epsilon
 	var tri := [Vector3.ZERO, Vector3.ZERO, Vector3.ZERO]
 	for i in range(0, faces.size() - 2, 3):
 		for j in 3:
 			var v := faces[i + j]
-			var key := Vector3i(roundi(v.x / epsilon), roundi(v.y / epsilon), roundi(v.z / epsilon))
-			if not canon.has(key):
-				canon[key] = Vector3(key) * epsilon
-			tri[j] = canon[key]
+			var key := Vector3i(floori(v.x / epsilon), floori(v.y / epsilon), floori(v.z / epsilon))
+			var canon: Variant = _find_canonical(cells, key, v, eps2)
+			if canon == null:
+				if not cells.has(key):
+					cells[key] = PackedVector3Array()
+				var list: PackedVector3Array = cells[key]
+				list.push_back(v)
+				cells[key] = list
+				tri[j] = v
+			else:
+				tri[j] = canon
 		if tri[0] == tri[1] or tri[1] == tri[2] or tri[0] == tri[2]:
 			continue
 		out.push_back(tri[0])
 		out.push_back(tri[1])
 		out.push_back(tri[2])
 	return out
+
+
+## First registered vertex within epsilon of `v`, searching `key`'s cell and its 26
+## neighbours in a fixed order; null when there is none.
+static func _find_canonical(cells: Dictionary, key: Vector3i, v: Vector3,
+		eps2: float) -> Variant:
+	for dx in [0, -1, 1]:
+		for dy in [0, -1, 1]:
+			for dz in [0, -1, 1]:
+				var probe := Vector3i(key.x + dx, key.y + dy, key.z + dz)
+				if not cells.has(probe):
+					continue
+				for c: Vector3 in (cells[probe] as PackedVector3Array):
+					if c.distance_squared_to(v) <= eps2:
+						return c
+	return null
 
 
 ## Normalize line endings so the same file hashes the same on Windows and CI.
@@ -155,7 +202,9 @@ static func validate_spawns(allowed: PackedStringArray, default_vehicle: String,
 ## bucketed for frustum culling; `world_xform` is applied for KEYING ONLY — the output
 ## arrays stay in the source space, vertices remapped/deduped per chunk). Render-only:
 ## collision never splits (the ribbon welds into the single level-wide Drivable body,
-## §2 rule 1a). Handles VERTEX/NORMAL/TEX_UV channels; triangle count is conserved.
+## §2 rule 1a). Handles VERTEX/NORMAL/TEX_UV/COLOR channels — the same set
+## SurfaceAccumulator merges, so a channel can never survive one path and vanish in the
+## other; triangle count is conserved.
 static func split_arrays_by_chunk(arrays: Array, world_xform: Transform3D,
 		chunk_size: float) -> Dictionary:
 	var pos: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -179,6 +228,9 @@ static func split_arrays_by_chunk(arrays: Array, world_xform: Transform3D,
 	var src_uv: Variant = arrays[Mesh.ARRAY_TEX_UV]
 	var has_uv: bool = src_uv is PackedVector2Array \
 			and (src_uv as PackedVector2Array).size() == pos.size()
+	var src_col: Variant = arrays[Mesh.ARRAY_COLOR]
+	var has_col: bool = src_col is PackedColorArray \
+			and (src_col as PackedColorArray).size() == pos.size()
 
 	var out := {}
 	for key: Vector2i in tri_lists:
@@ -186,6 +238,7 @@ static func split_arrays_by_chunk(arrays: Array, world_xform: Transform3D,
 		var cpos := PackedVector3Array()
 		var cnrm := PackedVector3Array()
 		var cuv := PackedVector2Array()
+		var ccol := PackedColorArray()
 		var cidx := PackedInt32Array()
 		for si: int in tri_lists[key]:
 			if not idx_remap.has(si):
@@ -195,6 +248,8 @@ static func split_arrays_by_chunk(arrays: Array, world_xform: Transform3D,
 					cnrm.append((src_n as PackedVector3Array)[si])
 				if has_uv:
 					cuv.append((src_uv as PackedVector2Array)[si])
+				if has_col:
+					ccol.append((src_col as PackedColorArray)[si])
 			cidx.append(idx_remap[si])
 		var carrays := []
 		carrays.resize(Mesh.ARRAY_MAX)
@@ -203,6 +258,8 @@ static func split_arrays_by_chunk(arrays: Array, world_xform: Transform3D,
 			carrays[Mesh.ARRAY_NORMAL] = cnrm
 		if has_uv:
 			carrays[Mesh.ARRAY_TEX_UV] = cuv
+		if has_col:
+			carrays[Mesh.ARRAY_COLOR] = ccol
 		carrays[Mesh.ARRAY_INDEX] = cidx
 		out[key] = carrays
 	return out
@@ -210,29 +267,60 @@ static func split_arrays_by_chunk(arrays: Array, world_xform: Transform3D,
 
 ## Semantic material key so identical Kenney materials re-imported per GLB merge
 ## into one surface instead of one surface per source file.
+##
+## Every field that changes how the surface RENDERS belongs here. The whole kit shares one
+## colormap.png atlas, so albedo alone is nowhere near enough to tell materials apart: an
+## emissive lit-window material and a matte wall material differ in nothing else, and
+## keying on albedo merged them into one surface whose material was whichever the merge
+## happened to see first — windows going matte on one chunk and walls glowing on the next,
+## from identical authoring.
 static func material_key(mat: Material) -> String:
 	if mat == null:
 		return "null"
 	var bm := mat as BaseMaterial3D
 	if bm == null:
 		return "id:%d" % mat.get_instance_id()
-	var texkey := ""
-	if bm.albedo_texture != null:
-		texkey = bm.albedo_texture.resource_path
-		if texkey.is_empty():
-			texkey = "texid:%d" % bm.albedo_texture.get_instance_id()
-	return "%s|%s|t%d|c%d|v%s" % [texkey, bm.albedo_color.to_html(),
-			bm.transparency, bm.cull_mode, bm.vertex_color_use_as_albedo]
+	return "|".join(PackedStringArray([
+		_texture_key(bm.albedo_texture),
+		_texture_key(bm.normal_texture),
+		_texture_key(bm.emission_texture),
+		_texture_key(bm.orm_texture),
+		bm.albedo_color.to_html(),
+		"t%d" % bm.transparency,
+		"c%d" % bm.cull_mode,
+		"s%d" % bm.shading_mode,
+		"d%d" % bm.depth_draw_mode,
+		"b%d" % bm.billboard_mode,
+		"v%s" % bm.vertex_color_use_as_albedo,
+		"r%.4f" % bm.roughness,
+		"m%.4f" % bm.metallic,
+		"e%s:%s:%.4f" % [bm.emission_enabled, bm.emission.to_html(),
+				bm.emission_energy_multiplier],
+		"n%.4f" % bm.normal_scale,
+		"u%s:%s" % [bm.uv1_scale, bm.uv1_offset],
+		"p%d" % bm.render_priority,
+	]))
+
+
+## Stable identity for a material's texture slot: the resource path when it has one
+## (the imported-per-GLB atlas case these keys exist to merge), else the instance.
+static func _texture_key(tex: Texture2D) -> String:
+	if tex == null:
+		return "-"
+	return tex.resource_path if not tex.resource_path.is_empty() \
+			else "texid:%d" % tex.get_instance_id()
 
 
 # ------------------------------------------------------------ dependency walk
 
-## Every file whose change must flag a bake stale: the level scene itself, its
-## transitive dependencies under res://kit/ (prefabs, palettes, GLBs, textures),
-## and their .import sidecars. Sorted + deduped for a stable hash.
+## Every file whose change must flag a bake stale: the level scene itself, its transitive
+## resource dependencies that can shape bake output (wherever they live), the explicit
+## BAKE_CODE_INPUTS, and their .import sidecars. Sorted + deduped for a stable hash.
 static func gather_bake_inputs(level_path: String) -> PackedStringArray:
 	var seen := {level_path: true}
 	var kept := {level_path: true}
+	for p in BAKE_CODE_INPUTS:
+		kept[p] = true
 	var queue: Array[String] = [level_path]
 	while not queue.is_empty():
 		var p: String = queue.pop_back()
@@ -242,7 +330,7 @@ static func gather_bake_inputs(level_path: String) -> PackedStringArray:
 				continue
 			seen[dp] = true
 			queue.append(dp)
-			if dp.begins_with("res://kit/"):
+			if is_bake_input(dp):
 				kept[dp] = true
 	var out := PackedStringArray()
 	for p: String in kept:
@@ -251,6 +339,27 @@ static func gather_bake_inputs(level_path: String) -> PackedStringArray:
 			out.append(p + ".import")
 	out.sort()
 	return out
+
+
+## Whether a dependency can change what the baker emits. The old rule — keep res://kit/
+## only — was too narrow: an Authoring subtree that instances a prop sub-scene from
+## res://src/, or a mesh/material saved outside the kit, is walked by _collect and merged
+## into the bake, yet edits to it left the hash untouched and CI green. LevelInfo (a .tres
+## under src/levels/) escaped the same way, so the spawn gate's verdict was cached.
+##
+## So: keep every resource, anywhere, EXCEPT plugin code and scripts outside the kit.
+## Runtime scripts (level.gd, vehicles, water) cannot change baker output — the baker
+## reads transforms, meshes and shapes, plus the duck-typed kit APIs — and hashing them
+## would re-stale every level on unrelated gameplay edits. Kit scripts stay in (they ARE
+## the duck-typed APIs), as do heightmap/splat PNGs: sculpting terrain moves scattered
+## props, which is exactly what scatter_ground_errors also guards.
+static func is_bake_input(path: String) -> bool:
+	if path.begins_with("res://kit/"):
+		return true
+	if path.begins_with("res://addons/"):
+		return false
+	var ext := path.get_extension().to_lower()
+	return ext != "gd" and ext != "cs"
 
 
 ## get_dependencies entries look like "uid://xx::type::res://path" (or subsets);
@@ -278,14 +387,17 @@ static func manifest_path(level_path: String) -> String:
 
 
 ## Manifest is deliberately timestamp-free: re-baking unchanged inputs produces a
-## byte-identical file (clean git diffs, deterministic CI).
+## byte-identical file (clean git diffs, deterministic CI). `output_hash` is the sha256 of
+## the .baked.scn: without it the freshness check only asked whether the OUTPUT file
+## exists, so a truncated, hand-edited or half-written bake read fresh forever.
 static func write_manifest(level_path: String, input_hash: String, chunk_size: float,
-		stats: Dictionary) -> Error:
+		stats: Dictionary, output_hash := "") -> Error:
 	var doc := {
 		"baker_version": BAKER_VERSION,
 		"level": level_path,
 		"chunk_size": chunk_size,
 		"input_hash": input_hash,
+		"output_hash": output_hash,
 		"stats": stats,
 	}
 	var f := FileAccess.open(manifest_path(level_path), FileAccess.WRITE)
@@ -395,7 +507,9 @@ static func bake(level_root: Node) -> Dictionary:
 	var ctx := BakeContext.new()
 	ctx.chunk_size = chunk_size
 	_collect(authoring, _authoring_xform(level_root, authoring), ctx, errors)
-	if ctx.total_vertices == 0:
+	# Collision-only authoring (pieces that carry shapes but no mesh) is legitimate, so
+	# the gate is "nothing at all was collected", not "no vertices".
+	if ctx.total_vertices == 0 and ctx.body_shapes.is_empty() and ctx.weld_pool.is_empty():
 		errors.append("AuthoringRoot has no bakeable content (GridMaps / KitPiece prefabs)")
 	if not errors.is_empty():
 		return _fail(errors)
@@ -418,8 +532,11 @@ static func _fail(errors: PackedStringArray) -> Dictionary:
 	return {"ok": false, "errors": errors, "root": null, "stats": {}}
 
 
-## Recursive gather. GridMap cells are all drivable (palettes hold road tiles only);
-## KitPiece prefabs contribute render meshes plus collision per their mode.
+## Recursive gather. GridMap cells are all drivable — every generated palette is a set of
+## road/ground TILES by construction (the recipes' "palette" pipeline; the wall and
+## barrier meshlibs are road tiles that carry a wall along one edge, not free-standing
+## walls, so welding them is right). KitPiece prefabs contribute render meshes plus
+## collision per their mode.
 static func _collect(node: Node, xform: Transform3D, ctx: BakeContext,
 		errors: PackedStringArray) -> void:
 	for child in node.get_children():
@@ -454,7 +571,11 @@ static func _collect_gridmap(gm: GridMap, xform: Transform3D, ctx: BakeContext,
 		var basis := gm.get_basis_with_orthogonal_index(gm.get_cell_item_orientation(cell))
 		var cell_xform := xform * Transform3D(basis, gm.map_to_local(cell))
 		var mesh_xform := cell_xform * ml.get_item_mesh_transform(item)
-		var key := chunk_key(cell_xform.origin, ctx.chunk_size)
+		# Key by where the GEOMETRY actually sits, not the anchor cell: the roads
+		# palette's road-curve is a corner-anchored 2x2 sweep, so keying on the cell
+		# origin filed up to three quarters of it under a chunk it does not overlap and
+		# stretched that chunk's culling AABB by a full 24 m. The piece still moves whole.
+		var key := chunk_key(mesh_xform * mesh.get_aabb().get_center(), ctx.chunk_size)
 		ctx.add_render_mesh(key, mesh, mesh_xform)
 		ctx.add_weld_mesh(mesh, mesh_xform)
 
@@ -466,8 +587,20 @@ static func _collect_piece(piece: Node, xform: Transform3D, ctx: BakeContext,
 	_collect_piece_content(piece, xform, key, mode, ctx, errors)
 
 
+## Walk one piece's subtree under `mode`. A nested KitPiece re-enters _collect_piece so it
+## keeps its OWN collision mode: inheriting the ancestor's silently broke the drivable
+## invariant both ways — a "hull" railing grouped under a "weld" bridge had its triangles
+## welded into the level-wide drivable body (drive up the handrail, phantom wheel contacts)
+## while its hull shape was dropped, and a "weld" ramp grouped under a "box" warehouse
+## never reached the drivable body at all, so the car fell through a ramp that dev-play
+## rendered solid.
+##
+## `nested` is false only for scatter, whose template subtree is validated as a whole
+## before this runs (a scattered weld prefab is a bake error, and collision-off must stay
+## off for every descendant) — generated scatter prefabs are flat anyway.
 static func _collect_piece_content(node: Node, xform: Transform3D, key: Vector2i,
-		mode: String, ctx: BakeContext, errors: PackedStringArray) -> void:
+		mode: String, ctx: BakeContext, errors: PackedStringArray,
+		nested := true) -> void:
 	if node is MeshInstance3D:
 		var mi := node as MeshInstance3D
 		if mi.mesh != null:
@@ -482,7 +615,10 @@ static func _collect_piece_content(node: Node, xform: Transform3D, key: Vector2i
 		var cxform := xform
 		if child is Node3D:
 			cxform = xform * (child as Node3D).transform
-		_collect_piece_content(child, cxform, key, mode, ctx, errors)
+		if nested and child.has_method("is_carlito_kit_piece"):
+			_collect_piece(child, cxform, ctx, errors)
+		else:
+			_collect_piece_content(child, cxform, key, mode, ctx, errors, nested)
 
 
 ## Scatter: consume the region's STORED transforms only — no
@@ -547,13 +683,15 @@ static func _collect_scatter(region: Node, xform: Transform3D, ctx: BakeContext,
 		else:
 			for t in xforms:
 				_collect_piece_content(template, t, chunk_key(t.origin, ctx.chunk_size),
-						mode if use_collision else "none", ctx, errors)
+						mode if use_collision else "none", ctx, errors, false)
 		template.free()
 
 
-## Spline road: duck-call the RoadPath's geometry API (ribbon_surfaces /
-## ribbon_faces — the stored layout has one owner, and both depend only on the
-## serialized Path child + profile, so they work on the baker's untreed instance).
+## Spline road: duck-call the RoadPath's geometry API (ribbon_surfaces — the stored layout
+## has one owner, and it depends only on the serialized Path child + profile, so it works
+## on the baker's untreed instance). The weld soup is flattened from those same surfaces
+## rather than from a second ribbon_faces() call, which re-ran adaptive sampling and the
+## whole extrusion a second time per road for a byte-identical result.
 ## Render surfaces are chunk-bucketed by triangle centroid for frustum culling;
 ## collision is NOT split — every ribbon triangle joins the level-wide welded
 ## Drivable body through the same 1 mm snap as weld prefabs. No
@@ -568,11 +706,17 @@ static func _collect_road(road: Node, xform: Transform3D, ctx: BakeContext,
 	if entries.is_empty():
 		errors.append("RoadPath '%s' has no usable curve (needs at least 2 points)" % road.name)
 		return
+	var faces := PackedVector3Array()
 	for e: Dictionary in entries:
 		var buckets := split_arrays_by_chunk(e.arrays, xform, ctx.chunk_size)
 		for key: Vector2i in buckets:
 			ctx.add_render_arrays(key, e.material, buckets[key], xform)
-	ctx.add_weld_faces(road.call("ribbon_faces"), xform)
+		# entries arrive slot-sorted (ribbon_surfaces sorts its keys), the same order
+		# faces_from_surfaces walks, so the soup is byte-identical to ribbon_faces()
+		var pos: PackedVector3Array = e.arrays[Mesh.ARRAY_VERTEX]
+		for i: int in (e.arrays[Mesh.ARRAY_INDEX] as PackedInt32Array):
+			faces.append(pos[i])
+	ctx.add_weld_faces(faces, xform)
 	ctx.roads += 1
 
 
@@ -609,13 +753,21 @@ static func _assemble(ctx: BakeContext) -> Node3D:
 		root.add_child(bodies)
 		var body_keys := ctx.body_shapes.keys()
 		body_keys.sort()
+		# One duplicate per SOURCE shape, shared by every instance that harvested it.
+		# Duplicating per instance gave a 3000-tree forest 3000 identical BoxShape3Ds in
+		# the packed scene and 3000 shapes in the physics server — the render side stores
+		# scattered geometry once, and the collision side has no reason not to.
+		var shared := {}
 		for key: Vector2i in body_keys:
 			var body := StaticBody3D.new()
 			body.name = "body_%d_%d" % [key.x, key.y]
 			bodies.add_child(body)
 			for entry: Array in ctx.body_shapes[key]:
+				var src_id := (entry[0] as Shape3D).get_instance_id()
+				if not shared.has(src_id):
+					shared[src_id] = (entry[0] as Shape3D).duplicate()
 				var cs := CollisionShape3D.new()
-				cs.shape = (entry[0] as Shape3D).duplicate()
+				cs.shape = shared[src_id]
 				cs.transform = entry[1]
 				body.add_child(cs)
 
@@ -703,7 +855,9 @@ static func bake_level_file(level_path: String) -> Dictionary:
 	baked_root.free()
 	if errors.is_empty():
 		var input_hash := hash_inputs(gather_bake_inputs(level_path), hash_extra(chunk_size))
-		if write_manifest(level_path, input_hash, chunk_size, result.stats) != OK:
+		var output_hash := FileAccess.get_sha256(baked_scene_path(level_path))
+		if write_manifest(level_path, input_hash, chunk_size, result.stats,
+				output_hash) != OK:
 			errors.append("failed to write manifest '%s'" % manifest_path(level_path))
 	if not errors.is_empty():
 		return _fail(errors)
@@ -735,6 +889,11 @@ static func check_level_file(level_path: String) -> Dictionary:
 	var current := hash_inputs(gather_bake_inputs(level_path), hash_extra(chunk_size))
 	if String(manifest.get("input_hash", "")) != current:
 		return {"status": "stale", "detail": "authoring inputs changed since last bake"}
+	# The output itself, not just its existence: a truncated or hand-edited .baked.scn
+	# used to pass forever on a matching input hash.
+	var stamped := String(manifest.get("output_hash", ""))
+	if stamped != FileAccess.get_sha256(baked_scene_path(level_path)):
+		return {"status": "stale", "detail": "baked scene does not match its manifest — re-bake"}
 	# Terrain PNGs sit outside the input hash's res://kit/ net, so stale scatter needs
 	# its own check (and Regenerate — not just a re-bake — clears it).
 	if not scatter_errors.is_empty():
@@ -787,11 +946,18 @@ class BakeContext:
 		total_vertices += (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 
 	func add_weld_mesh(mesh: Mesh, world_xform: Transform3D) -> void:
-		for face in mesh.get_faces():
-			weld_pool.push_back(world_xform * face)
+		add_weld_faces(mesh.get_faces(), world_xform)
 
 	## A pre-built triangle soup into the level-wide weld pool (road ribbons).
+	## A mirroring transform reverses each triangle so the welded body keeps its outward
+	## winding — see SurfaceAccumulator.append for why that matters.
 	func add_weld_faces(faces: PackedVector3Array, world_xform: Transform3D) -> void:
+		if world_xform.basis.determinant() < 0.0:
+			for i in range(0, faces.size() - 2, 3):
+				weld_pool.push_back(world_xform * faces[i])
+				weld_pool.push_back(world_xform * faces[i + 2])
+				weld_pool.push_back(world_xform * faces[i + 1])
+			return
 		for v in faces:
 			weld_pool.push_back(world_xform * v)
 
@@ -837,8 +1003,13 @@ class BakeContext:
 
 ## Merges mesh surfaces that share a material into one surface, applying transforms
 ## at array level: positions by the full transform, normals rotated by the
-## inverse-transpose basis and re-normalized (correct under the uniform scales the
-## kit uses — SurfaceTool.append_from leaves scaled normals unnormalized).
+## inverse-transpose basis and re-normalized (correct under ANY invertible basis, not
+## just the uniform scales the kit uses — SurfaceTool.append_from leaves scaled normals
+## unnormalized), and triangles reversed when the transform mirrors.
+##
+## ARRAY_TANGENT is deliberately dropped: the kit is flat-colour with no normal maps, and
+## the bake is the only consumer. If a piece ever ships a normal map, tangents need the
+## same per-vertex treatment as normals here — they will not appear by themselves.
 class SurfaceAccumulator:
 	var positions := PackedVector3Array()
 	var normals := PackedVector3Array()
@@ -889,13 +1060,31 @@ class SurfaceAccumulator:
 				for i in src_pos.size():
 					colors.push_back(Color.WHITE)
 
+		# A mirroring transform (negative determinant — scale (-1, 1, 1), the standard
+		# left-hand-variant trick) flips triangle handedness. The inverse-transpose keeps
+		# normals pointing outward, but copying the index order verbatim left the winding
+		# reversed: the chunk mesh rendered inside-out under cull_back (a mirrored pier
+		# visible only from within), and the same triangles entered the welded body
+		# back-to-front, making the deck one-way so the car fell through it. Only the bake
+		# saw this — dev-play uses the prefab's own shapes.
+		var flip := xform.basis.determinant() < 0.0
 		var src_idx: Variant = arrays[Mesh.ARRAY_INDEX]
+		var src: PackedInt32Array
 		if src_idx is PackedInt32Array and (src_idx as PackedInt32Array).size() > 0:
-			for ix: int in src_idx:
-				indices.push_back(base + ix)
+			src = src_idx
 		else:
+			src = PackedInt32Array()
+			src.resize(src_pos.size())
 			for i in src_pos.size():
-				indices.push_back(base + i)
+				src[i] = i
+		if flip:
+			for i in range(0, src.size() - 2, 3):
+				indices.push_back(base + src[i])
+				indices.push_back(base + src[i + 2])
+				indices.push_back(base + src[i + 1])
+		else:
+			for ix: int in src:
+				indices.push_back(base + ix)
 
 	func commit(mesh: ArrayMesh, material: Material) -> int:
 		var arrays := []

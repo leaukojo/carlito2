@@ -79,15 +79,25 @@ everywhere is duck-typed marker methods (`is_carlito_authoring` / `is_carlito_ki
   threshold every instance routes through the normal merge path. Collision harvest is
   identical either way (prefab shapes per instance into chunk bodies); collision-off
   items add zero physics; **weld-mode prefabs in scatter are a bake error**.
-- **Roads:** the baker duck-calls `ribbon_surfaces()` / `ribbon_faces()` (they depend
-  only on the serialized Path child + profile, so they work on the baker's untreed
-  instance). Render is chunk-bucketed by triangle centroid (`split_arrays_by_chunk`,
-  render-only — collision never splits) through `BakeContext.add_render_arrays`; every
-  ribbon triangle joins the level-wide welded Drivable body via `add_weld_faces` (the
-  same 1 mm snap as weld prefabs).
+- **Roads:** the baker duck-calls `ribbon_surfaces()` once (it depends only on the
+  serialized Path child + profile, so it works on the baker's untreed instance) and
+  derives the weld soup from those same arrays. Render is chunk-bucketed by triangle
+  centroid (`split_arrays_by_chunk`, render-only — collision never splits) through
+  `BakeContext.add_render_arrays`; every ribbon triangle joins the level-wide welded
+  Drivable body via `add_weld_faces` (the same 1 mm merge as weld prefabs).
+- **Nested pieces keep their own `collision_mode`:** a `KitPiece` inside another
+  re-enters the piece collector rather than inheriting the ancestor's mode (inheriting
+  welded a `hull` railing into the drivable body, and hid a `weld` ramp from it).
+- **Mirroring is winding-safe:** a negative-determinant transform (scale −1 on an axis)
+  reverses triangle order in `SurfaceAccumulator`, the weld pool, and
+  `transform_surface_arrays`, so a mirrored piece is neither inside-out on screen nor
+  one-way in collision.
 - Stats report chunks/surfaces/vertices/drivable triangles plus `scatter_instances`,
-  `scatter_multimeshes`, and `roads`. Bake-adjacent CODE (RoadBuilder, ScatterBase) is
-  governed by `BAKER_VERSION` + re-bake — it is invisible to the file-hash net.
+  `scatter_multimeshes`, and `roads`. Bake-adjacent CODE (`level_baker.gd`,
+  `road_builder.gd`, `scatter_base.gd`) reaches the hash through
+  `LevelBaker.BAKE_CODE_INPUTS` — GDScript reports no dependencies, so no resource edge
+  finds it. Editing one re-stales every level by itself; `BAKER_VERSION` stays the knob
+  for semantic changes that must re-stale even when no file moved.
 - **Runtime seam:** `Level._setup_baked()` loads `<level>.baked.scn` by convention and
   frees the authoring subtree; unbaked levels play authoring content directly (dev).
 - **Export never ships authoring:** `addons/carlito_kit/` (enabled EditorPlugin)
@@ -97,8 +107,12 @@ everywhere is duck-typed marker methods (`is_carlito_authoring` / `is_carlito_ki
   byte-scanning the pck (an excluded imported texture leaves only a benign uid-cache
   path string, never its `.ctex` data).
 - **CI gate:** `tools/check_bakes.tscn` recomputes each registered level's input hash
-  (level .tscn + transitive `res://kit/**` deps + `.import` sidecars, CRLF-normalized
-  text hashing) vs the manifest; ci.yml fails on missing/stale. The baked-level headless
+  (level .tscn + every transitive resource dep that can shape the bake — anywhere, not
+  just `res://kit/**`; runtime scripts outside the kit and `res://addons/` are excluded,
+  see `LevelBaker.is_bake_input` — plus `BAKE_CODE_INPUTS` and `.import` sidecars,
+  CRLF-normalized text hashing) vs the manifest, and checks the manifest's `output_hash`
+  against the `.baked.scn` on disk so an edited or truncated bake cannot read fresh;
+  ci.yml fails on missing/stale. The baked-level headless
   smoke (`CARLITO_LEVEL` env picks a registry id) runs against **`kit_fixture`**.
 
 ## kit_fixture — the permanent CI bake canary
@@ -417,8 +431,9 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   `ground_hash` (sha256 of every terrain heightmap image + name/position/size/height).
   On mismatch the node shows a configuration warning (3 s editor poll), **`bake()`
   fails** (like spawn validation), and **`check_level_file` reports stale** — the
-  terrain PNGs live beside the level scene, outside the `res://kit/**` input-hash net,
-  so without this a sculpt-after-scatter would ship floating/buried props CI-green.
+  input hash now covers the terrain PNGs too, but only the ground *hash* proves the
+  stored transforms were snapped against the terrain as it stands — a re-bake alone does
+  not re-snap, so this stays the gate that ships no floating or buried props.
   Regenerate (which re-snaps) clears it, as does the **Re-snap to ground** button on
   `ScatterBase` (re-snaps stored Ys in place, keeps XZ/yaw/scale, drops groundless
   instances, refreshes the hash — the recovery path for a canvas, which cannot
@@ -558,7 +573,19 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   curb strip (`road_profile.gd` script defaults are unchanged — 7 m surface /
   8.5 m paved). **Seam squareness:** extrude gives open-end rings the EXACT endpoint
   handle tangent (BAKER_VERSION v6) — the finite difference bends with immediate
-  curvature and yawed port-snapped ends against the tile face.
+  curvature and yawed port-snapped ends against the tile face. Bounded by
+  `END_TANGENT_MAX_DEV_DEG`: a handle dragged further than that off the curve's own end
+  direction is authoring noise, not a road direction, and falls back to the finite
+  difference (unbounded, a 2 cm sideways handle yawed the end ring ~90° and the fold
+  clamp pinched the road's first ring into a bowtie).
+- **Bridge profiles cap their ends:** a cross-section whose polyline closes (what
+  `base_depth > 0` emits) is triangulated onto the first and last ring, so the box is a
+  solid, not an open tube you can see into — and drive into, since its walls and floor
+  are welded into the drivable body.
+- **Near-closed loops warn:** extrude only shares a seam frame when the end control
+  points coincide, so a loop closed by eye leaves the end rings that far apart — past the
+  1 mm weld, a real hole in the drivable collision. `RoadPath` flags an endpoint gap
+  smaller than the ribbon's half-width.
 - **Conform terrain is destructive-by-button** (the same discipline as terrain
   Generate): samples the curve at the **extrusion's `adaptive_offsets` rings**
   (deterministic — curve + the two segment params; NOT a fixed fine step, which would

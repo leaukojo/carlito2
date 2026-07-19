@@ -21,12 +21,12 @@ extends Node3D
 ## game-mode tool, never the editor) can call it on an untreed level.
 ##
 ## Bake-hash note: build_item_mesh / shape_entries (run BY the baker at bake time) are
-## bake-adjacent CODE, the same category as level_baker.gd — governed by BAKER_VERSION + the
-## re-bake discipline, NOT the input-file hash net (Godot reports resource deps, not
-## script->script edges, so a base script is invisible to gather_bake_inputs regardless of how
-## it is extended). The input hash still covers all scatter CONTENT: the level .tscn and the
-## ScatterRegion / ScatterCanvas node scripts it references. If a change here alters bake
-## OUTPUT, bump BAKER_VERSION so every level re-stales.
+## bake-adjacent CODE, the same category as level_baker.gd. No resource dependency edge can
+## reach this file — Godot reports resource deps, not script->script edges, so a base script
+## is invisible to the dependency walk regardless of how it is extended — so it is named
+## explicitly in LevelBaker.BAKE_CODE_INPUTS and hashed there. Editing it re-stales every
+## level on its own; BAKER_VERSION remains the knob for semantic changes that must re-stale
+## even when no file here moved.
 
 ## Stored-transform layout: 5 floats per instance (x, y, z, yaw, uniform scale), region-local.
 const STRIDE := 5

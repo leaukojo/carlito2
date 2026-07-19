@@ -50,6 +50,31 @@ func test_weld_drops_degenerate_triangles() -> void:
 	assert_int(Baker.weld_faces(soup).size()).is_equal(0)
 
 
+## Welding is an epsilon MERGE, not a snap-to-grid. Two verts a fraction of the epsilon
+## apart but astride a grid cell boundary rounded to different cells and stayed distinct —
+## the exact crack the weld exists to close, and position-dependent, so it passed every
+## fixture and would have surfaced on one authored level as a wheel catching at one joint.
+func test_weld_unifies_vertices_astride_a_grid_boundary() -> void:
+	# 12.0004999 and 12.0005001 straddle the cell boundary at 12.0005 (epsilon 1 mm):
+	# 0.2 micrometres apart, formerly two different vertices.
+	var soup := PackedVector3Array()
+	soup.append_array(_tri(Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(0, 0, 12.0004999)))
+	soup.append_array(_tri(Vector3(1, 0, 0), Vector3(1, 0, 12.0005001),
+			Vector3(0, 0, 12.0005001)))
+	var welded := Baker.weld_faces(soup)
+	assert_int(welded.size()).is_equal(6)
+	assert_that(welded[2]).is_equal(welded[5])   # the shared corner is bit-identical
+
+
+func test_weld_keeps_vertices_further_apart_than_epsilon_distinct() -> void:
+	# 3 mm apart with a 1 mm epsilon: a real gap, and merging it would move geometry.
+	var soup := PackedVector3Array()
+	soup.append_array(_tri(Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)))
+	soup.append_array(_tri(Vector3(1, 0, 0.003), Vector3(1, 0, 1), Vector3(0, 0, 1.003)))
+	var welded := Baker.weld_faces(soup)
+	assert_that(welded[2]).is_not_equal(welded[5])
+
+
 func test_weld_is_deterministic() -> void:
 	var soup := PackedVector3Array()
 	soup.append_array(_tri(Vector3(0.30017, 1.2, -4.7), Vector3(5, 0, 0), Vector3(0, 0, 5)))
@@ -142,6 +167,30 @@ func test_hash_missing_file_flagged_not_crashing() -> void:
 	assert_str(h).is_not_empty()
 
 
+## Bake-adjacent CODE must be hashed explicitly. GDScript files report no dependencies at
+## all, so road_builder.gd / scatter_base.gd / the baker itself are reachable from no
+## resource edge: without this, editing the extruder's fold clamp and forgetting to bump
+## BAKER_VERSION left every level "fresh" in CI while shipping the old geometry.
+func test_bake_code_files_are_in_the_input_hash() -> void:
+	var inputs := Baker.gather_bake_inputs("res://src/levels/dev/kit_fixture.tscn")
+	for code in Baker.BAKE_CODE_INPUTS:
+		assert_bool(inputs.has(code)).override_failure_message(
+				"%s missing from the bake input hash" % code).is_true()
+
+
+## The hash net covers resources ANYWHERE, not just res://kit/: a prop sub-scene or a
+## LevelInfo .tres under res://src/ shapes the bake (or its gates) and used to escape.
+## Runtime scripts stay out — they cannot change baker output, and hashing them would
+## re-stale every level on unrelated gameplay edits.
+func test_is_bake_input_keeps_resources_outside_kit_but_not_runtime_scripts() -> void:
+	assert_bool(Baker.is_bake_input("res://src/levels/harbor/dock_props.tscn")).is_true()
+	assert_bool(Baker.is_bake_input("res://src/levels/harbor/harbor_info.tres")).is_true()
+	assert_bool(Baker.is_bake_input("res://src/levels/harbor/heightmap.png")).is_true()
+	assert_bool(Baker.is_bake_input("res://kit/helpers/kit_piece.gd")).is_true()
+	assert_bool(Baker.is_bake_input("res://src/levels/base/level.gd")).is_false()
+	assert_bool(Baker.is_bake_input("res://addons/carlito_kit/palette_dock.gd")).is_false()
+
+
 # ------------------------------------------------------------------ manifest
 
 func test_manifest_roundtrip_and_paths() -> void:
@@ -154,6 +203,14 @@ func test_manifest_roundtrip_and_paths() -> void:
 	assert_str(String(m.get("input_hash", ""))).is_equal("abc123")
 	assert_float(float(m.get("chunk_size", 0.0))).is_equal_approx(48.0, 0.001)
 	assert_int(int((m.get("stats", {}) as Dictionary).get("chunks", 0))).is_equal(2)
+
+
+## The manifest stamps the OUTPUT too: freshness used to ask only whether the .baked.scn
+## exists, so a truncated or hand-edited bake read fresh forever on a matching input hash.
+func test_manifest_stamps_the_baked_scene_hash() -> void:
+	var level := "user://bake_test_level3.tscn"
+	Baker.write_manifest(level, "in", 48.0, {}, "outhash")
+	assert_str(String(Baker.read_manifest(level).get("output_hash", ""))).is_equal("outhash")
 
 
 func test_manifest_is_timestamp_free_idempotent() -> void:
@@ -175,6 +232,48 @@ func test_material_key_merges_equal_materials_across_instances() -> void:
 	m2.albedo_color = Color.BLUE
 	assert_str(Baker.material_key(m1)).is_not_equal(Baker.material_key(m2))
 	assert_str(Baker.material_key(null)).is_equal("null")
+
+
+## The whole kit shares one colormap atlas, so albedo alone cannot tell materials apart:
+## keying on it merged an emissive lit-window material into the matte wall surface beside
+## it, and whichever the merge saw first won — windows matte on one chunk, walls glowing on
+## the next, from identical authoring. Every field that changes how a surface renders
+## must split the key.
+func test_material_key_separates_materials_that_render_differently() -> void:
+	var base := StandardMaterial3D.new()
+	base.albedo_color = Color.RED
+	var key := Baker.material_key(base)
+
+	var emissive := StandardMaterial3D.new()
+	emissive.albedo_color = Color.RED
+	emissive.emission_enabled = true
+	emissive.emission = Color.WHITE
+	assert_str(Baker.material_key(emissive)).is_not_equal(key)
+
+	var rough := StandardMaterial3D.new()
+	rough.albedo_color = Color.RED
+	rough.roughness = 0.2
+	assert_str(Baker.material_key(rough)).is_not_equal(key)
+
+	var metal := StandardMaterial3D.new()
+	metal.albedo_color = Color.RED
+	metal.metallic = 1.0
+	assert_str(Baker.material_key(metal)).is_not_equal(key)
+
+	var unshaded := StandardMaterial3D.new()
+	unshaded.albedo_color = Color.RED
+	unshaded.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	assert_str(Baker.material_key(unshaded)).is_not_equal(key)
+
+	var tiled := StandardMaterial3D.new()
+	tiled.albedo_color = Color.RED
+	tiled.uv1_scale = Vector3(4, 4, 1)
+	assert_str(Baker.material_key(tiled)).is_not_equal(key)
+
+	# and materials that really are identical still merge (the reason keys exist)
+	var twin := StandardMaterial3D.new()
+	twin.albedo_color = Color.RED
+	assert_str(Baker.material_key(twin)).is_equal(key)
 
 
 # ------------------------------------------------------- surface accumulator
@@ -232,6 +331,40 @@ func test_accumulator_backfills_missing_uv_and_color() -> void:
 	assert_int(mesh.get_surface_count()).is_equal(1)
 
 
+## Geometric cross of a triangle; Godot's front face is the opposite direction, so an
+## up-facing triangle's cross points DOWN (the road tests' convention).
+func _tri_cross(pos: PackedVector3Array, idx: PackedInt32Array, t: int) -> Vector3:
+	return (pos[idx[t + 1]] - pos[idx[t]]).cross(pos[idx[t + 2]] - pos[idx[t]])
+
+
+## A mirroring transform (scale (-1, 1, 1) — the standard left-hand-variant trick) flips
+## triangle handedness. The inverse-transpose keeps normals outward, but copying the index
+## order verbatim left the winding reversed: the chunk mesh rendered inside-out under
+## cull_back, so a mirrored pier was visible only from inside it.
+func test_accumulator_preserves_winding_under_mirroring() -> void:
+	var mirror := Transform3D(Basis.IDENTITY.scaled(Vector3(-1, 1, 1)), Vector3.ZERO)
+	var acc := Baker.SurfaceAccumulator.new()
+	acc.append(_quad_arrays(), mirror)
+	assert_float(mirror.basis.determinant()).is_less(0.0)   # fixture really mirrors
+	for t in range(0, acc.indices.size(), 3):
+		# normals stay up, so the front face must stay up: cross . normal < 0
+		assert_float(_tri_cross(acc.positions, acc.indices, t).dot(acc.normals[acc.indices[t]])) \
+				.is_less(0.0)
+
+
+## The same trap on the collision side: mirrored triangles entered the welded Drivable body
+## back-to-front, making the deck one-way so the car fell through it.
+func test_weld_pool_preserves_winding_under_mirroring() -> void:
+	var tri := _tri(Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(0, 0, 1))
+	var ctx := Baker.BakeContext.new()
+	ctx.add_weld_faces(tri, Transform3D(Basis.IDENTITY.scaled(Vector3(-1, 1, 1)), Vector3.ZERO))
+	var welded: PackedVector3Array = ctx.weld_pool
+	assert_int(welded.size()).is_equal(3)
+	var cross_src := (tri[1] - tri[0]).cross(tri[2] - tri[0])
+	var cross_out := (welded[1] - welded[0]).cross(welded[2] - welded[0])
+	assert_float(cross_out.dot(cross_src)).is_greater(0.0)   # same facing, not inverted
+
+
 func test_accumulator_generates_sequential_indices_for_unindexed() -> void:
 	var arrays := _quad_arrays()
 	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([
@@ -252,16 +385,17 @@ const ScatterItemScript := preload("res://kit/helpers/scatter_item.gd")
 
 ## Minimal in-code kit prefab: KitPiece root + one BoxMesh + one box DevCollision
 ## shape — enough to exercise both scatter render paths and the collision harvest.
-func _scatter_prefab(mode: String) -> PackedScene:
+func _scatter_prefab(mode: String, with_mesh := true) -> PackedScene:
 	var root := Node3D.new()
 	root.name = "Piece"
 	root.set_script(preload("res://kit/helpers/kit_piece.gd"))
 	root.set("collision_mode", mode)
-	var mi := MeshInstance3D.new()
-	mi.name = "Mesh"
-	mi.mesh = BoxMesh.new()
-	root.add_child(mi)
-	mi.owner = root
+	if with_mesh:
+		var mi := MeshInstance3D.new()
+		mi.name = "Mesh"
+		mi.mesh = BoxMesh.new()
+		root.add_child(mi)
+		mi.owner = root
 	var body := StaticBody3D.new()
 	body.name = "DevCollision"
 	root.add_child(body)
@@ -386,6 +520,91 @@ func test_scatter_weld_prefab_is_a_bake_error() -> void:
 	var result: Dictionary = Baker.bake(level.root)
 	assert_bool(result.ok).is_false()
 	assert_bool("\n".join(result.errors as PackedStringArray).contains("weld")).is_true()
+	level.root.free()
+
+
+# ------------------------------------------------------- nested pieces / shape sharing
+
+
+## Bakeable level skeleton with a KitPiece tree under Authoring (never entered into the
+## tree, the baker's own operating mode).
+func _piece_level(outer_mode: String, inner_mode: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = "L"
+	var spawn := Marker3D.new()
+	spawn.name = "Spawn"
+	spawn.set_script(load("res://src/levels/base/vehicle_spawn.gd"))
+	root.add_child(spawn)
+	var authoring := Node3D.new()
+	authoring.name = "Authoring"
+	authoring.set_script(preload("res://kit/helpers/authoring_root.gd"))
+	root.add_child(authoring)
+	var outer := _scatter_prefab(outer_mode).instantiate()
+	authoring.add_child(outer)
+	var inner := _scatter_prefab(inner_mode).instantiate()
+	inner.name = "Inner"
+	outer.add_child(inner)
+	return root
+
+
+## A nested KitPiece keeps its OWN collision mode. Inheriting the ancestor's broke the
+## drivable invariant both ways: a "hull" railing grouped under a "weld" bridge had its
+## triangles welded into the level-wide drivable body (drive up the handrail) while its
+## hull shape was dropped; a "weld" ramp under a "box" warehouse never reached the
+## drivable body at all, so the car fell through a ramp dev-play rendered solid.
+func test_nested_kit_piece_keeps_its_own_collision_mode() -> void:
+	# weld outer + hull inner: exactly one box welds (12 tris), the inner's shape is kept
+	var outer_weld: Node3D = auto_free(_piece_level("weld", "hull"))
+	var a: Dictionary = Baker.bake(outer_weld)
+	assert_bool(a.ok).is_true()
+	assert_int(int((a.stats as Dictionary).drivable_triangles)).is_equal(12)
+	assert_int(int((a.stats as Dictionary).shapes)).is_equal(1)
+	(a.root as Node).free()
+
+	# and the reverse: the inner weld ramp reaches the drivable body, the outer box does not
+	var outer_box: Node3D = auto_free(_piece_level("box", "weld"))
+	var b: Dictionary = Baker.bake(outer_box)
+	assert_bool(b.ok).is_true()
+	assert_int(int((b.stats as Dictionary).drivable_triangles)).is_equal(12)
+	assert_int(int((b.stats as Dictionary).shapes)).is_equal(1)
+	(b.root as Node).free()
+
+
+## Pieces that carry shapes but no mesh are legitimate authoring — the "nothing was
+## collected" gate must not reject them for having zero vertices.
+func test_collision_only_authoring_is_bakeable() -> void:
+	var root := Node3D.new()
+	root.name = "L"
+	var spawn := Marker3D.new()
+	spawn.name = "Spawn"
+	spawn.set_script(load("res://src/levels/base/vehicle_spawn.gd"))
+	root.add_child(spawn)
+	var authoring := Node3D.new()
+	authoring.name = "Authoring"
+	authoring.set_script(preload("res://kit/helpers/authoring_root.gd"))
+	root.add_child(authoring)
+	authoring.add_child(_scatter_prefab("box", false).instantiate())
+	var result: Dictionary = Baker.bake(root)
+	assert_bool(result.ok).is_true()
+	assert_int(int((result.stats as Dictionary).shapes)).is_equal(1)
+	(result.root as Node).free()
+	root.free()
+
+
+## One duplicate per SOURCE shape, shared by every instance. Duplicating per instance gave
+## a 3000-tree forest 3000 identical BoxShape3Ds in the packed scene and 3000 shapes in the
+## physics server — the render side already stores scattered geometry once.
+func test_baked_bodies_share_one_duplicate_per_source_shape() -> void:
+	var level: Dictionary = _scatter_level(_scatter_prefab("hull"),
+			[Vector3(0, 0, 0), Vector3(2, 0, 0), Vector3(4, 0, 0)], true, -1)
+	var result: Dictionary = Baker.bake(level.root)
+	assert_bool(result.ok).is_true()
+	var body: Node = (result.root as Node).get_node("Bodies/body_0_0")
+	assert_int(body.get_child_count()).is_equal(3)
+	var first: Shape3D = (body.get_child(0) as CollisionShape3D).shape
+	for cs: CollisionShape3D in body.get_children():
+		assert_object(cs.shape).is_same(first)
+	(result.root as Node).free()
 	level.root.free()
 
 

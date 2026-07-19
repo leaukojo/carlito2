@@ -254,6 +254,18 @@ func _get_configuration_warnings() -> PackedStringArray:
 					"delete the duplicate or Curve3D spams 'Zero length interval' errors.") % [
 					dup - 1, dup])
 		if profile != null:
+			# Nearly-but-not-quite closed loop. extrude only gives the two end rings a
+			# shared bisector frame when the end control points coincide; a loop closed by
+			# eye leaves the rings that same distance apart, which past the bake's 1 mm
+			# weld is a real hole in the drivable body — you fall through the seam. The
+			# endpoints being closer together than the road is wide is unambiguous.
+			var gap: float = RoadBuilder.endpoint_gap(path.curve)
+			if gap > 0.0 and gap < profile.full_half_width() \
+					and not RoadBuilder.is_closed_loop(path.curve):
+				warnings.append(("The curve's endpoints are %.2f m apart — too close to " +
+						"be separate ends, too far to close the loop. Drag the last point " +
+						"exactly onto the first, or the seam stays open in the baked " +
+						"collision.") % gap)
 			# The draw tool refuses clicks under the fold limit, but the built-in Path3D
 			# gizmo bypasses it: below the half-width the extruder pinches the inside
 			# edge into a slit. Same floor as the draw guard (_fold_guard_ok).
