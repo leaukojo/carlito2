@@ -5,4 +5,5 @@ extends Node
 ## this autoload only tracks what is currently active.
 
 var current_level := ""    ## res:// path of the loaded level scene ("" = none)
-var current_vehicle := ""  ## vehicle type id, e.g. "car" (matches contract 'vehicles' tags)
+var current_vehicle := ""  ## vehicle FAMILY id, e.g. "car" (matches contract 'vehicles' tags)
+var current_variant := ""  ## active variant id within the family (VehicleCatalog), e.g. "sedan"

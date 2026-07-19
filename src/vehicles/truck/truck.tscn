@@ -24,11 +24,6 @@ size = Vector3(2.2, 1.5, 2.8)
 [sub_resource type="StandardMaterial3D" id="CargoMat"]
 albedo_color = Color(0.55, 0.55, 0.58, 1)
 
-[sub_resource type="CylinderMesh" id="WheelMesh"]
-top_radius = 0.5
-bottom_radius = 0.5
-height = 0.35
-
 [sub_resource type="BoxMesh" id="LampMesh"]
 size = Vector3(0.26, 0.16, 0.06)
 
@@ -54,22 +49,6 @@ surface_material_override/0 = SubResource("CabMat")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 1.0)
 mesh = SubResource("CargoMesh")
 surface_material_override/0 = SubResource("CargoMat")
-
-[node name="WheelFL" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1, -0.5, -1.9)
-mesh = SubResource("WheelMesh")
-
-[node name="WheelFR" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 1, -0.5, -1.9)
-mesh = SubResource("WheelMesh")
-
-[node name="WheelRL" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1, -0.5, 1.9)
-mesh = SubResource("WheelMesh")
-
-[node name="WheelRR" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 1, -0.5, 1.9)
-mesh = SubResource("WheelMesh")
 
 [node name="Lamps" type="Node3D" parent="."]
 

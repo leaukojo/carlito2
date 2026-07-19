@@ -23,7 +23,9 @@ Code is MIT (see [LICENSE](LICENSE)); bundled art/audio assets are CC0 (Kenney k
 
 - [Kenney](https://kenney.nl) (CC0) — the level-kit source models under `kit/raw/`:
   City Kit (Roads / Suburban / Commercial / Industrial), Racing Kit, Watercraft Pack, and
-  Nature Kit (standalone props only). Per-kit `License.txt` files are kept alongside the
+  Nature Kit (standalone props only); plus the Car Kit — its vehicle bodies + wheel drive the
+  playable vehicle variants in `src/vehicles/kenney/`, and its cones/boxes/debris are the
+  `garage` prop kit (`kit/raw/garage/`). Per-kit `License.txt` files are kept alongside the
   models.
 - [gdUnit4](https://github.com/MikeSchulze/gdUnit4) (MIT) — vendored test framework at
   `addons/gdUnit4/`.

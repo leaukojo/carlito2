@@ -11,9 +11,20 @@
 [ext_resource type="Shader" uid="uid://bcdkfxw2svriw" path="res://kit/terrain/terrain_splat.gdshader" id="8_shader"]
 [ext_resource type="Script" uid="uid://bqwd2fww3l5yg" path="res://src/water/water_surface.gd" id="9_water"]
 [ext_resource type="Script" uid="uid://t88htpmwukbg" path="res://kit/helpers/authoring_root.gd" id="10_40d31"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/tree-large.tscn" id="10_nay4p"]
 [ext_resource type="MeshLibrary" uid="uid://cl16o5y8exqb4" path="res://kit/palettes/roads.meshlib" id="10_pi343"]
+[ext_resource type="Script" uid="uid://81gx7eh4vwms" path="res://kit/helpers/kit_piece.gd" id="11_ruh2v"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/building-type-m.tscn" id="12_lc5tw"]
 [ext_resource type="Texture2D" uid="uid://qbm7w1a6po7c" path="res://src/levels/dev/terrain_demo_island_splat2.png" id="13_40d31"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/suburban/building-type-b.tscn" id="13_n8rmt"]
 [ext_resource type="Environment" uid="uid://bjh6g6yntyvh1" path="res://src/levels/base/default_env.tres" id="14_env"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/mushroom_tanTall.tscn" id="14_ruh2v"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/mushroom_tan.tscn" id="15_5y66u"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/flower_redA.tscn" id="16_tw4u1"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/plant_bushLarge.tscn" id="17_116nn"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/plant_flatShort.tscn" id="18_kyk1v"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/grass_large.tscn" id="19_i3rb1"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/nature/grass.tscn" id="20_atimi"]
 
 [sub_resource type="PlaneMesh" id="SeaBedMesh"]
 size = Vector2(560, 560)
@@ -56,7 +67,7 @@ far = 1000.0
 script = ExtResource("3_cam")
 
 [node name="Spawn" type="Marker3D" parent="." unique_id=712029966]
-transform = Transform3D(-0.027084181, 0, 0.99963313, 0, 1, 0, -0.99963313, 0, -0.027084181, -6.187355, 29.420055, 36.466267)
+transform = Transform3D(-0.027084181, 0, 0.99963313, 0, 1, 0, -0.99963313, 0, -0.027084181, -6.187355, 24.508305, 163.25462)
 script = ExtResource("4_spawn")
 vehicle_types = PackedStringArray("car")
 
@@ -93,9 +104,191 @@ mesh_library = ExtResource("10_pi343")
 cell_size = Vector3(12, 3, 12)
 cell_center_y = false
 data = {
-"cells": PackedInt32Array(917503, 5, 1048600)
+"cells": PackedInt32Array(917503, 5, 1048600, 655355, 13, 49, 458749, 13, 655398, 589820, 13, 655396, 655354, 13, 655360, 655354, 12, 1048625, 655354, 11, 1048625, 524282, 10, 1441835, 393210, 9, 1441834, 262138, 8, 1441834, 262138, 7, 1441818, 262137, 7, 655360)
 }
-metadata/_editor_floor_ = Vector3(0, 13, 0)
+metadata/_editor_floor_ = Vector3(0, 3, 0)
+
+[node name="SuburbanProps" type="Node3D" parent="AuthoringRoot" unique_id=1632206684]
+
+[node name="TreeLarge" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=1741990176 instance=ExtResource("10_nay4p")]
+transform = Transform3D(0.16663232, 0, -0.9860191, 0, 1, 0, 0.9860191, 0, 0.16663232, -58.044724, 27, 169.94962)
+script = ExtResource("11_ruh2v")
+collision_mode = "hull"
+
+[node name="@Node3D@25716" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=1895164441 instance=ExtResource("10_nay4p")]
+transform = Transform3D(0.9769819, 0, 0.21332236, 0, 1, 0, -0.21332236, 0, 0.9769819, -59.95465, 27, 146.77493)
+script = ExtResource("11_ruh2v")
+collision_mode = "hull"
+
+[node name="@Node3D@25717" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=1094166373 instance=ExtResource("10_nay4p")]
+transform = Transform3D(0.2292753, 0, 0.9733616, 0, 1, 0, -0.9733616, 0, 0.2292753, -89.578766, 27, 151.83337)
+script = ExtResource("11_ruh2v")
+collision_mode = "hull"
+
+[node name="BuildingTypeM" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=43173711 instance=ExtResource("12_lc5tw")]
+transform = Transform3D(-0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, -0.70710677, -48.396828, 27.000002, 144.36552)
+script = ExtResource("11_ruh2v")
+
+[node name="BuildingTypeB" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=1030771529 instance=ExtResource("13_n8rmt")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -83.76066, 27.000002, 142.82825)
+script = ExtResource("11_ruh2v")
+
+[node name="NatureProps" type="Node3D" parent="AuthoringRoot" unique_id=565265669]
+
+[node name="MushroomTanTall" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1077485661 instance=ExtResource("14_ruh2v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -51.08985, 27.000002, 154.91481)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28525" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1556696913 instance=ExtResource("14_ruh2v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -53.638836, 27.000002, 154.41919)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28526" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=662410827 instance=ExtResource("14_ruh2v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -56.712566, 27.000002, 153.19824)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28527" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1048597015 instance=ExtResource("14_ruh2v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -57.899673, 27.000002, 153.96986)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28528" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1432621613 instance=ExtResource("14_ruh2v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -54.10985, 27.000002, 151.96333)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28529" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=994372879 instance=ExtResource("14_ruh2v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -77.295135, 27.000002, 142.90555)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28530" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1540462706 instance=ExtResource("14_ruh2v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -74.66886, 27.000002, 146.61998)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28531" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=297344120 instance=ExtResource("14_ruh2v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -51.46616, 27.000002, 151.13153)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="MushroomTan" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=710969519 instance=ExtResource("15_5y66u")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -75.21157, 27.000002, 138.64998)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28539" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=856106832 instance=ExtResource("15_5y66u")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -75.580505, 27.000002, 141.08578)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28540" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=2140314197 instance=ExtResource("15_5y66u")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -52.646393, 27.000002, 150.80904)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28541" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=915976690 instance=ExtResource("15_5y66u")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -53.88259, 27.000002, 149.712)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="FlowerRedA" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=130200447 instance=ExtResource("16_tw4u1")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -58.557472, 27.000002, 150.48175)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28542" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=66998920 instance=ExtResource("16_tw4u1")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -56.136467, 27.000002, 152.33481)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28543" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1453203905 instance=ExtResource("16_tw4u1")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -78.75417, 27.000002, 145.91821)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="PlantBushLarge" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1758638439 instance=ExtResource("17_116nn")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -84.683685, 8.511978, 77.94197)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28544" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=852296219 instance=ExtResource("17_116nn")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -100.570526, 8.914286, 79.48527)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="PlantFlatShort" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1049226661 instance=ExtResource("18_kyk1v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -105.19414, 8.999241, 74.67907)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28545" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=415730665 instance=ExtResource("18_kyk1v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -105.06186, 8.933638, 55.330982)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28546" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1735347703 instance=ExtResource("18_kyk1v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -90.809944, 9, 55.7459)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28547" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=365606763 instance=ExtResource("18_kyk1v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -79.872116, 9, 62.73124)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28548" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=592934794 instance=ExtResource("18_kyk1v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -83.644646, 9, 59.58042)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28549" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=94056875 instance=ExtResource("18_kyk1v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -80.62359, 8.874605, 70.586136)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28550" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1519816396 instance=ExtResource("18_kyk1v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -79.89426, 9, 66.98839)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28551" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1749629278 instance=ExtResource("18_kyk1v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -82.251076, 8.984697, 62.07658)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28552" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=290945757 instance=ExtResource("18_kyk1v")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -87.289856, 9, 57.50194)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="GrassLarge" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1527464773 instance=ExtResource("19_i3rb1")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -82.0955, 8.78063, 74.7554)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28553" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=641425709 instance=ExtResource("19_i3rb1")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -81.89783, 8.774492, 73.77576)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28554" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1220400396 instance=ExtResource("19_i3rb1")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -80.46502, 8.999882, 76.214836)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="Grass" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1973672256 instance=ExtResource("20_atimi")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -80.200264, 8.999949, 75.26866)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
+
+[node name="@Node3D@28560" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=426164182 instance=ExtResource("20_atimi")]
+transform = Transform3D(-0.25881898, 0, -0.9659259, 0, 1, 0, 0.9659259, 0, -0.25881898, -80.01, 8.999998, 74.41155)
+script = ExtResource("11_ruh2v")
+collision_mode = "none"
 
 [node name="Island" type="StaticBody3D" parent="." unique_id=1504712988]
 script = ExtResource("5_terrain")

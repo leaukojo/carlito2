@@ -49,6 +49,19 @@ func _ready() -> void:
 		var visual: Node3D = null
 		if i < WHEEL_VISUAL_NAMES.size():
 			visual = get_node_or_null(NodePath(WHEEL_VISUAL_NAMES[i]))
+			# No authored wheel mesh but the spec ships one (Kenney wheel wrapper): instance
+			# it under the expected name at the anchor. RayWheel then drives its transform.
+			if visual == null and spec.wheel_scene != null:
+				visual = spec.wheel_scene.instantiate()
+				visual.name = WHEEL_VISUAL_NAMES[i]
+				# The wheel model is asymmetric (hub on one face); mirror the right-side wheels
+				# so their hub faces out. The flip rides the child, not the visual root —
+				# RayWheel overwrites the root transform every tick, but not its children.
+				if pos.x > 0.0:
+					for child in visual.get_children():
+						if child is Node3D:
+							(child as Node3D).basis = Basis(Vector3.UP, PI) * (child as Node3D).basis
+				add_child(visual)
 		wheels.append(RayWheel.new(pos, front, driven, visual))
 	spawn_transform = global_transform
 	_prev_velocity = linear_velocity

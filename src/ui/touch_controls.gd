@@ -13,6 +13,7 @@ extends Control
 
 signal garage_pressed
 signal respawn_pressed
+signal next_vehicle_pressed
 
 const JOY_RADIUS := 90.0
 const KNOB_SIZE := 66.0
@@ -182,6 +183,7 @@ func _build_button_stack() -> void:
 	_bridge_buttons.append(hand)
 
 	col.add_child(_tap_button("GARAGE", func() -> void: garage_pressed.emit()))
+	col.add_child(_tap_button("NEXT CAR", func() -> void: next_vehicle_pressed.emit()))
 	col.add_child(_tap_button("RESPAWN", func() -> void: respawn_pressed.emit()))
 
 

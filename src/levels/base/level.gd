@@ -6,18 +6,9 @@ extends Node3D
 ## it instances the default vehicle at a matching spawn, points the camera at it,
 ## and handles respawn. Vehicles/levels/UI stay independent scenes.
 
-## Emitted after the active vehicle is (re)spawned — at load and on a garage swap — so
-## the shell can rebind the dashboard/bridge to the new vehicle type.
+## Emitted after the active vehicle is (re)spawned — at load and on a garage/cycle swap —
+## so the shell can rebind the dashboard/bridge to the new vehicle FAMILY.
 signal vehicle_changed(type: String)
-
-## Vehicle type id -> scene path. New vehicles register here; scenes are loaded on
-## demand so a missing (not-yet-built) type never breaks level load.
-const VEHICLE_SCENES := {
-	"car": "res://src/vehicles/car/car.tscn",
-	"truck": "res://src/vehicles/truck/truck.tscn",
-	"tractor": "res://src/vehicles/tractor/tractor.tscn",
-	"boat": "res://src/vehicles/boat/boat.tscn",
-}
 
 @export var info: LevelInfo
 ## The chase camera to follow the active vehicle. Optional; a level may omit it.
@@ -140,35 +131,39 @@ func _toggle_day_night() -> void:
 		_env.background_energy_multiplier = NIGHT_SKY_ENERGY if _is_night else _day_sky_energy
 
 
-## Respawn the player as `type` at a matching spawn marker (garage menu).
-## Ignores unknown/disallowed types so a bad menu choice can't break the level.
-func set_vehicle(type: String) -> void:
-	if not info.allows(type):
-		push_error("Level: vehicle type '%s' not allowed here" % type)
+## Respawn the player as `variant` at a matching spawn marker (garage / V-cycle).
+## Ignores unknown/disallowed variants so a bad choice can't break the level.
+func set_vehicle(variant: String) -> void:
+	if not info.allows(variant):
+		push_error("Level: vehicle variant '%s' not allowed here" % variant)
 		return
-	_spawn_vehicle(type)
+	_spawn_vehicle(variant)
 
 
-## Instance `type` (falling back to the level's default) at a spawn that accepts it,
-## replacing any current vehicle, and re-aim the camera. Used at load and by set_vehicle.
-func _spawn_vehicle(type: String) -> void:
-	if not VEHICLE_SCENES.has(type):
-		push_error("Level: no scene registered for vehicle type '%s'" % type)
+## Instance `variant` at a spawn that accepts its FAMILY, replacing any current vehicle,
+## and re-aim the camera. Used at load and by set_vehicle. The family (not the variant) is
+## what the bridge/dashboard/spawn filters key off, so it goes into GameState.current_vehicle.
+func _spawn_vehicle(variant: String) -> void:
+	var scene_path := VehicleCatalog.scene_of(variant)
+	if scene_path.is_empty():
+		push_error("Level: no scene registered for vehicle variant '%s'" % variant)
 		return
-	var spawn := _pick_spawn(type)
+	var family := VehicleCatalog.family_of(variant)
+	var spawn := _pick_spawn(family)
 	if spawn == null:
-		push_error("Level: no spawn marker accepts vehicle type '%s'" % type)
+		push_error("Level: no spawn marker accepts vehicle family '%s'" % family)
 		return
 
 	if vehicle != null:
 		vehicle.queue_free()
 
-	vehicle = (load(VEHICLE_SCENES[type]) as PackedScene).instantiate()
+	vehicle = (load(scene_path) as PackedScene).instantiate()
 	add_child(vehicle)
 	vehicle.global_transform = spawn.global_transform
 	vehicle.spawn_transform = spawn.global_transform
 	vehicle.reset_physics_interpolation()
-	_game_state().current_vehicle = type
+	_game_state().current_vehicle = family
+	_game_state().current_variant = variant
 
 	if camera != null:
 		camera.target = vehicle.get_camera_target()
@@ -176,13 +171,13 @@ func _spawn_vehicle(type: String) -> void:
 			vehicle.respawned.connect(camera.snap)
 		camera.snap.call_deferred()
 
-	vehicle_changed.emit(type)
+	vehicle_changed.emit(family)
 
 
-## First VehicleSpawn under this level that accepts `type`; null if none.
-func _pick_spawn(type: String) -> VehicleSpawn:
+## First VehicleSpawn under this level that accepts `family`; null if none.
+func _pick_spawn(family: String) -> VehicleSpawn:
 	for node in find_children("*", "VehicleSpawn", true, false):
 		var spawn := node as VehicleSpawn
-		if spawn != null and spawn.accepts(type):
+		if spawn != null and spawn.accepts(family):
 			return spawn
 	return null

@@ -41,7 +41,7 @@ const PREFABS := {
 # Asset showcase: one labelled row per kit, SHOWCASE_N prefabs sampled evenly across the
 # kit's sorted prefab list (a representative spread, robust to prefab renames). Rows march
 # north (+Z) beyond the loop; drive among them to judge each kit's scale against the car.
-const SHOWCASE_KITS := ["suburban", "commercial", "industrial", "nature", "watercraft", "racing"]
+const SHOWCASE_KITS := ["suburban", "commercial", "industrial", "nature", "watercraft", "racing", "garage"]
 const SHOWCASE_N := 6         # prefabs per kit row
 const SHOWCASE_DX := 16.0     # X spacing between items in a row
 const SHOWCASE_Z0 := 44.0     # Z of the first row

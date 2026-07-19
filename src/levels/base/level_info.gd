@@ -12,6 +12,7 @@ extends Resource
 @export var default_vehicle := "car"
 
 
-## True when `type` may drive here (empty allow-list = everything allowed).
-func allows(type: String) -> bool:
-	return allowed_vehicles.is_empty() or allowed_vehicles.has(type)
+## True when `variant` may drive here. allowed_vehicles lists FAMILIES, so a variant is
+## checked by its family (empty allow-list = everything allowed).
+func allows(variant: String) -> bool:
+	return allowed_vehicles.is_empty() or allowed_vehicles.has(VehicleCatalog.family_of(variant))

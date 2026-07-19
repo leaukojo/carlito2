@@ -23,6 +23,7 @@ func _ready() -> void:
 
 	_touch.garage_pressed.connect(_open_garage)
 	_touch.respawn_pressed.connect(_respawn)
+	_touch.next_vehicle_pressed.connect(_cycle_vehicle)
 	# The headless CI smoke can't click the menu, so boot straight into the first level
 	# there — this keeps the smoke exercising the full load -> spawn -> play path.
 	# CARLITO_LEVEL picks a different registry id, so CI can also smoke a baked level
@@ -41,6 +42,16 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("garage"):
 		_open_garage()
+	elif event.is_action_pressed("next_vehicle"):
+		_cycle_vehicle()
+
+
+## Swap to the next variant in the current family (V key / touch button). Reuses the
+## level's spawn/respawn path; a family with one variant is a no-op.
+func _cycle_vehicle() -> void:
+	if _level == null or _level.vehicle == null:
+		return
+	_level.set_vehicle(VehicleCatalog.next_in_family(GameState.current_variant))
 
 
 # --- level select ------------------------------------------------------------
@@ -95,7 +106,8 @@ func _open_garage() -> void:
 
 func _on_garage_choice(type: String) -> void:
 	_close_garage()
-	_level.set_vehicle(type)
+	# The garage chooses a FAMILY; spawn that family's first (legacy) variant.
+	_level.set_vehicle(VehicleCatalog.first_in_family(type))
 
 
 func _close_garage() -> void:

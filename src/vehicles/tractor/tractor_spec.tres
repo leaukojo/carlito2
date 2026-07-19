@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="VehicleSpec" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="VehicleSpec" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/vehicles/base/vehicle_spec.gd" id="1_spec"]
+[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel.tscn" id="2_wheel"]
 
 [resource]
 script = ExtResource("1_spec")
@@ -9,6 +10,7 @@ center_of_mass = Vector3(0, -0.4, 0)
 wheel_positions = PackedVector3Array(-0.8, -0.1, -1.4, 0.8, -0.1, -1.4, -1.1, -0.1, 1.5, 1.1, -0.1, 1.5)
 wheel_radius = 0.6
 wheel_inertia = 4.0
+wheel_scene = ExtResource("2_wheel")
 driven_front = false
 driven_rear = true
 rest_length = 0.4

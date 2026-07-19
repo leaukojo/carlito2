@@ -46,11 +46,6 @@ size = Vector3(1.36, 0.06, 1.44)
 [sub_resource type="BoxMesh" id="BumperMesh"]
 size = Vector3(1.74, 0.16, 0.14)
 
-[sub_resource type="CylinderMesh" id="WheelMesh"]
-top_radius = 0.32
-bottom_radius = 0.32
-height = 0.24
-
 [sub_resource type="BoxMesh" id="LampMesh"]
 size = Vector3(0.22, 0.12, 0.06)
 
@@ -105,26 +100,6 @@ surface_material_override/0 = SubResource("TrimMat")
 [node name="BumperR" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.14, 1.76)
 mesh = SubResource("BumperMesh")
-surface_material_override/0 = SubResource("TrimMat")
-
-[node name="WheelFL" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.78, -0.35, -1.25)
-mesh = SubResource("WheelMesh")
-surface_material_override/0 = SubResource("TrimMat")
-
-[node name="WheelFR" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.78, -0.35, -1.25)
-mesh = SubResource("WheelMesh")
-surface_material_override/0 = SubResource("TrimMat")
-
-[node name="WheelRL" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.78, -0.35, 1.25)
-mesh = SubResource("WheelMesh")
-surface_material_override/0 = SubResource("TrimMat")
-
-[node name="WheelRR" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.78, -0.35, 1.25)
-mesh = SubResource("WheelMesh")
 surface_material_override/0 = SubResource("TrimMat")
 
 [node name="Lamps" type="Node3D" parent="."]

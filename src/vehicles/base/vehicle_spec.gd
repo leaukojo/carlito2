@@ -20,6 +20,10 @@ extends Resource
 ])
 @export var wheel_radius := 0.32
 @export var wheel_inertia := 1.2   ## kg*m^2 around the axle
+## Optional wheel visual scene, instanced under WheelFL..RR when the vehicle scene has no
+## authored wheel mesh (the Kenney wheel wrapper). RayWheel drives its transform each tick;
+## radius is still spec.wheel_radius (visual only). Absent = wheels come from the scene.
+@export var wheel_scene: PackedScene
 @export var driven_front := false
 @export var driven_rear := true
 
