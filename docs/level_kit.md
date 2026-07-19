@@ -216,7 +216,10 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   **color** is its shader param (`HeightmapTerrain.CHANNEL_PARAMS` maps index → param:
   `grass_color`…`rock_color`, then `color5`…`color8` defaulting to snow/mud/asphalt/gravel)
   — edit the material to repaint a level's palette; its **name** is the node's
-  `channel_names`. Both are read by the brush panel (`channel_color()` falls back to the
+  `channel_names`; its **tire grip** is `channel_grip` (PackedFloat32Array, default all
+  1.0 = no effect — the runtime multiplier wheels sample via `grip_at`, see
+  `docs/systems.md`; paint Ice/Mud strips or Asphalt under conformed roads to change
+  surface feel without touching collision). Name and color are read by the brush panel (`channel_color()` falls back to the
   shader's own default via `RenderingServer.shader_get_parameter_default`, since an unset
   param reads back null). Auto-splat classifies only the base 4, so it **zeroes `splatmap2`
   in the same undo action** — stale extra weights would otherwise double-count against the
@@ -429,8 +432,9 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   the curve is the bake input) and extrudes a low-poly ribbon from a **`RoadProfile`**
   (`kit/helpers/road_profile.gd`; presets `kit/roads/city_profile.tres` — flat colors
   sampled from the roads-GridMap tiles' colormap swatches so spline roads match
-  tile-city streets — `asphalt_profile.tres` — painted edge line — and
-  `gravel_profile.tres`; flat-color materials as inline SubResources so
+  tile-city streets — `asphalt_profile.tres` — painted edge line —
+  `gravel_profile.tres`, and `bridge_profile.tres` — see Bridges below; flat-color
+  materials as inline SubResources so
   a color edit re-stales bakes through the one .tres hash). The ribbon derives from the
   **curve + profile alone** (never reads the terrain), so bake output depends only on
   the scene file. Preview is unowned; the **dev trimesh exists only outside the editor**
@@ -449,6 +453,17 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   roll on climbing turns), per-strip extrusion (strips never share verts — crisp hard
   edges; U = lateral m, V = arc-length m; winding CW-from-above and invariant under
   curve reversal), and the conform flatten mask.
+- **Bridges ride the same pieces** (no bridge class or tool): `RoadProfile.base_depth`
+  > 0 makes `cross_section()` append a solid underside — two vertical walls + a bottom
+  strip `base_depth` below the road's outer edge, drawn in `base_material` — so the
+  extruder, baker and conform need zero changes (0 = no base, the default; every
+  non-bridge profile stays byte-identical). `kit/roads/bridge_profile.tres` is the
+  preset (deep enough to reach below sea level for water spans). Road-to-road joins:
+  every OTHER RoadPath's first/last curve point + outward end tangent joins the
+  Draw-mode snap-candidate list as a port (`_enumerate_road_ends`; same
+  radii/handle-lock/ghost markers as tile ports), so a bridge span meets its approach
+  roads with collinear tangents = seamless deck. Profile `.tres` + `road_profile.gd`
+  are hash-tracked, so bridge edits self-detect stale bakes.
 - **Draw mode + Drape:** `addons/carlito_kit/road_draw_tool.gd` + `road_panel.gd`
   (the "Roads" tab of the Kit bottom panel, Off/Draw; RoadPath-selection-gated like the
   brushes). Each viewport click

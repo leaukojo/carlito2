@@ -49,9 +49,10 @@ OFF→CLEARANCE→LOW→HIGH), the hitch toggle `_hitch_up`, and the PTO toggle 
 report per-frame edges (`lights_cycle`, `hitch_toggle`, `pto_toggle`) that `merge_local`
 ORs, so keyboard and touch share one owner.
 
-Local keys: W/S accel + brake-then-reverse, A/D steer, Space handbrake, H horn, L lights,
-V hitch, P PTO, G garage, N day/night, Backspace respawn, F3 debug overlay, F4 force-show
-touch controls.
+Local keys: W/S (or arrows) accel + brake-then-reverse, A/D steer, Space handbrake,
+H horn, L lights, V next vehicle variant, I hitch, P PTO, G garage, N day/night,
+Backspace respawn, F3 debug overlay, F4 force-show touch controls.
+`tests/test_input_map.gd` asserts no two actions share a physical key.
 
 ## Vehicle framework
 
@@ -60,13 +61,23 @@ touch controls.
 - **`VehicleSpec`** — ALL drive tuning in one `.tres`; new vehicle = new spec + scene.
   Feel tuning is data-only: edit the spec numbers, keep the input-hierarchy test green
   (brake > peak drive > handbrake; handbrake holds only below ~30% throttle).
+- **`VehicleCatalog`** (`src/vehicles/vehicle_catalog.gd`) — static registry of vehicle
+  *variants* (one concrete body scene each: the four hand-built vehicles + the Kenney
+  car-kit bodies) mapped onto the four contract *families* (car/truck/tractor/boat).
+  The FAMILY drives bridge marshaling, dashboard cluster and spawn filtering; a variant
+  is cosmetic. V (or the touch NEXT CAR button) cycles variants within the current
+  family via `Level.set_vehicle`; `GameState.current_variant` tracks the active one.
+  Unit-tested in `tests/test_vehicle_catalog.gd`. The contract never sees variants.
 - **`Drivetrain`** — pure math: engine torque curve, gear ratios, RAMN gear byte
   (0x00 = N, 0x01..0x06 = D1–D6, 0xFF = R), real RPM (wheel speed through the ratio with
   idle/redline clamps), auto-shift. Unit-tested in `tests/test_drivetrain.gd`. With the
   bridge gear byte, auto-shift is bypassed and the byte is exact.
 - **`RayWheel`** — one ray per wheel: spring-damper suspension + slip-based tires. The
   60 Hz stability clamps live here (damper ≤ one-tick reversal, suspension force cap,
-  low-speed slip floors + one-tick lateral force cap).
+  low-speed slip floors + one-tick lateral force cap). Tire grip scales by the painted
+  ground: each contact samples `HeightmapTerrain.grip_at()` (BaseVehicle collects the
+  level's grip terrains once, duck-typed `grip_at`+`contains_xz`); the multiplier rides
+  `mu_long`/`mu_lat` — the 60 Hz clamps are untouched.
 - **`BaseVehicle`** (RigidBody3D) — consumes `InputRouter.get_vehicle_input()` only, runs
   wheels/drivetrain, publishes telemetry, applies lamps, plays the horn on the rising edge
   (source-agnostic). Zero-wheel-safe (the boat spec has empty `wheel_positions`). Two
@@ -161,13 +172,20 @@ lock the rears — drift comes from the grip cut, not brake torque.
   (`src/shell/level_registry.gd`) — `{id, name, scene}` entries; `dev: true` entries are
   test fixtures that bake/check/smoke still cover but level-select normally hides.
   (Currently dev entries are shown for playtesting — see TODO.md's launch checklist.)
-- **Garage** (`src/ui/garage_menu.gd`) reads `LevelInfo.allowed_vehicles` (passed in by
-  the shell, never touches the tree) and emits `vehicle_chosen(type)`; the shell calls
-  `Level.set_vehicle(type)`, which respawns at a matching `VehicleSpawn` and emits
-  `Level.vehicle_changed(type)` so the shell rebinds the dashboard/bridge.
-  `Dashboard.bind` reads `GameState.current_vehicle` (the spawned type), falling back to
-  `LevelInfo.default_vehicle`. Open with **G** or the touch GARAGE button. Adding a
-  vehicle = a `Level.VEHICLE_SCENES` entry + the type in a level's `allowed_vehicles`.
+- **Garage menu** (`src/ui/garage_menu.gd`) reads `LevelInfo.allowed_vehicles` (passed in
+  by the shell, never touches the tree) and emits `vehicle_chosen(type)`; the shell calls
+  `Level.set_vehicle(variant)`, which respawns at a `VehicleSpawn` matching the variant's
+  FAMILY and emits `Level.vehicle_changed(type)` so the shell rebinds the
+  dashboard/bridge. `Dashboard.bind` reads `GameState.current_vehicle` (the spawned
+  family), falling back to `LevelInfo.default_vehicle`. Open with **G** or the touch
+  GARAGE button. Adding a vehicle = a `VehicleCatalog.VARIANTS` entry + its family in a
+  level's `allowed_vehicles`.
+- **Garage showroom level** (`src/levels/garage/`, registered id `garage`): a real Level
+  whose spawned vehicle is frozen KINEMATIC hovering above the floor — `_physics_process`
+  still runs, so wheels steer/spin, the engine revs and lamps toggle while the orbit
+  camera (`orbit_camera.gd`) inspects from any angle, including underneath; a wall
+  screen shows the active variant's spec. Input, dashboard and bridge flow through
+  Level unchanged.
 - **Touch controls** (`src/ui/touch_controls.gd`) are a second local `InputSource`:
   steering joystick (bottom-left), gas/brake pedals (bottom-right), right-edge button
   stack (HORN/LIGHTS/HAND + GARAGE/RESPAWN). Widgets take touch **and** mouse. Visible
@@ -241,17 +259,20 @@ lock the rears — drift comes from the grip cut, not brake torque.
 
 - `src/levels/base/`: **`Level`** (base script — reads a `LevelInfo`, spawns the default
   vehicle at the first matching `VehicleSpawn`, wires the `ChaseCamera`, handles respawn;
-  vehicle type → scene registry is `Level.VEHICLE_SCENES`), **`LevelInfo`** (Resource:
+  variant → scene comes from `VehicleCatalog`), **`LevelInfo`** (Resource:
   display name, allowed/default vehicles), **`VehicleSpawn`** (`Marker3D` with a
   vehicle-type filter + `is_water` for boat/drown-respawn spots), **`HeightmapTerrain`**
   (see `docs/level_kit.md` — the runtime side is a greyscale image → chunked welded grid
   mesh + one matching `HeightMapShape3D`, one cell = one world unit so mesh and collision
-  coincide).
+  coincide; also the per-surface grip source: per-channel `channel_grip` blended by
+  `grip_at(world_pos)` over bilinear `get_splat_weights` — the decoded splat Images are
+  cached once, never `get_image()`/decompressed per tick).
 - `level.tscn` is the authoring template (env + sun + camera + one spawn); duplicate it to
   start a level.
 - `src/levels/gym/gym.tscn` is the fully dressed dev gym: flat zone, two ramps, a
-  heightmap hill, ice/mud friction strips (PhysicsMaterial-tagged; wheels don't sample
-  surface friction yet), a slalom cone line, and the walled pool with water. The gym
+  heightmap hill, painted ice/mud grip strips (splat `channel_grip` 0.12/0.55 on a flat
+  HeightmapTerrain — the drive-verify rig for surface grip), a slalom cone line, and
+  the walled pool with water. The gym
   roster is car/truck/tractor/boat. The gym is hand-built with no kit content (no
   AuthoringRoot) — it is physics test equipment, and the bake check skips it.
 - `src/levels/dev/flat.tscn` is a bare test plane for isolated wheel checks.

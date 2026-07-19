@@ -33,7 +33,12 @@ if echo "$staged" | grep -q '^contract/carlito_contract\.json$'; then
   fi
 fi
 
-# 3. Bake inputs touched -> stale-bake check (same gate CI runs, ~30s).
+# 3. Head include touched -> pasted preset copy must match the reviewable source.
+if echo "$staged" | grep -qE '^(src/bridge/web/head_include\.html|export_presets\.cfg)$'; then
+  node tools/check_head_include.mjs || exit 1
+fi
+
+# 4. Bake inputs touched -> stale-bake check (same gate CI runs, ~30s).
 if echo "$staged" | grep -qE '^(src/levels/|kit/)'; then
   echo "pre-commit: level/kit files staged — running stale-bake check..."
   "$GODOT" --headless --path . res://tools/check_bakes.tscn || {

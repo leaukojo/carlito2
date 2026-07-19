@@ -43,47 +43,10 @@ Observe the previous game's deployed build for layout spirit (never its code/geo
 
 ## 3b. Visual polish (deferred plans)
 
-Baseline (shared tuned env + fog, warm sun, far-sea horizon plane, night atmosphere) is
-done. Remaining: clouds/better sky (`docs/plans/sky_clouds.md`) and the broader pro-eye
-sweep — foam line, particles, shadow tuning, color grade (`docs/plans/visual_polish_pass.md`).
-
-## 3c. Bridges (planned — own session)
-
-No new class/tool: extend the existing road pieces. Full plan in the 2026-07-18 session
-plan (`~/.claude/plans/please-address-the-feedback-wild-lampson.md`, "Deferred plan A");
-summary:
-
-1. `RoadProfile.base_depth` (0 = none, default) + `base_material`: `cross_section()`
-   appends breakpoints below the skirt (down each side + a bottom strip) — extruder,
-   baker and conform need zero changes. New `kit/roads/bridge_profile.tres` (depth deep
-   enough to reach below the island waterline). Profile `.tres` + `road_profile.gd` are
-   hash-tracked, so stale bakes self-detect.
-2. RoadPath↔RoadPath **endpoint snapping** in `road_draw_tool.gd`: other RoadPaths'
-   first/last points + end tangents join the port snap-candidate list (same radii /
-   handle-lock / ghost markers).
-3. Stretch only: arch underside for 2-point spans (per-ring base-depth modulation —
-   touches extrude's fold-clamp/reversal invariants; skip if it fights the extruder).
-
-Suggested setup: fresh context; Fable medium effort (or Opus 4.8 high); plan mode only
-for step 3. Bump `BAKER_VERSION` only if `road_builder.gd` output changes.
-
-## 3d. Splat-paint friction (planned — own session)
-
-Per-surface grip driven by the terrain splat channels — subsumes "road friction" (paint
-Asphalt under conformed roads) without touching the welded Drivable body. Full plan in
-the same session plan file ("Deferred plan B"); summary:
-
-1. `HeightmapTerrain.get_splat_weights(world_pos)` next to `height_at()`, bilinear over
-   splatmap+splatmap2 with the decoded Images **cached** (never
-   `get_image()/decompress()` per tick).
-2. `channel_grip: PackedFloat32Array` export (default 1.0s) next to `channel_names`.
-3. `RayWheel.tick()` blends a grip multiplier into `mu_long`/`mu_lat` from the splat
-   under the contact XZ (terrain found once per vehicle). 60 Hz clamps untouched.
-4. Gym: replace the inert PhysicsMaterial ice/mud strips with painted splat strips as
-   the drive-verify rig. Telemetry: nothing new — `slip` already reflects it.
-
-Cost: ≤ 8 bilinear reads × 8 wheels × 60 Hz on cached Images — negligible. Suggested
-setup: fresh context, Fable medium effort; per-level channel tuning is a drive-test.
+Baseline (shared tuned env + fog, warm sun, far-sea horizon plane, night atmosphere) and
+the procedural sky (gradient + sun disc + scrolling noise clouds,
+`src/levels/base/sky.gdshader`) are done. Remaining: the broader pro-eye sweep — foam
+line, particles, shadow tuning, color grade (`docs/plans/visual_polish_pass.md`).
 
 ## 4. Perf pass
 

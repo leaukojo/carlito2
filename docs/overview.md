@@ -69,6 +69,12 @@ virtual seams: `_make_telemetry()` (return a telemetry subclass) and `_tick_extr
 (run last each physics tick). The tractor (`TractorVehicle` + cosmetic `Implement` + ISOBUS
 signals) and the boat (`BoatVehicle`, probe buoyancy) are the two subclasses.
 
+On top of the four contract *families*, `VehicleCatalog` maps cosmetic *variants* (the
+Kenney car-kit bodies: taxi, firetruck, ambulance, …) onto them — V cycles variants
+in-game; the contract, dashboard and bridge only ever see the family. Tire grip is
+per-surface: wheels sample the terrain's painted splat channels (`channel_grip`), so an
+ice strip or a painted asphalt road changes feel without touching collision.
+
 ## Levels and the authoring kit
 
 Levels are self-contained scenes composed by the shell (`boot.gd`: boot → level select → play,
@@ -78,7 +84,8 @@ with a garage overlay). A level = `Level` base script + a `LevelInfo` resource (
 Levels are authored with the kit (`kit/` + the `addons/carlito_kit` editor plugin): generated
 heightmap terrain with a color-splat ground, GridMap palettes for road/tile kits, `KitPiece`
 prefabs placed from a thumbnail dock, seeded/painted scatter for vegetation, and spline
-`RoadPath` roads that conform the terrain — all under one `AuthoringRoot`. The **bake tool**
+`RoadPath` roads that conform the terrain (incl. bridge profiles with a solid underside
+for water spans) — all under one `AuthoringRoot`. The **bake tool**
 then merges render meshes per chunk, harvests prop collision per chunk, and welds all drivable
 geometry into a single level-wide collision body, which kills chunk-seam ghost collisions.
 Bakes are input-hash-stamped; CI fails on stale bakes. At runtime `Level` loads

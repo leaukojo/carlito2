@@ -14,6 +14,7 @@ for pitch/roll).
 Docs map:
 
 - `docs/overview.md` — human-readable architecture map.
+- `docs/HUMAN_EXPLANATIONS.md` — plain-language intro for newcomers (intern-level).
 - `docs/systems.md` — runtime systems detail (contract, input, vehicles, telemetry,
   dashboard, bridge, lamps, shell, tractor, boat, levels).
 - `docs/level_kit.md` — authoring kit, editor tools, terrain/scatter/roads, bake pipeline.
@@ -52,8 +53,10 @@ contract/     shared signal-contract JSON (carlito_contract.json — heart of th
 src/shell/    game shell: boot, level select, garage menu (+ GameState autoload)
 src/bridge/   Contract + Bridge autoloads (contract loader; web CAN bridge)
 src/input/    InputRouter autoload + input sources; ALL input arbitration lives here
-src/vehicles/ base/ (BaseVehicle, VehicleSpec, wheels, drivetrain) + car/ truck/ tractor/ boat/
-src/levels/   base/ (Level scene, LevelInfo, markers, HeightmapTerrain) + gym/ + dev/ fixtures
+src/vehicles/ base/ (BaseVehicle, VehicleSpec, wheels, drivetrain) + car/ truck/ tractor/
+              boat/ + kenney/ variant bodies (vehicle_catalog.gd maps variants → families)
+src/levels/   base/ (Level scene, LevelInfo, markers, HeightmapTerrain) + garage/ showroom
+              + gym/ + dev/ fixtures
 src/ui/       dashboard, touch controls, menus
 src/water/    water surface + height sampling API
 kit/          level-authoring kit: recipes, meshlibs, prefabs, @tool helpers, bake tool
@@ -119,6 +122,9 @@ junctions, lane markings, traffic.
 - BaseVehicle is zero-wheel-safe (boat spec: empty `wheel_positions`; keep its 6
   `gear_ratios` — `auto_shift` indexes up to byte 6).
 - RayWheel is single-radius: the tractor's big-rear/small-front wheels are visual only.
+- Splat-channel grip (`HeightmapTerrain.channel_grip` → `grip_at()`, sampled by RayWheel
+  per contact) reads **cached decoded splat Images** — never `get_image()`/decompress
+  per tick. The multiplier rides `mu_long`/`mu_lat`; the 60 Hz clamps stay untouched.
 
 **Input, lamps, bridge**
 
@@ -131,7 +137,8 @@ junctions, lane markings, traffic.
   channel (no new VehicleInput field).
 - The web export Head Include is pasted into `export_presets.cfg`; the reviewable source
   is `src/bridge/web/head_include.html` — **edit the source and re-paste into the preset;
-  they must match.**
+  they must match** (guarded: `node tools/check_head_include.mjs`, run by preflight and
+  the pre-commit hook).
 - The web export uses a **custom HTML shell** (`html/custom_html_shell` →
   `src/bridge/web/shell.html`) — a vendored copy of Godot's `godot.html` template with one
   Carlito patch: the PWA service-worker branch reloads once (guarded by
@@ -267,12 +274,12 @@ node tools/gen_js_contract.mjs
 & $GODOT --headless --path . --export-release "Web" build/web/index.html
 
 # "am I safe to push?" — all CI gates locally (editor-type gate, import, tests,
-# stale-bake check, smoke, contract sync)
+# stale-bake check, smoke, head-include sync, contract sync)
 powershell -File tools/preflight.ps1
 ```
 
 A pre-commit hook (`tools/git-hooks/`, installed via `core.hooksPath`) blocks editor-type
-annotations, stale contract copies, and stale bakes at commit time. The recurring GDScript
+annotations, stale contract copies, head-include drift, and stale bakes at commit time. The recurring GDScript
 warning classes (shadowing, integer division) are escalated to **errors** in project.godot
 — intentional integer division needs `@warning_ignore("integer_division")`.
 
