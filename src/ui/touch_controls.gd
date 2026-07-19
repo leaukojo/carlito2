@@ -28,7 +28,63 @@ var _lights_cycle_pending := false  ## latched on the LIGHTS tap, consumed by po
 
 var _joy_knob: Panel
 var _joy_center := Vector2.ZERO
-var _bridge_buttons: Array[Button] = []  ## hidden while the bridge drives
+var _bridge_buttons: Array[Pad] = []  ## hidden while the bridge drives
+
+
+## Touch-first press widget. It tracks WHICH pointer is holding it (a finger index, or
+## MOUSE for a desktop click) so several pads can be held at the same time. A plain
+## Button cannot: on mobile a Button only ever sees the mouse events Godot emulates from
+## touch, and that emulation mirrors a single finger — hold GAS and the joystick goes
+## deaf. Emulated events (device == DEVICE_ID_EMULATION) are ignored here so a real
+## finger is never counted twice.
+class Pad extends Panel:
+	signal held(down: bool)
+	signal moved(local_pos: Vector2)
+
+	const NONE := -99
+	const MOUSE := -1
+
+	var _pointer := NONE
+
+	func _gui_input(event: InputEvent) -> void:
+		if event.device == InputEvent.DEVICE_ID_EMULATION:
+			return
+		var id := NONE
+		var pressed := false
+		if event is InputEventScreenTouch:
+			id = event.index
+			pressed = event.pressed
+		elif event is InputEventMouseButton:
+			if event.button_index != MOUSE_BUTTON_LEFT:
+				return
+			id = MOUSE
+			pressed = event.pressed
+		elif event is InputEventScreenDrag:
+			if event.index == _pointer:
+				moved.emit(event.position)
+			return
+		elif event is InputEventMouseMotion:
+			if _pointer == MOUSE:
+				moved.emit(event.position)
+			return
+		else:
+			return
+
+		if pressed:
+			if _pointer == NONE:
+				_pointer = id
+				held.emit(true)
+				moved.emit(event.position)
+		elif id == _pointer:
+			_pointer = NONE
+			held.emit(false)
+
+	## A pad hidden or removed mid-press never gets its release event; drop the hold so it
+	## cannot stick once it comes back.
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_VISIBILITY_CHANGED and not is_visible_in_tree() and _pointer != NONE:
+			_pointer = NONE
+			held.emit(false)
 
 
 func _ready() -> void:
@@ -94,7 +150,7 @@ func _should_show() -> bool:
 # --- joystick (steer) --------------------------------------------------------
 
 func _build_joystick() -> void:
-	var base := Panel.new()
+	var base := Pad.new()
 	base.custom_minimum_size = Vector2(JOY_RADIUS * 2.0, JOY_RADIUS * 2.0)
 	base.size = base.custom_minimum_size
 	base.anchor_top = 1.0
@@ -102,7 +158,12 @@ func _build_joystick() -> void:
 	base.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	base.position = Vector2(40, -JOY_RADIUS * 2.0 - 40)
 	base.add_theme_stylebox_override("panel", _ring_style(JOY_RADIUS))
-	base.gui_input.connect(_on_joy_input)
+	base.moved.connect(_move_knob)
+	base.held.connect(func(down: bool) -> void:
+		if not down:
+			_steer = 0.0
+			_reset_knob()
+	)
 	add_child(base)
 	_joy_center = Vector2(JOY_RADIUS, JOY_RADIUS)
 
@@ -111,19 +172,6 @@ func _build_joystick() -> void:
 	_joy_knob.add_theme_stylebox_override("panel", _ring_style(KNOB_SIZE * 0.5, Color(0.30, 0.34, 0.42, 0.95)))
 	base.add_child(_joy_knob)
 	_reset_knob()
-
-
-func _on_joy_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch or event is InputEventMouseButton:
-		if not event.pressed:
-			_steer = 0.0
-			_reset_knob()
-			return
-		_move_knob(event.position)
-	elif event is InputEventScreenDrag or event is InputEventMouseMotion:
-		if event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) == 0:
-			return
-		_move_knob(event.position)
 
 
 func _move_knob(local_pos: Vector2) -> void:
@@ -189,25 +237,39 @@ func _build_button_stack() -> void:
 
 # --- widget helpers ----------------------------------------------------------
 
-func _hold_button(text: String, on_change: Callable) -> Button:
+func _hold_button(text: String, on_change: Callable) -> Pad:
 	var b := _make_button(text)
-	b.button_down.connect(func() -> void: on_change.call(true))
-	b.button_up.connect(func() -> void: on_change.call(false))
+	b.held.connect(func(down: bool) -> void: on_change.call(down))
 	return b
 
 
-func _tap_button(text: String, on_tap: Callable) -> Button:
+## Fires on the press edge — snappier than waiting for the release, and the pad has no
+## "click cancelled by sliding off" notion to honour.
+func _tap_button(text: String, on_tap: Callable) -> Pad:
 	var b := _make_button(text)
-	b.pressed.connect(on_tap)
+	b.held.connect(func(down: bool) -> void:
+		if down:
+			on_tap.call()
+	)
 	return b
 
 
-func _make_button(text: String) -> Button:
-	var b := Button.new()
-	b.text = text
+func _make_button(text: String) -> Pad:
+	var b := Pad.new()
 	b.custom_minimum_size = BTN_SIZE
-	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_size_override("font_size", 15)
+	b.add_theme_stylebox_override("panel", _ring_style(6.0))
+	var label := Label.new()
+	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 15)
+	b.add_child(label)
+	# Pads are bare Panels, so press feedback is ours to draw.
+	b.held.connect(func(down: bool) -> void:
+		b.modulate = Color(1.5, 1.5, 1.5) if down else Color.WHITE
+	)
 	return b
 
 
