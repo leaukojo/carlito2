@@ -11,6 +11,7 @@ extends Object
 
 const LEVELS: Array[Dictionary] = [
 	{ "id": "gym", "name": "Dev Gym", "scene": "res://src/levels/gym/gym.tscn" },
+	{ "id": "garage", "name": "Garage", "scene": "res://src/levels/garage/garage.tscn" },
 	{ "id": "kit_fixture", "name": "Kit Fixture (dev)", "scene": "res://src/levels/dev/kit_fixture.tscn", "dev": true },
 	# Temporary: registered so it also gets CI bake/check coverage; shown in level-select
 	# only because dev entries are currently un-hidden (both removed later).
