@@ -20,6 +20,14 @@ extends ScatterBase
 ## area). min_spacing still caps how dense a stroke can actually get.
 @export var paint_density := 0.08
 
+## Placement pattern the brush uses. "random" is the seeded rejection sampler (paint_density +
+## min_spacing); "grid" lays one instance per world-anchored lattice cell (grid_step), for corn
+## rows, orchards and neat grass patches — density and min_spacing are ignored there.
+@export_enum("random", "grid") var paint_pattern := "random"
+## Grid pattern only: world-space lattice step in metres (X, Z). Anchored to the world origin,
+## so separate strokes and rect fills continue the same lattice.
+@export var grid_step := Vector2(1.0, 1.0)
+
 
 ## Return `stored` with every instance whose world XZ is within `radius` of `center` removed —
 ## the pure core of the brush's erase, across all items. `base_xform` is the canvas's world

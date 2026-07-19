@@ -10,7 +10,7 @@ extends VBoxContainer
 signal mode_changed(mode: int)
 signal radius_changed(radius: float)
 
-const MODE_LABELS := ["Off", "Paint", "Erase"]
+const MODE_LABELS := ["Off", "Paint", "Erase", "Rect"]
 
 var _status: Label
 var _mode_group := ButtonGroup.new()
@@ -68,7 +68,12 @@ func _build() -> void:
 	var hint := Label.new()
 	hint.text = "Select a ScatterCanvas, pick Paint, then drag in the 3D view.\n" \
 			+ "[ and ] shrink / grow the brush. Density, spacing and jitter are on the " \
-			+ "canvas node's inspector."
+			+ "canvas node's inspector.\n" \
+			+ "Rect: click two corners to fill that area (Esc or right-click cancels); the " \
+			+ "area is filled at whatever height the ground is under it.\n" \
+			+ "Set the canvas's Paint Pattern to \"grid\" for lattice placement (corn rows, " \
+			+ "grass patches) — Grid Step replaces density and spacing, and the lattice is " \
+			+ "world-anchored so Paint and Rect continue the same grid."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 	hint.add_theme_font_size_override("font_size", 11)

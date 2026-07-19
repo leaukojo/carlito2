@@ -288,3 +288,79 @@ func test_canvas_erase_empty_when_all_inside() -> void:
 	var flat := PackedFloat32Array([0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0])
 	var out := Canvas.erase_within([flat], Transform3D.IDENTITY, Vector3.ZERO, 100.0)
 	assert_int(Canvas.stored_count(out[0])).is_equal(0)
+
+
+# ------------------------------------------------------- grid pattern (lattice fill)
+
+func _rect(x0: float, z0: float, x1: float, z1: float) -> PackedVector2Array:
+	return PackedVector2Array([Vector2(x0, z0), Vector2(x1, z0),
+			Vector2(x1, z1), Vector2(x0, z1)])
+
+
+func _grid_params(overrides := {}) -> Dictionary:
+	var p := {
+		"polygon": _rect(0.0, 0.0, 10.0, 10.0),
+		"step": Vector2(1.0, 1.0),
+		"seed": 7,
+		"weights": PackedFloat32Array([1.0]),
+		"yaw_jitter_deg": 0.0,
+		"scale_min": 1.0,
+		"scale_max": 1.0,
+	}
+	for k in overrides:
+		p[k] = overrides[k]
+	return p
+
+
+func test_grid_fills_every_cell_centre() -> void:
+	# 10x10 m at 1 m step -> cell centres at 0.5 .. 9.5 on each axis = 100 points.
+	var pts := _all_points(Scatter.generate_grid_placements(_grid_params()))
+	assert_int(pts.size()).is_equal(100)
+	for p in pts:
+		assert_bool(is_equal_approx(fposmod(p.x, 1.0), 0.5)).is_true()
+		assert_bool(is_equal_approx(fposmod(p.y, 1.0), 0.5)).is_true()
+
+
+func test_grid_step_controls_count() -> void:
+	var pts := _all_points(Scatter.generate_grid_placements(
+			_grid_params({"step": Vector2(2.0, 5.0)})))
+	assert_int(pts.size()).is_equal(5 * 2)
+
+
+func test_grid_is_world_anchored_across_abutting_fills() -> void:
+	# Two rectangles meeting at x = 5 must tile ONE lattice: no duplicate, no gap.
+	var a := _all_points(Scatter.generate_grid_placements(
+			_grid_params({"polygon": _rect(0.0, 0.0, 5.0, 10.0)})))
+	var b := _all_points(Scatter.generate_grid_placements(
+			_grid_params({"polygon": _rect(5.0, 0.0, 10.0, 10.0)})))
+	assert_int(a.size() + b.size()).is_equal(100)
+	for p in a:
+		assert_bool(b.has(p)).is_false()
+
+
+func test_grid_deterministic() -> void:
+	var a := Scatter.generate_grid_placements(_grid_params())
+	var b := Scatter.generate_grid_placements(_grid_params())
+	assert_that(a).is_equal(b)
+
+
+func test_grid_zero_jitter_is_exactly_uniform() -> void:
+	for flat: PackedFloat32Array in Scatter.generate_grid_placements(_grid_params()):
+		@warning_ignore("integer_division")
+		for j in flat.size() / 4:
+			assert_float(flat[j * 4 + 2]).is_equal(0.0)   # yaw
+			assert_float(flat[j * 4 + 3]).is_equal(1.0)   # scale
+
+
+func test_grid_offset_rect_stays_on_the_same_lattice() -> void:
+	# A rectangle not aligned to the step still snaps to the world lattice.
+	var pts := _all_points(Scatter.generate_grid_placements(
+			_grid_params({"polygon": _rect(-3.3, -3.3, 1.2, 1.2)})))
+	assert_bool(pts.size() > 0).is_true()
+	for p in pts:
+		assert_bool(is_equal_approx(fposmod(p.x, 1.0), 0.5)).is_true()
+
+
+func test_grid_rejects_bad_step() -> void:
+	var out := Scatter.generate_grid_placements(_grid_params({"step": Vector2.ZERO}))
+	assert_int(_all_points(out).size()).is_equal(0)

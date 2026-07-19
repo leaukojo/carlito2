@@ -100,8 +100,11 @@ Vegetation and clutter, ground-snapped and seeded:
 - **Mass fill:** `ScatterRegion` (under Authoring) — box/polygon footprint, `items` (each a
   `ScatterItem` with a prefab PackedScene + weight + collision toggle), density /
   `placement_seed` / spacing / jitter / slope knobs → **Regenerate**.
-- **Hand-dressing:** `ScatterCanvas` + the scatter brush (Paint / Erase) on the **Scatter**
-  tab.
+- **Hand-dressing:** `ScatterCanvas` + the scatter brush (Paint / Erase / Rect) on the
+  **Scatter** tab. **Rect** = click two corners to fill that XZ area at whatever height the
+  ground under it is (Esc or right-click cancels). Set the canvas's `paint_pattern` to
+  `grid` + a `grid_step` for lattice placement (corn rows, orchards, neat grass patches) —
+  the lattice is world-anchored, so Paint and Rect extend the same grid seamlessly.
 
 Scatter comes **last** (terrain → roads + conform → splat → scatter). Any later terrain or
 road-conform edit trips scatter's **stale-ground guard** (config warning + bake gate + CI) —

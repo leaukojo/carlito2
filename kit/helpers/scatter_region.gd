@@ -116,6 +116,73 @@ static func generate_placements(params: Dictionary) -> Array[PackedFloat32Array]
 	return out
 
 
+## Deterministic world-anchored lattice fill (pure static, unit-tested): one candidate per
+## lattice cell whose centre falls inside `polygon`. The lattice is anchored to the world
+## origin, so two overlapping or abutting fills produce ONE continuous grid — no seam, no
+## double row. Item pick / yaw / scale are seeded per cell (integer cell coords + seed), so
+## re-filling the same ground is idempotent.
+## params: polygon (PackedVector2Array), step (Vector2), seed,
+##         weights (PackedFloat32Array, one per item), yaw_jitter_deg, scale_min, scale_max.
+## Returns one PackedFloat32Array per item, 4 floats per instance (x, z, yaw, scale) —
+## same shape as generate_placements.
+static func generate_grid_placements(params: Dictionary) -> Array[PackedFloat32Array]:
+	var weights: PackedFloat32Array = params.get("weights", PackedFloat32Array())
+	var out: Array[PackedFloat32Array] = []
+	for i in weights.size():
+		out.append(PackedFloat32Array())
+	var poly: PackedVector2Array = params.get("polygon", PackedVector2Array())
+	var step: Vector2 = params.get("step", Vector2.ONE)
+	if weights.is_empty() or poly.size() < 3 or step.x <= 0.0 or step.y <= 0.0:
+		return out
+	var total_weight := 0.0
+	for w in weights:
+		total_weight += maxf(w, 0.0)
+	if total_weight <= 0.0:
+		return out
+
+	var base_seed := int(params.get("seed", 0))
+	var yaw_jitter := deg_to_rad(float(params.get("yaw_jitter_deg", 0.0)))
+	var scale_min := float(params.get("scale_min", 1.0))
+	var scale_max := float(params.get("scale_max", 1.0))
+
+	var bmin := poly[0]
+	var bmax := poly[0]
+	for p in poly:
+		bmin = bmin.min(p)
+		bmax = bmax.max(p)
+	# Cell i has its centre at (i + 0.5) * step: walk every cell index whose centre can land
+	# inside the AABB.
+	var i0 := floori(bmin.x / step.x)
+	var i1 := ceili(bmax.x / step.x)
+	var j0 := floori(bmin.y / step.y)
+	var j1 := ceili(bmax.y / step.y)
+
+	var rng := RandomNumberGenerator.new()
+	for ci in range(i0, i1 + 1):
+		for cj in range(j0, j1 + 1):
+			var p := Vector2((float(ci) + 0.5) * step.x, (float(cj) + 0.5) * step.y)
+			if not Geometry2D.is_point_in_polygon(p, poly):
+				continue
+			rng.seed = cell_seed(ci, cj, base_seed)
+			var idx := weights.size() - 1
+			var pick := rng.randf() * total_weight
+			for i in weights.size():
+				pick -= maxf(weights[i], 0.0)
+				if pick <= 0.0:
+					idx = i
+					break
+			var yaw := rng.randf_range(-0.5, 0.5) * yaw_jitter
+			var scl := rng.randf_range(scale_min, scale_max)
+			out[idx].append_array(PackedFloat32Array([p.x, p.y, yaw, scl]))
+	return out
+
+
+## Stable per-cell RNG seed for the grid sampler (order-independent, so a cell rolls the same
+## item/yaw/scale no matter which fill visits it first).
+static func cell_seed(ci: int, cj: int, base_seed: int) -> int:
+	return hash(Vector3i(ci, cj, base_seed))
+
+
 ## Shoelace area of a simple polygon (absolute; winding-agnostic).
 static func polygon_area(points: PackedVector2Array) -> float:
 	if points.size() < 3:

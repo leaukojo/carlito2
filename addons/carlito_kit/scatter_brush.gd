@@ -15,7 +15,7 @@ extends "res://addons/carlito_kit/brush_chassis.gd"
 
 const ScatterBaseScript := preload("res://kit/helpers/scatter_base.gd")
 
-enum { OFF, PAINT, ERASE }
+enum { OFF, PAINT, ERASE, RECT }
 
 var mode := OFF
 
@@ -27,8 +27,14 @@ var _before: Array[PackedFloat32Array] = []   # snapshot for undo
 var _before_hash := ""
 var _work: Array[PackedFloat32Array] = []      # the array we mutate; pushed to the canvas at end
 var _spacing_grid := {}                        # world XZ spatial hash (paint spacing)
+var _cell_taken := {}                          # grid pattern: occupied lattice cells (Vector2i)
 var _dab_seed := 0
 var _dirty := false
+
+# Two-click rect fill state, live between the first and second click (mirrors the terrain
+# brush's ramp): the stored first corner.
+var _rect_armed := false
+var _rect_a := Vector3.ZERO
 
 # Stroke-scoped live preview: the merged per-item mesh is built ONCE at stroke begin and reused
 # every dab (index-matched to the canvas's items; null where an item has no prefab). Each dab
@@ -46,6 +52,7 @@ func set_target(canvas: ScatterCanvas) -> void:
 	if canvas == _canvas:
 		return
 	_free_cursor()  # cursor lives under the canvas; a new target needs a new one
+	_rect_armed = false  # a stored corner belongs to the canvas it was clicked on
 	if is_instance_valid(_canvas):
 		_canvas.end_live_edit()  # clear the flag if we swap targets mid-stroke
 	_reset_stroke()
@@ -54,6 +61,7 @@ func set_target(canvas: ScatterCanvas) -> void:
 
 func set_mode(m: int) -> void:
 	mode = m
+	_rect_armed = false
 	if mode == OFF:
 		_hide_cursor()
 
@@ -69,12 +77,66 @@ func _target_valid() -> bool:
 	return Engine.is_editor_hint() and mode != OFF and is_instance_valid(_canvas)
 
 
+## Rect cancel rides on top of the chassis loop, exactly like the terrain brush's ramp: Esc
+## drops the stored corner and is consumed; right-click cancels too but is NOT consumed, so the
+## editor still gets it for freelook.
+func handle_input(camera: Camera3D, event: InputEvent) -> bool:
+	if _rect_armed and _target_valid():
+		if event is InputEventKey and event.pressed \
+				and (event as InputEventKey).keycode == KEY_ESCAPE:
+			_rect_armed = false
+			return true
+		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
+				and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT:
+			_rect_armed = false
+	return super(camera, event)
+
+
 func _cursor_parent() -> Node3D:
 	return _canvas
 
 
 func _cursor_color() -> Color:
-	return Color(0.4, 1.0, 0.45) if mode == PAINT else Color(1.0, 0.45, 0.4)
+	match mode:
+		PAINT: return Color(0.4, 1.0, 0.45)
+		RECT: return Color(0.5, 0.75, 1.0)
+		_: return Color(1.0, 0.45, 0.4)
+
+
+## In RECT mode the cursor is the pending rectangle (first corner -> cursor) plus a small
+## marker ring at the stored corner; before the first click it is just the marker-less ring.
+## Separate strips: one LINE_STRIP would join them with a stray chord.
+func _cursor_strips(center: Vector3) -> Array[PackedVector3Array]:
+	if mode != RECT:
+		return super(center)
+	var strips: Array[PackedVector3Array] = []
+	if _rect_armed:
+		strips.append(_rect_outline(_rect_a, center))
+		strips.append(_small_ring(_rect_a))
+	else:
+		strips.append(_small_ring(center))
+	return strips
+
+
+## Closed XZ rectangle spanned by two world points, drawn flat at the higher of the two Ys so
+## it stays readable when a corner sinks into a slope.
+static func _rect_outline(a: Vector3, b: Vector3) -> PackedVector3Array:
+	var y := maxf(a.y, b.y) + 0.25
+	var x0 := minf(a.x, b.x)
+	var x1 := maxf(a.x, b.x)
+	var z0 := minf(a.z, b.z)
+	var z1 := maxf(a.z, b.z)
+	return PackedVector3Array([
+		Vector3(x0, y, z0), Vector3(x1, y, z0), Vector3(x1, y, z1),
+		Vector3(x0, y, z1), Vector3(x0, y, z0)])
+
+
+static func _small_ring(center: Vector3, r := 0.5) -> PackedVector3Array:
+	var pts := PackedVector3Array()
+	for i in 17:
+		var ang := TAU * float(i) / 16.0
+		pts.append(center + Vector3(cos(ang) * r, 0.1, sin(ang) * r))
+	return pts
 
 
 ## Ground point under the cursor: edited-scene physics ray -> terrain sample -> Y=0 plane (the
@@ -97,6 +159,44 @@ func _project(camera: Camera3D, mouse: Vector2) -> Variant:
 	return _ray_plane(origin, dir, 0.0)
 
 
+# ------------------------------------------------------------------ rect fill (two clicks)
+
+func _click_mode() -> bool:
+	return mode == RECT
+
+
+func _click(center: Vector3) -> void:
+	if not _rect_armed:
+		_rect_a = center
+		_rect_armed = true
+		return
+	_rect_armed = false
+	_fill_rect(_rect_a, center)
+
+
+## Lay the whole rectangle as ONE undoable action by running the normal stroke path once:
+## begin (snapshot + live preview) -> a single polygon fill -> end (commit).
+func _fill_rect(a: Vector3, b: Vector3) -> void:
+	if not is_instance_valid(_canvas):
+		return
+	var x0 := minf(a.x, b.x)
+	var x1 := maxf(a.x, b.x)
+	var z0 := minf(a.z, b.z)
+	var z1 := maxf(a.z, b.z)
+	if x1 - x0 < 0.01 or z1 - z0 < 0.01:
+		return
+	var rect := PackedVector2Array([
+		Vector2(x0, z0), Vector2(x1, z0), Vector2(x1, z1), Vector2(x0, z1)])
+	_stroke_begin(a)
+	# Ray origin Y: above both corners, so the down-ray finds ground at any height under the
+	# rectangle (the rect selects an XZ area, never a height band).
+	var probe_y := maxf(a.y, b.y)
+	if _fill_polygon(rect, probe_y, func(_px: float, _pz: float): return true) > 0:
+		_update_live_preview()
+		_dirty = true
+	_stroke_end()
+
+
 # ------------------------------------------------------------------ stroke
 
 func _stroke_begin(_center: Vector3) -> void:
@@ -109,7 +209,7 @@ func _stroke_begin(_center: Vector3) -> void:
 	# Pad to one array per item so a fresh canvas (empty stored_transforms) can be painted.
 	while _work.size() < _canvas.items.size():
 		_work.append(PackedFloat32Array())
-	_rebuild_spacing_grid()
+	_rebuild_occupancy()
 	_canvas.begin_live_edit()  # suppress the per-assignment stale recompute for the whole stroke
 	_setup_live_preview()
 
@@ -150,8 +250,12 @@ func _stroke_end() -> void:
 	_canvas.end_live_edit()
 
 	var scene_root := EditorInterface.get_edited_scene_root()
-	_undo.create_action("Paint scatter" if mode == PAINT else "Erase scatter",
-			UndoRedo.MERGE_DISABLE, scene_root)
+	var label := "Erase scatter"
+	if mode == PAINT:
+		label = "Paint scatter"
+	elif mode == RECT:
+		label = "Fill scatter rect"
+	_undo.create_action(label, UndoRedo.MERGE_DISABLE, scene_root)
 	_undo.add_do_property(_canvas, &"stored_transforms", final)
 	_undo.add_undo_property(_canvas, &"stored_transforms", _before)
 	_undo.add_do_property(_canvas, &"stored_ground_hash", new_hash)
@@ -213,12 +317,28 @@ func _update_live_preview() -> void:
 
 # ------------------------------------------------------------------ painting
 
-## Lay one dab: seed the region sampler over a world-XZ square bounding the brush disc, then keep
-## the candidates that fall in the disc, snap to ground, pass the slope filter, and clear the
-## min-spacing hash (which carries prior dabs + existing instances, so density is even
-## regardless of stroke speed). Region-local transforms are appended to `_work`. Returns the
-## number of instances actually placed (0 = nothing snapped, so the caller skips a no-op commit).
+## Lay one dab: fill the world-XZ square bounding the brush disc, keeping only the candidates
+## inside the disc. Region-local transforms are appended to `_work`. Returns the number of
+## instances actually placed (0 = nothing snapped, so the caller skips a no-op commit).
 func _paint_dab(center: Vector3) -> int:
+	var cx := center.x
+	var cz := center.z
+	var r2 := radius * radius
+	var square := PackedVector2Array([
+		Vector2(cx - radius, cz - radius), Vector2(cx + radius, cz - radius),
+		Vector2(cx + radius, cz + radius), Vector2(cx - radius, cz + radius)])
+	return _fill_polygon(square, center.y,
+			func(px: float, pz: float): return (px - cx) * (px - cx) + (pz - cz) * (pz - cz) <= r2)
+
+
+## The one placement path, shared by the disc dab and the rect fill, in both patterns: sample
+## candidates over `poly` (random rejection sampler or world-anchored lattice, per the canvas's
+## paint_pattern), drop the ones `keep` rejects, enforce the min-spacing hash / lattice-cell
+## occupancy (both carry prior dabs AND existing instances, so density is even regardless of
+## stroke speed and strokes never double up a cell), ground-snap, slope-filter, and append the
+## region-local transform to `_work`. `probe_y` is only the ray start height — snapping is a
+## straight-down ray, so the area is filled at whatever height the ground is.
+func _fill_polygon(poly: PackedVector2Array, probe_y: float, keep: Callable) -> int:
 	var weights := PackedFloat32Array()
 	var any := false
 	for item in _canvas.items:
@@ -228,29 +348,37 @@ func _paint_dab(center: Vector3) -> int:
 	if not any:
 		return 0
 
-	var cx := center.x
-	var cz := center.z
-	var square := PackedVector2Array([
-		Vector2(cx - radius, cz - radius), Vector2(cx + radius, cz - radius),
-		Vector2(cx + radius, cz + radius), Vector2(cx - radius, cz + radius)])
-	_dab_seed += 1
-	var candidates := ScatterRegion.generate_placements({
-		"polygon": square,
-		"density": _canvas.paint_density,
-		"min_spacing": _canvas.min_spacing,
-		"seed": _dab_seed,
-		"weights": weights,
-		"yaw_jitter_deg": _canvas.yaw_jitter_deg,
-		"scale_min": _canvas.scale_range.x,
-		"scale_max": _canvas.scale_range.y,
-	})
+	var grid_mode: bool = _canvas.paint_pattern == "grid"
+	var step: Vector2 = _canvas.grid_step
+	var candidates: Array[PackedFloat32Array]
+	if grid_mode:
+		candidates = ScatterRegion.generate_grid_placements({
+			"polygon": poly,
+			"step": step,
+			"seed": 0,  # per-cell seeding does the varying; a global offset would only reroll
+			"weights": weights,
+			"yaw_jitter_deg": _canvas.yaw_jitter_deg,
+			"scale_min": _canvas.scale_range.x,
+			"scale_max": _canvas.scale_range.y,
+		})
+	else:
+		_dab_seed += 1
+		candidates = ScatterRegion.generate_placements({
+			"polygon": poly,
+			"density": _canvas.paint_density,
+			"min_spacing": _canvas.min_spacing,
+			"seed": _dab_seed,
+			"weights": weights,
+			"yaw_jitter_deg": _canvas.yaw_jitter_deg,
+			"scale_min": _canvas.scale_range.x,
+			"scale_max": _canvas.scale_range.y,
+		})
 
 	var space := _canvas.get_world_3d().direct_space_state
 	var terrains := _terrains()
 	var cos_max := cos(deg_to_rad(_canvas.max_slope_deg))
 	var inv := _canvas.global_transform.affine_inverse()
 	var spacing := _canvas.min_spacing
-	var r2 := radius * radius
 
 	while _work.size() < _canvas.items.size():
 		_work.append(PackedFloat32Array())
@@ -258,38 +386,57 @@ func _paint_dab(center: Vector3) -> int:
 	var placed := 0
 	for i in candidates.size():
 		var flat := candidates[i]
+		@warning_ignore("integer_division")
 		for j in flat.size() / 4:
 			var o := j * 4
 			var px := flat[o]
 			var pz := flat[o + 1]
-			if (px - cx) * (px - cx) + (pz - cz) * (pz - cz) > r2:
-				continue  # square sampler -> keep the inscribed disc
-			if spacing > 0.0 and not ScatterBaseScript.spacing_ok(Vector2(px, pz), spacing, _spacing_grid):
+			if not keep.call(px, pz):
 				continue
-			var hit := ScatterBaseScript.snap_ground(space, terrains, Vector3(px, center.y, pz))
+			var cell := Vector2i(floori(px / step.x), floori(pz / step.y)) if grid_mode else Vector2i.ZERO
+			if grid_mode:
+				if _cell_taken.has(cell):
+					continue
+			elif spacing > 0.0 and not ScatterBaseScript.spacing_ok(Vector2(px, pz), spacing, _spacing_grid):
+				continue
+			var hit := ScatterBaseScript.snap_ground(space, terrains, Vector3(px, probe_y, pz))
 			if hit.is_empty() or (hit.normal as Vector3).y < cos_max:
 				continue
 			var local: Vector3 = inv * (hit.position as Vector3)
 			_work[i].append_array(PackedFloat32Array(
 					[local.x, local.y, local.z, flat[o + 2], flat[o + 3]]))
-			_grid_add(Vector2(px, pz), spacing)
+			if grid_mode:
+				_cell_taken[cell] = true
+			else:
+				_grid_add(Vector2(px, pz), spacing)
 			placed += 1
 	return placed
 
 
-# ------------------------------------------------------------------ spacing hash
+# ------------------------------------------------------------------ occupancy
 
-func _rebuild_spacing_grid() -> void:
+## Seed both rejection structures from the instances already stored on the canvas: the
+## min-spacing hash (random pattern) and the taken-lattice-cell set (grid pattern).
+func _rebuild_occupancy() -> void:
 	_spacing_grid = {}
+	_cell_taken = {}
+	var grid_mode: bool = _canvas.paint_pattern == "grid"
+	var step: Vector2 = _canvas.grid_step
 	var spacing := _canvas.min_spacing
-	if spacing <= 0.0:
+	if grid_mode:
+		if step.x <= 0.0 or step.y <= 0.0:
+			return
+	elif spacing <= 0.0:
 		return
 	var base := _canvas.global_transform
 	for i in _work.size():
 		var flat := _work[i]
 		for j in ScatterBaseScript.stored_count(flat):
 			var world := base * ScatterBaseScript.stored_transform(flat, j).origin
-			_grid_add(Vector2(world.x, world.z), spacing)
+			if grid_mode:
+				_cell_taken[Vector2i(floori(world.x / step.x), floori(world.z / step.y))] = true
+			else:
+				_grid_add(Vector2(world.x, world.z), spacing)
 
 
 func _grid_add(p: Vector2, spacing: float) -> void:

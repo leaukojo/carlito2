@@ -381,14 +381,28 @@ hand-authoring GridMap cell/orientation data is fragile), then re-bake.
   hand-painted front-end — same contract, preview, dev collision, bake path and stale
   guard, but instances are **painted in** (no footprint, no Regenerate button — the
   footprint gizmo keys on `footprint_polygon`, which only the region has) plus one
-  `paint_density` knob and the pure/tested `erase_within` static.
+  `paint_density` / `paint_pattern` (random/grid) / `grid_step` knobs and the pure/tested
+  `erase_within` static.
 - **Scatter brush** (`addons/carlito_kit/scatter_brush.gd`, on the shared chassis;
-  panel `scatter_panel.gd`, Off/Paint/Erase + radius): **Paint** seeds the region
-  sampler over a world-XZ square bounding the brush disc, keeps candidates inside the
-  disc, ground-snaps (`ScatterBase.snap_ground`), slope-filters, and enforces
-  min_spacing against a running world-XZ spatial hash (prior dabs + existing instances,
-  so density is even regardless of stroke speed); **Erase** calls
-  `ScatterCanvas.erase_within`. Reuses the canvas node's jitter/spacing/slope exports.
+  panel `scatter_panel.gd`, Off/Paint/Erase/Rect + radius): one placement path
+  (`_fill_polygon`) serves every mode. It samples candidates over a world-XZ polygon —
+  the square bounding the brush disc (**Paint**) or the two-click rectangle (**Rect**) —
+  drops the ones outside the disc/rect, ground-snaps (`ScatterBase.snap_ground`, a
+  straight-down ray, so an area fills at whatever height its ground is), slope-filters,
+  and rejects duplicates. **Erase** calls `ScatterCanvas.erase_within`. Reuses the canvas
+  node's jitter/spacing/slope exports.
+  - `paint_pattern = "random"`: `ScatterRegion.generate_placements` + min_spacing against
+    a running world-XZ spatial hash (prior dabs + existing instances, so density is even
+    regardless of stroke speed).
+  - `paint_pattern = "grid"`: `ScatterRegion.generate_grid_placements` — one instance per
+    lattice cell centre, **anchored to the world origin** and seeded per cell, so Paint
+    dabs and Rect fills continue ONE lattice with no seam and no double row (occupancy is
+    a taken-cell set instead of the spacing hash). For corn rows, orchards and neat grass
+    patches; `grid_step` replaces density + min_spacing there.
+  - **Rect** rides the chassis's `_click_mode()`/`_click()` two-point path (like the
+    terrain ramp): first click stores a corner, the cursor draws the pending rectangle,
+    the second click lays the whole fill as one undoable action. Esc cancels (consumed);
+    right-click cancels but is passed through so freelook still works.
   Strokes mutate `stored_transforms` live for feedback and commit **one** undoable
   whole-array swap (+ the ground hash) at stroke end — editor-only; no runtime or baker
   code.
