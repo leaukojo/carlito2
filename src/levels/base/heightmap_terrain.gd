@@ -35,6 +35,13 @@ const CHANNEL_PARAMS: Array[StringName] = [
 	&"grass_color", &"dirt_color", &"sand_color", &"rock_color",
 	&"color5", &"color6", &"color7", &"color8",
 ]
+## The splat shader's own `blend_sharpness` default — the fallback when the material isn't
+## the splat shader (or hasn't set the param). grip_at sharpens with the same exponent the
+## shader does, so friction and the drawn border agree.
+const DEFAULT_BLEND_SHARPNESS := 8.0
+## Sharpened-weight total below which a pixel counts as unpainted. Same threshold the splat
+## shader uses to fall back to a flat color.
+const MIN_SPLAT_TOTAL := 0.001
 const DEFAULT_CHANNEL_NAMES := [
 	"Grass", "Dirt", "Sand", "Rock", "Snow", "Mud", "Asphalt", "Gravel",
 ]
@@ -61,6 +68,7 @@ static func default_channel_names() -> PackedStringArray:
 @export var heightmap: Texture2D:
 	set(value):
 		heightmap = value
+		_height_dirty = true
 		_rebuild_if_ready()
 		source_image_replaced.emit("height")
 ## World-unit extent on X (width) and Z (depth). Also the collision/mesh grid size.
@@ -77,6 +85,8 @@ static func default_channel_names() -> PackedStringArray:
 @export var material: Material:
 	set(value):
 		material = value
+		# The splat cache also holds the material's blend_sharpness (see _ensure_splat_cache).
+		_splat_dirty = true
 		_rebuild_if_ready()
 ## Render-mesh tile size in cells (one MeshInstance3D per tile — the frustum-cull unit).
 @export var chunk_cells := 64:
@@ -151,6 +161,10 @@ const GRID_LEVEL_M := 3.0
 ## Tire grip multiplier per paint channel 0..7 (1.0 = the vehicle's spec grip; lower =
 ## slippery, e.g. ice/mud). RayWheel scales mu_long/mu_lat by the weighted splat mix under
 ## each contact (see grip_at). All-1.0 default = no effect, so unpainted levels are unchanged.
+## Clamped to [0, 1] on read: a value above 1 would raise mu past the tuned spec (breaking
+## the brake > peak-drive hierarchy on that surface) and a negative one would invert the
+## friction force outright. A per-element @export_range is not a thing, hence the read clamp
+## plus the configuration warning.
 @export var channel_grip := PackedFloat32Array([1, 1, 1, 1, 1, 1, 1, 1])
 ## Beaches appear below this world height (the band fades out over another half of it);
 ## above, grass.
@@ -168,13 +182,42 @@ const GRID_LEVEL_M := 3.0
 # Decoded splatmap copies kept for the per-tick grip query (get_splat_weights): decoding a
 # Texture2D every wheel every frame would be ruinous, so they are cached and only re-decoded
 # when a splatmap is replaced (_splat_dirty, set in the setters above).
+#
+# EDITOR CAVEAT: the kit brush keeps its own working image and only assigns splatmap back at
+# scene save, so mid-stroke these copies hold the pre-stroke pixels. Nothing drives in the
+# editor, so the runtime grip query is unaffected; an in-editor consumer of grip_at would
+# need the brush to push its working image.
 var _splat_img: Image
 var _splat2_img: Image
 var _splat_dirty := true
+var _sharpness := DEFAULT_BLEND_SHARPNESS  ## cached with the splat images (material param)
+var _decode_warned := false                ## one-shot guard for the decode-failure warning
+
+# Same deal for the heightmap, which grip terrain selection samples per wheel per tick
+# (RayWheel compares the contact height against the terrain surface). Runtime only: in the
+# editor height_at keeps reading the texture directly, so an external PNG edit reimported in
+# place still shows up without a scene reload.
+var _height_img: Image
+var _height_dirty := true
 
 
 func _ready() -> void:
 	rebuild()
+
+
+func _get_configuration_warnings() -> PackedStringArray:
+	var warnings := PackedStringArray()
+	if splatmap != null and splatmap2 != null and splatmap.get_size() != splatmap2.get_size():
+		warnings.append(("splatmap2 is %dx%d but splatmap is %dx%d — paint channels 4..7 then "
+				+ "cover a different footprint than 0..3. Repaint splatmap2 at the base size.")
+				% [splatmap2.get_width(), splatmap2.get_height(),
+				splatmap.get_width(), splatmap.get_height()])
+	for i in channel_grip.size():
+		if channel_grip[i] < 0.0 or channel_grip[i] > 1.0:
+			warnings.append(("channel_grip[%d] = %.2f is outside [0, 1] and will be clamped: "
+					+ "above 1 breaks the vehicle's tuned brake > drive hierarchy, below 0 "
+					+ "inverts tire friction.") % [i, channel_grip[i]])
+	return warnings
 
 
 func _rebuild_if_ready() -> void:
@@ -295,18 +338,27 @@ func _grid_dims() -> Vector2i:
 ## scatter ground-snap). Assumes the terrain is axis-aligned (unrotated/unscaled, as
 ## all authored HeightmapTerrains are); a null heightmap is flat at the node's Y.
 func height_at(world_pos: Vector3) -> float:
-	var img := _read_image()
+	var img := _height_image()
 	if img == null:
 		return global_position.y
+	var uv := _terrain_uv(world_pos)
+	return global_position.y + _sample_red_bilinear(img, uv.x, uv.y) * height
+
+
+## Normalized terrain UV under `world_pos`'s XZ, clamped to the extent. The one place the
+## world -> splat/heightmap mapping is written down: height_at, get_splat_weights and grip_at
+## all go through it, and it matches the render mesh's global UV (see _build_chunk), so the
+## friction lookup lines up with what's drawn.
+func _terrain_uv(world_pos: Vector3) -> Vector2:
 	var dims := _grid_dims()
 	var span_x := float(dims.x - 1)
 	var span_z := float(dims.y - 1)
 	# grid X spans [-span_x/2, +span_x/2] in local space (see _apply_chunks's x0/z0).
 	var lx := world_pos.x - global_position.x
 	var lz := world_pos.z - global_position.z
-	var u := clampf((lx + span_x * 0.5) / span_x, 0.0, 1.0)
-	var v := clampf((lz + span_z * 0.5) / span_z, 0.0, 1.0)
-	return global_position.y + _sample_red_bilinear(img, u, v) * height
+	return Vector2(
+			clampf((lx + span_x * 0.5) / span_x, 0.0, 1.0),
+			clampf((lz + span_z * 0.5) / span_z, 0.0, 1.0))
 
 
 ## Whether `world_pos`'s XZ lies within this terrain's extent (axis-aligned rect).
@@ -327,47 +379,107 @@ func get_splat_weights(world_pos: Vector3) -> PackedFloat32Array:
 	_ensure_splat_cache()
 	if _splat_img == null:
 		return weights
-	var dims := _grid_dims()
-	var span_x := float(dims.x - 1)
-	var span_z := float(dims.y - 1)
-	var lx := world_pos.x - global_position.x
-	var lz := world_pos.z - global_position.z
-	var u := clampf((lx + span_x * 0.5) / span_x, 0.0, 1.0)
-	var v := clampf((lz + span_z * 0.5) / span_z, 0.0, 1.0)
-	var c0 := _sample_rgba_bilinear(_splat_img, u, v)
+	var uv := _terrain_uv(world_pos)
+	var c0 := _sample_rgba_bilinear(_splat_img, uv.x, uv.y)
 	weights[0] = c0.r; weights[1] = c0.g; weights[2] = c0.b; weights[3] = c0.a
 	if _splat2_img != null:
-		var c1 := _sample_rgba_bilinear(_splat2_img, u, v)
+		var c1 := _sample_rgba_bilinear(_splat2_img, uv.x, uv.y)
 		weights[4] = c1.r; weights[5] = c1.g; weights[6] = c1.b; weights[7] = c1.a
 	return weights
 
 
-## Tire grip multiplier under `world_pos`: the paint-weight-blended channel_grip, normalized
-## by total weight. 1.0 (spec grip) when unpainted or with no splatmap. RayWheel scales its
-## friction coefficients by this. Cheap: <= 8 cached-Image bilinear reads.
+## Tire grip multiplier under `world_pos`: the paint-weight-blended channel_grip. 1.0 (spec
+## grip) when unpainted or with no splatmap. RayWheel scales its friction coefficients by
+## this. Cheap and allocation-free: <= 8 cached-Image bilinear reads, no weights array.
+##
+## Weights are pow-sharpened by the material's `blend_sharpness` and normalized EXACTLY as
+## the splat shader does before they are mixed. Raw weights would be wrong here: the shader's
+## sharpening makes the dominant channel win almost immediately, so a brush-falloff pixel of
+## 0.7 grass / 0.3 ice draws as 99.9% grass while raw normalization hands it 30% of the ice
+## grip — an invisible slick apron around every painted patch. Sharpening also disposes of the
+## other half of that bug: normalization alone makes weight MAGNITUDE irrelevant, so the
+## faintest trace of ice read as full ice. After pow(8) a faint trace falls under
+## MIN_SPLAT_TOTAL and reads as unpainted, same as the shader's flat-color fallback.
+##
+## The one deliberate divergence from the shader: below MIN_SPLAT_TOTAL it falls back to
+## neutral 1.0, not to channel 0 (the shader's grass) — channel 0 is ice in the gym, and
+## unpainted ground must never inherit it.
 func grip_at(world_pos: Vector3) -> float:
 	if splatmap == null:
 		return 1.0
-	var weights := get_splat_weights(world_pos)
+	_ensure_splat_cache()
+	if _splat_img == null:
+		return 1.0
+	var uv := _terrain_uv(world_pos)
+	var c0 := _sample_rgba_bilinear(_splat_img, uv.x, uv.y)
+	var c1 := Color(0, 0, 0, 0)
+	if _splat2_img != null:
+		c1 = _sample_rgba_bilinear(_splat2_img, uv.x, uv.y)
 	var total := 0.0
 	var grip := 0.0
 	for i in 8:
-		var w := weights[i]
+		var raw: float = (c0 if i < 4 else c1)[i & 3]
+		var w := pow(raw, _sharpness)
 		total += w
-		grip += w * (channel_grip[i] if i < channel_grip.size() else 1.0)
-	if total < 0.001:
+		grip += w * channel_grip_at(i)
+	if total < MIN_SPLAT_TOTAL:
 		return 1.0
 	return grip / total
 
 
-## Decode both splatmaps once into uncompressed working Images for get_splat_weights; only
-## re-runs after a splatmap is replaced (_splat_dirty). Same decompress dance as _read_image.
+## The grip multiplier of channel `ch`, clamped to the sane [0, 1] range (see channel_grip)
+## and defaulting to 1.0 for a level that stores a short array.
+func channel_grip_at(ch: int) -> float:
+	if ch < 0 or ch >= channel_grip.size():
+		return 1.0
+	return clampf(channel_grip[ch], 0.0, 1.0)
+
+
+## Decode both splatmaps once into uncompressed working Images for get_splat_weights (and
+## cache the material's blend sharpness with them); only re-runs after a splatmap or the
+## material is replaced (_splat_dirty). Same decompress dance as _read_image.
 func _ensure_splat_cache() -> void:
 	if not _splat_dirty:
 		return
 	_splat_img = _decode_texture(splatmap)
 	_splat2_img = _decode_texture(splatmap2)
+	_sharpness = _blend_sharpness()
 	_splat_dirty = false
+	# A texture that refuses to decode is indistinguishable from unpainted ground: grip
+	# silently goes neutral everywhere and stays there (retrying per tick would mean a
+	# get_image() per wheel per frame, which is exactly what this cache exists to avoid).
+	# Warn once so it is visible — including in the browser console on the web export, where
+	# a texture readback is the failure most likely to differ from a desktop run.
+	if splatmap != null and _splat_img == null and not _decode_warned:
+		_decode_warned = true
+		push_warning("HeightmapTerrain '%s': splatmap could not be decoded — per-surface tire grip is disabled for this terrain." % name)
+
+
+## Decoded heightmap for the per-tick surface query, cached at runtime (see _height_img).
+## In the editor it decodes per call, so an externally edited + reimported PNG is picked up
+## without a scene reload.
+func _height_image() -> Image:
+	if Engine.is_editor_hint():
+		return _read_image()
+	if _height_dirty:
+		_height_img = _read_image()
+		_height_dirty = false
+	return _height_img
+
+
+## The material's splat `blend_sharpness`, or the shader's own default (same lookup shape as
+## channel_color). Read once per cache refresh — never per query.
+func _blend_sharpness() -> float:
+	var mat := material as ShaderMaterial
+	if mat == null:
+		return DEFAULT_BLEND_SHARPNESS
+	var value: Variant = mat.get_shader_parameter(&"blend_sharpness")
+	if value == null and mat.shader != null:
+		# An unset param reads back null — ask the shader for the uniform's own default.
+		value = RenderingServer.shader_get_parameter_default(mat.shader.get_rid(), &"blend_sharpness")
+	if value is float or value is int:
+		return maxf(1.0, float(value))
+	return DEFAULT_BLEND_SHARPNESS
 
 
 ## Uncompressed decoded copy of `tex`, or null when unset (shared by the splat cache).

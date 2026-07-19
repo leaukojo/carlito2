@@ -171,3 +171,44 @@ func test_grip_unpainted_is_one() -> void:
 	assert_float(t.grip_at(Vector3.ZERO)).is_equal(1.0)   # no splatmap
 	t.splatmap = _splat(Color(0, 0, 0, 0))                # all-zero weights: still neutral
 	assert_float(t.grip_at(Vector3.ZERO)).is_equal(1.0)
+
+
+func test_grip_sharpens_like_the_shader() -> void:
+	# A brush-falloff pixel: mostly grass with a little ice. The shader's pow(w, 8) makes it
+	# draw as ~pure grass, so the grip must follow — raw weights would hand back 0.78 here,
+	# an invisible slick apron around every painted patch.
+	var t := _terrain(Vector2(4, 4), 10.0)
+	t.splatmap = _splat(Color(0.75, 0.25, 0, 0))
+	t.channel_grip = PackedFloat32Array([1, 0.12, 1, 1, 1, 1, 1, 1])
+	assert_float(t.grip_at(Vector3.ZERO)).is_greater(0.99)
+
+
+func test_grip_ignores_a_faint_trace() -> void:
+	# Normalization alone makes weight MAGNITUDE irrelevant: a barely-there 0.05 of ice would
+	# normalize to FULL ice. Sharpened, it falls under the shader's own unpainted threshold.
+	var t := _terrain(Vector2(4, 4), 10.0)
+	t.splatmap = _splat(Color(0.0625, 0, 0, 0))   # binary-exact faint trace of channel 0
+	t.channel_grip = PackedFloat32Array([0.12, 1, 1, 1, 1, 1, 1, 1])
+	assert_float(t.grip_at(Vector3.ZERO)).is_equal(1.0)
+
+
+func test_grip_clamps_out_of_range_channels() -> void:
+	# An author-typed negative would invert tire friction and disable the friction circle;
+	# above 1 would raise mu past the tuned spec. Both clamp into [0, 1].
+	var t := _terrain(Vector2(4, 4), 10.0)
+	t.splatmap = _splat(Color(1, 0, 0, 0))
+	t.channel_grip = PackedFloat32Array([-2, 1, 1, 1, 1, 1, 1, 1])
+	assert_float(t.grip_at(Vector3.ZERO)).is_equal(0.0)
+	t.channel_grip = PackedFloat32Array([3, 1, 1, 1, 1, 1, 1, 1])
+	assert_float(t.grip_at(Vector3.ZERO)).is_equal(1.0)
+	assert_bool("\n".join(t._get_configuration_warnings()).contains("channel_grip[0]")).is_true()
+
+
+func test_splat2_size_mismatch_warns() -> void:
+	var t := _terrain(Vector2(4, 4), 10.0)
+	t.splatmap = _splat(Color(1, 0, 0, 0))
+	assert_array(t._get_configuration_warnings()).is_empty()
+	var odd := Image.create(8, 8, false, Image.FORMAT_RGBAF)
+	odd.fill(Color(0, 0, 0, 0))
+	t.splatmap2 = _tex(odd)
+	assert_bool("\n".join(t._get_configuration_warnings()).contains("splatmap2")).is_true()

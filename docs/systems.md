@@ -76,8 +76,12 @@ Backspace respawn, F3 debug overlay, F4 force-show touch controls.
   60 Hz stability clamps live here (damper ≤ one-tick reversal, suspension force cap,
   low-speed slip floors + one-tick lateral force cap). Tire grip scales by the painted
   ground: each contact samples `HeightmapTerrain.grip_at()` (BaseVehicle collects the
-  level's grip terrains once, duck-typed `grip_at`+`contains_xz`); the multiplier rides
-  `mu_long`/`mu_lat` — the 60 Hz clamps are untouched.
+  level's grip terrains once, duck-typed `grip_at`+`contains_xz`+`height_at`); the
+  multiplier rides `mu_long`/`mu_lat` — the 60 Hz clamps are untouched (they cap by
+  momentum, independent of mu). The terrain used is the one whose surface is *nearest the
+  contact point* and within `SURFACE_GRIP_REACH` (1 m) of it — a conformed road's deck sits
+  at the flattened terrain height and still reads the paint, while a bridge or ramp passing
+  over a painted patch keeps neutral grip instead of inheriting it.
 - **`BaseVehicle`** (RigidBody3D) — consumes `InputRouter.get_vehicle_input()` only, runs
   wheels/drivetrain, publishes telemetry, applies lamps, plays the horn on the rising edge
   (source-agnostic). Zero-wheel-safe (the boat spec has empty `wheel_positions`). Two
@@ -264,9 +268,12 @@ lock the rears — drift comes from the grip cut, not brake torque.
   vehicle-type filter + `is_water` for boat/drown-respawn spots), **`HeightmapTerrain`**
   (see `docs/level_kit.md` — the runtime side is a greyscale image → chunked welded grid
   mesh + one matching `HeightMapShape3D`, one cell = one world unit so mesh and collision
-  coincide; also the per-surface grip source: per-channel `channel_grip` blended by
-  `grip_at(world_pos)` over bilinear `get_splat_weights` — the decoded splat Images are
-  cached once, never `get_image()`/decompressed per tick).
+  coincide; also the per-surface grip source: per-channel `channel_grip` (clamped to
+  [0, 1]) blended by `grip_at(world_pos)` over the bilinear splat weights — the decoded
+  splat + height Images are cached once, never `get_image()`/decompressed per tick.
+  `grip_at` sharpens the weights with the material's `blend_sharpness` exactly as the splat
+  shader does, so friction follows the border you can see instead of fading well past it;
+  `get_splat_weights` still returns the raw weights).
 - `level.tscn` is the authoring template (env + sun + camera + one spawn); duplicate it to
   start a level.
 - `src/levels/gym/gym.tscn` is the fully dressed dev gym: flat zone, two ramps, a

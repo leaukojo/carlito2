@@ -15,6 +15,13 @@ extends RefCounted
 ## Slip-ratio denominator floor (m/s): keeps slip finite as speed -> 0.
 const LOW_SPEED_FLOOR := 1.5
 
+## How far above/below a terrain's surface a contact may sit and still pick up its painted
+## grip (m). Generous enough for anything welded onto the ground — a conformed road's deck
+## sits AT the flattened terrain height (the profile's skirt drops below it, never above) —
+## and tight enough that a bridge, ramp or platform crossing over a painted patch keeps its
+## own neutral grip instead of inheriting ice from the ground below.
+const SURFACE_GRIP_REACH := 1.0
+
 var anchor: Vector3     ## hub anchor, body space
 var steered: bool
 var driven: bool
@@ -54,7 +61,7 @@ func reset() -> void:
 
 func tick(body: RigidBody3D, spec: VehicleSpec, space: PhysicsDirectSpaceState3D,
 		drive_torque: float, brake_torque: float, delta: float,
-		grip_terrains: Array[Node] = []) -> void:
+		grip_terrains: Array[Node]) -> void:
 	var xform := body.global_transform
 	var up := xform.basis.y
 	var ray_from := xform * anchor
@@ -78,14 +85,22 @@ func tick(body: RigidBody3D, spec: VehicleSpec, space: PhysicsDirectSpaceState3D
 	var normal: Vector3 = hit.normal
 	var corner_mass := spec.mass / maxf(1.0, spec.wheel_positions.size())
 
-	# Painted-terrain grip under the contact XZ: scales the tire mu below. Lookup is
-	# XZ-based and collider-independent, so it also works where the wheel rests on a
-	# conformed road welded over the terrain. Duck-typed (grip_at/contains_xz) — no type dep.
+	# Painted-terrain grip under the contact: scales the tire mu below. The lookup is
+	# collider-independent (XZ + height) so it also works where the wheel rests on a conformed
+	# road welded over the terrain — but it is NOT XZ alone: the contact must be within
+	# SURFACE_GRIP_REACH of the terrain surface, else a bridge deck or ramp passing over a
+	# painted patch would inherit its grip. With several terrains in reach (a detail terrain
+	# inset in a big one) the nearest surface wins, not scene-tree order. Duck-typed
+	# (grip_at/contains_xz/height_at) — no type dep.
 	surface_grip = 1.0
+	var nearest := SURFACE_GRIP_REACH
 	for terrain in grip_terrains:
-		if terrain.contains_xz(contact_point):
+		if not is_instance_valid(terrain) or not terrain.contains_xz(contact_point):
+			continue
+		var drop: float = absf(contact_point.y - terrain.height_at(contact_point))
+		if drop < nearest:
+			nearest = drop
 			surface_grip = terrain.grip_at(contact_point)
-			break
 
 	# Suspension: spring + damper along the body's up axis at the contact point.
 	compression = clampf(ray_len - ray_from.distance_to(contact_point), 0.0, spec.rest_length)

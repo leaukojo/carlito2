@@ -141,21 +141,26 @@ func _tick_extras(_input: InputRouter.VehicleInput, _delta: float) -> void:
 
 ## Collect the painted terrains under the owning level for the wheels' surface-grip query.
 ## Walks up to the level (duck-typed by set_vehicle) then scans its subtree for the terrain
-## contract (grip_at + contains_xz) — no HeightmapTerrain / Level type dependency.
+## contract (grip_at + contains_xz + height_at) — no HeightmapTerrain / Level type dependency.
 func _find_grip_terrains() -> Array[Node]:
 	var out: Array[Node] = []
 	var root := get_parent()
 	while root != null and not root.has_method("set_vehicle"):
 		root = root.get_parent()
 	if root == null:
-		root = get_parent()   # not under a Level (e.g. a test rig): scan the immediate parent
-	if root != null:
-		_collect_grip_terrains(root, out)
+		# Not under a Level (a test rig / dev fixture): scan from the outermost ancestor below
+		# the SceneTree root, so a terrain that is a SIBLING of the vehicle's parent — the
+		# usual rig layout — is found rather than silently missed.
+		root = self
+		while root.get_parent() != null and root.get_parent() != get_tree().root:
+			root = root.get_parent()
+	_collect_grip_terrains(root, out)
 	return out
 
 
 static func _collect_grip_terrains(node: Node, out: Array[Node]) -> void:
-	if node.has_method("grip_at") and node.has_method("contains_xz"):
+	if node.has_method("grip_at") and node.has_method("contains_xz") \
+			and node.has_method("height_at"):
 		out.append(node)
 	for child in node.get_children():
 		_collect_grip_terrains(child, out)

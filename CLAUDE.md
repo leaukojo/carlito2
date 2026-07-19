@@ -124,7 +124,16 @@ junctions, lane markings, traffic.
 - RayWheel is single-radius: the tractor's big-rear/small-front wheels are visual only.
 - Splat-channel grip (`HeightmapTerrain.channel_grip` → `grip_at()`, sampled by RayWheel
   per contact) reads **cached decoded splat Images** — never `get_image()`/decompress
-  per tick. The multiplier rides `mu_long`/`mu_lat`; the 60 Hz clamps stay untouched.
+  per tick (the heightmap is cached the same way at runtime, for the surface test below;
+  in-editor it still decodes per call so an external PNG edit shows up). The multiplier
+  rides `mu_long`/`mu_lat`; the 60 Hz clamps stay untouched. Three rules that are easy to
+  undo by accident: `grip_at` **pow-sharpens weights with the material's `blend_sharpness`
+  exactly like the splat shader** (raw weights give every painted patch an invisible
+  low-grip apron, and normalization alone makes a faint trace read as full effect);
+  `channel_grip` is **clamped to [0, 1] on read** (>1 breaks the tuned brake > drive
+  hierarchy, <0 inverts friction and skips the friction circle); and the wheel picks the
+  terrain whose **surface is nearest the contact** within `RayWheel.SURFACE_GRIP_REACH`,
+  never XZ alone — otherwise a bridge or ramp inherits the ice painted under it.
 
 **Input, lamps, bridge**
 
