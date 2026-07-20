@@ -36,6 +36,10 @@ const MIN_PIVOT_DIST := 0.35
 var mode := Mode.CHASE
 
 var _fov_perspective := 75.0
+## Smoothed follow position BEFORE occlusion pull-in. Feeding the pulled-in position back
+## into the next frame's lerp makes the camera oscillate in/out against a wall (shaking).
+var _free_position := Vector3.ZERO
+var _has_free := false
 
 
 func _ready() -> void:
@@ -69,9 +73,13 @@ func _follow(weight: float) -> void:
 	if mode == Mode.HOOD:
 		# Rigid to the body: the whole point of this view is feeling the pitch and roll.
 		global_transform = Transform3D(tt.basis, tt * hood_offset)
+		_has_free = false
 		return
 	var pivot := tt.origin + Vector3.UP * look_height
-	global_position = _unblocked(global_position.lerp(_desired_position(tt), weight), pivot)
+	var desired := _desired_position(tt)
+	_free_position = desired if not _has_free else _free_position.lerp(desired, weight)
+	_has_free = true
+	global_position = _unblocked(_free_position, pivot)
 	# Keeping the previous orientation for a frame beats an error and an identity basis.
 	if global_position.distance_squared_to(pivot) > MIN_PIVOT_DIST * MIN_PIVOT_DIST * 0.25:
 		look_at(pivot)
