@@ -11,6 +11,8 @@ extends Camera3D
 @export var height := 2.5
 @export var look_height := 1.2
 @export var smoothing := 5.0  ## 1/s exponential position catch-up rate
+@export_flags_3d_physics var collision_mask := 1  ## layers the camera may not pass through
+@export var collision_margin := 0.3  ## keep-out distance from a hit surface
 
 
 func _ready() -> void:
@@ -22,8 +24,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if target == null:
 		return
-	global_position = global_position.lerp(
-			_desired_position(), 1.0 - exp(-smoothing * delta))
+	global_position = _unblocked(global_position.lerp(
+			_desired_position(), 1.0 - exp(-smoothing * delta)))
 	look_at(target.get_global_transform_interpolated().origin + Vector3.UP * look_height)
 
 
@@ -31,8 +33,22 @@ func _process(delta: float) -> void:
 func snap() -> void:
 	if target == null:
 		return
-	global_position = _desired_position()
+	global_position = _unblocked(_desired_position())
 	look_at(target.get_global_transform_interpolated().origin + Vector3.UP * look_height)
+
+
+## Pull [param pos] in along the pivot→camera line if terrain/geometry blocks it.
+func _unblocked(pos: Vector3) -> Vector3:
+	var pivot := target.get_global_transform_interpolated().origin + Vector3.UP * look_height
+	var query := PhysicsRayQueryParameters3D.create(pivot, pos, collision_mask)
+	if target is PhysicsBody3D:
+		query.exclude = [(target as PhysicsBody3D).get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return pos
+	var to_cam := pos - pivot
+	var dist: float = maxf((hit.position as Vector3).distance_to(pivot) - collision_margin, 0.0)
+	return pivot + to_cam.normalized() * minf(dist, to_cam.length())
 
 
 func _desired_position() -> Vector3:
