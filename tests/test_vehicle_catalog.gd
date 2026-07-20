@@ -35,7 +35,7 @@ func test_variants_in_family_grouping() -> void:
 	assert_bool(car.has("firetruck")).is_false()
 	assert_int(VehicleCatalog.variants_in_family("truck").size()).is_equal(6)
 	assert_int(VehicleCatalog.variants_in_family("tractor").size()).is_equal(4)
-	assert_int(VehicleCatalog.variants_in_family("boat").size()).is_equal(1)
+	assert_int(VehicleCatalog.variants_in_family("boat").size()).is_equal(4)  # legacy + 3 watercraft
 
 
 func test_next_in_family_wraps() -> void:
@@ -43,8 +43,9 @@ func test_next_in_family_wraps() -> void:
 	# cycling from the last variant returns to the first (the legacy body).
 	assert_str(VehicleCatalog.next_in_family(car[car.size() - 1])).is_equal(car[0])
 	assert_str(VehicleCatalog.next_in_family("car")).is_equal(car[1])
-	# a lone family is a no-op; unknown is returned unchanged.
-	assert_str(VehicleCatalog.next_in_family("boat")).is_equal("boat")
+	var boat := VehicleCatalog.variants_in_family("boat")
+	assert_str(VehicleCatalog.next_in_family("boat")).is_equal(boat[1])
+	# unknown is returned unchanged (and a lone family would be, too).
 	assert_str(VehicleCatalog.next_in_family("nope")).is_equal("nope")
 
 

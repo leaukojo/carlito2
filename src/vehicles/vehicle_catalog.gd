@@ -6,11 +6,13 @@ extends RefCounted
 ## garage still chooses a family, and V cycles the variants within it.
 ##
 ## The four hand-built vehicles are variants of their own family (listed first, so a family
-## resolves to its legacy body). The rest are the Kenney car kit (CC0). Pure static data +
-## helpers, unit-tested in tests/test_vehicle_catalog.gd. The contract file is NOT touched:
+## resolves to its legacy body). The rest are the Kenney car kit and Watercraft pack (CC0),
+## each generated with its own feel (tools/gen_kenney_vehicles, tools/gen_boat_variants).
+## Pure static data + helpers, unit-tested in tests/test_vehicle_catalog.gd. The contract file is NOT touched:
 ## every variant maps to one of the four existing families.
 
 const KENNEY := "res://src/vehicles/kenney/"
+const WATERCRAFT := "res://src/vehicles/watercraft/"
 
 ## variant id -> { scene: String, family: String }. Insertion order is the cycle order.
 const VARIANTS := {
@@ -19,6 +21,10 @@ const VARIANTS := {
 	"truck": {"scene": "res://src/vehicles/truck/truck.tscn", "family": "truck"},
 	"tractor": {"scene": "res://src/vehicles/tractor/tractor.tscn", "family": "tractor"},
 	"boat": {"scene": "res://src/vehicles/boat/boat.tscn", "family": "boat"},
+	# -- Watercraft pack: boat family --
+	"boat-speed-a": {"scene": WATERCRAFT + "boat-speed-a.tscn", "family": "boat"},
+	"boat-speed-j": {"scene": WATERCRAFT + "boat-speed-j.tscn", "family": "boat"},
+	"boat-sail-a": {"scene": WATERCRAFT + "boat-sail-a.tscn", "family": "boat"},
 	# -- Kenney car kit: car family --
 	"sedan": {"scene": KENNEY + "sedan.tscn", "family": "car"},
 	"sedan-sports": {"scene": KENNEY + "sedan-sports.tscn", "family": "car"},

@@ -63,9 +63,13 @@ Backspace respawn, F3 debug overlay, F4 force-show touch controls.
   (brake > peak drive > handbrake; handbrake holds only below ~30% throttle).
 - **`VehicleCatalog`** (`src/vehicles/vehicle_catalog.gd`) — static registry of vehicle
   *variants* (one concrete body scene each: the four hand-built vehicles + the Kenney
-  car-kit bodies) mapped onto the four contract *families* (car/truck/tractor/boat).
-  The FAMILY drives bridge marshaling, dashboard cluster and spawn filtering; a variant
-  is cosmetic. V (or the touch NEXT CAR button) cycles variants within the current
+  car-kit bodies + the Watercraft-pack boats) mapped onto the four contract *families*
+  (car/truck/tractor/boat). The FAMILY drives bridge marshaling, dashboard cluster and
+  spawn filtering; a variant carries its own spec (and, for boats, its own hull/buoyancy
+  knobs), so it drives differently but signals identically. Generated one-shot by
+  `tools/gen_kenney_vehicles.tscn` and `tools/gen_boat_variants.tscn` (game-mode tool
+  scenes, deterministic, destructive-by-run — re-run after a scale/feel change).
+  V (or the touch NEXT CAR button) cycles variants within the current
   family via `Level.set_vehicle`; `GameState.current_variant` tracks the active one.
   Unit-tested in `tests/test_vehicle_catalog.gd`. The contract never sees variants.
 - **`Drivetrain`** — pure math: engine torque curve, gear ratios, RAMN gear byte

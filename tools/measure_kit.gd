@@ -27,9 +27,9 @@ func _init() -> void:
 		if scene == null:
 			print(f, "  LOAD FAILED")
 			continue
-		var root := scene.instantiate()
-		var aabb := _merged_aabb(root, Transform3D.IDENTITY)
-		root.free()
+		var inst := scene.instantiate()
+		var aabb := _merged_aabb(inst, Transform3D.IDENTITY)
+		inst.free()
 		print("%-42s size=(%.3f, %.3f, %.3f)  min=(%.3f, %.3f, %.3f)  max=(%.3f, %.3f, %.3f)" % [
 			f, aabb.size.x, aabb.size.y, aabb.size.z,
 			aabb.position.x, aabb.position.y, aabb.position.z,
