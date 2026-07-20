@@ -58,6 +58,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		vehicle.respawn()
 	elif event.is_action_pressed("day_night"):
 		_toggle_day_night()
+	elif event.is_action_pressed("camera_view"):
+		cycle_camera()
+
+
+## Advance the chase camera to its next view (C key / touch VIEW button).
+func cycle_camera() -> void:
+	if camera != null:
+		camera.cycle()
 
 
 ## Swap kit authoring content for the baked scene when one exists.

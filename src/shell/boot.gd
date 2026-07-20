@@ -24,6 +24,7 @@ func _ready() -> void:
 	_touch.garage_pressed.connect(_open_garage)
 	_touch.respawn_pressed.connect(_respawn)
 	_touch.next_vehicle_pressed.connect(_cycle_vehicle)
+	_touch.camera_pressed.connect(_cycle_camera)
 	# The headless CI smoke can't click the menu, so boot straight into the first level
 	# there — this keeps the smoke exercising the full load -> spawn -> play path.
 	# CARLITO_LEVEL picks a different registry id, so CI can also smoke a baked level
@@ -114,6 +115,11 @@ func _close_garage() -> void:
 	if _garage != null:
 		_garage.queue_free()
 		_garage = null
+
+
+func _cycle_camera() -> void:
+	if _level != null:
+		_level.cycle_camera()
 
 
 func _respawn() -> void:

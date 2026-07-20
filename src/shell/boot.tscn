@@ -15,7 +15,7 @@ offset_left = 8.0
 offset_top = 8.0
 offset_right = 640.0
 offset_bottom = 30.0
-text = "carlito2 - drive: W/S, steer: A/D, handbrake: Space, horn: H, lights: L, day/night: N, garage: G, respawn: Backspace, debug: F3, touch: F4"
+text = "carlito2 - drive: W/S, steer: A/D, handbrake: Space, horn: H, lights: L, day/night: N, camera: C, garage: G, respawn: Backspace, debug: F3, touch: F4"
 
 [node name="Dashboard" type="Control" parent="UI"]
 anchors_preset = 15
