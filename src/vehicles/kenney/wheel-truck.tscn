@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://src/vehicles/kenney/models/wheel-default.glb" id="1_glb"]
+[ext_resource type="PackedScene" path="res://src/vehicles/kenney/models/wheel-truck.glb" id="1_glb"]
 
 [node name="Wheel" type="Node3D"]
 

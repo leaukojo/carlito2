@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="VehicleSpec" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/vehicles/base/vehicle_spec.gd" id="1_spec"]
-[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel.tscn" id="2_wheel"]
+[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel-truck.tscn" id="2_wheel"]
 
 [resource]
 script = ExtResource("1_spec")

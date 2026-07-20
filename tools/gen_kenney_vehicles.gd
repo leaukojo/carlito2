@@ -19,16 +19,25 @@ extends Node
 
 const OUT_DIR := "res://src/vehicles/kenney"
 const MODELS := OUT_DIR + "/models"
-const WHEEL_SCENE_PATH := OUT_DIR + "/wheel.tscn"
 const BASE_SCRIPT := "res://src/vehicles/base/base_vehicle.gd"
 const TRACTOR_SCRIPT := "res://src/vehicles/tractor/tractor.gd"
 
 const KIT_SCALE := 1.2
-const WHEEL_RADIUS := 0.36  ## wheel-default native radius 0.30 * KIT_SCALE
+const WHEEL_RADIUS := 0.36  ## physics radius, all four corners (RayWheel is single-radius)
 const GRAVITY := 9.8
 const MIN_CLEARANCE := 0.12  ## m the collision hull floor is held above the wheel-contact plane
-const WHEEL_HALF := 0.24  ## wheel-default native tread half-width 0.20 * KIT_SCALE
 const WHEEL_BAND := 0.4   ## m z-window (body space) the body half-width is measured over per axle
+
+## Wheel visuals per model: the radius-normalized scene, the rendered radius, and the tread
+## half-width AT that radius (native half-width / native radius * rendered radius) — the flush-X
+## rule below places the wheel's outer face at the body side, so it must match the model.
+const WHEEL_DEFAULT := {"scene": OUT_DIR + "/wheel.tscn", "radius": WHEEL_RADIUS, "half": 0.240}
+const WHEEL_TRUCK := {"scene": OUT_DIR + "/wheel-truck.tscn", "radius": WHEEL_RADIUS, "half": 0.210}
+## Tractor axles differ VISUALLY only (0.30 / 0.45 straddling the 0.36 physics radius).
+const WHEEL_TRACTOR_FRONT := {
+	"scene": OUT_DIR + "/wheel-tractor-front.tscn", "radius": 0.30, "half": 0.206}
+const WHEEL_TRACTOR_REAR := {
+	"scene": OUT_DIR + "/wheel-tractor-rear.tscn", "radius": 0.45, "half": 0.276}
 
 # Not const: Vector2 / NodePath / Array literals aren't constant expressions in GDScript.
 var _grip_curve := PackedVector2Array([
@@ -86,8 +95,9 @@ const VARIANTS := {
 	"suv-luxury": {"family": "car", "mass": 1600.0, "torque_mul": 1.10, "mu_lat": 1.0, "max_steer_deg": 33.0},
 	"taxi": {"family": "car", "mass": 1250.0},
 	"police": {"family": "car", "mass": 1300.0, "torque_mul": 1.18, "final_drive": 4.0, "max_steer_deg": 40.0},
-	"race": {"family": "car", "mass": 900.0, "torque_mul": 1.35, "final_drive": 4.2, "mu_long": 1.2, "mu_lat": 1.3, "max_steer_deg": 40.0, "handbrake_grip": 0.5},
-	"race-future": {"family": "car", "mass": 850.0, "torque_mul": 1.42, "final_drive": 4.2, "mu_long": 1.25, "mu_lat": 1.35, "max_steer_deg": 42.0, "handbrake_grip": 0.5},
+	# open-wheelers keep the default rim and stand proud of the slim body (F1 track width)
+	"race": {"family": "car", "mass": 900.0, "torque_mul": 1.35, "final_drive": 4.2, "mu_long": 1.2, "mu_lat": 1.3, "max_steer_deg": 40.0, "handbrake_grip": 0.5, "wheels": [WHEEL_DEFAULT, WHEEL_DEFAULT], "wheel_x_out": 0.12},
+	"race-future": {"family": "car", "mass": 850.0, "torque_mul": 1.42, "final_drive": 4.2, "mu_long": 1.25, "mu_lat": 1.35, "max_steer_deg": 42.0, "handbrake_grip": 0.5, "wheels": [WHEEL_DEFAULT, WHEEL_DEFAULT], "wheel_x_out": 0.12},
 	"van": {"family": "car", "mass": 1600.0, "max_steer_deg": 32.0},
 	"pickup": {"family": "car", "mass": 1550.0, "torque_mul": 1.05, "max_steer_deg": 33.0},
 	"pickup-flat": {"family": "car", "mass": 1500.0, "torque_mul": 1.05, "max_steer_deg": 33.0},
@@ -105,19 +115,26 @@ const VARIANTS := {
 
 const BASELINES := {"car": CAR_BASE, "truck": TRUCK_BASE, "tractor": TRACTOR_BASE}
 
+## family -> [front wheel, rear wheel]; a variant may override with "wheels".
+const FAMILY_WHEELS := {
+	"car": [WHEEL_TRUCK, WHEEL_TRUCK],
+	"truck": [WHEEL_TRUCK, WHEEL_TRUCK],
+	"tractor": [WHEEL_TRACTOR_FRONT, WHEEL_TRACTOR_REAR],
+}
+
 
 func _ready() -> void:
-	var wheel_scene := load(WHEEL_SCENE_PATH) as PackedScene
 	var base_script := load(BASE_SCRIPT)
 	var tractor_script := load(TRACTOR_SCRIPT)
 	var ok := 0
 	for variant: String in VARIANTS:
 		var ov: Dictionary = VARIANTS[variant]
 		var family := String(ov["family"])
-		var geo := _analyze(MODELS.path_join(variant + ".glb"))
+		var wheels: Array = ov.get("wheels", FAMILY_WHEELS[family])
+		var geo := _analyze(MODELS.path_join(variant + ".glb"), wheels)
 		if geo.is_empty():
 			continue
-		var spec := _build_spec(family, ov, geo, wheel_scene)
+		var spec := _build_spec(family, ov, geo, wheels)
 		var spec_path := OUT_DIR.path_join(variant + "_spec.tres")
 		if ResourceSaver.save(spec, spec_path) != OK:
 			push_error("failed to save " + spec_path)
@@ -136,7 +153,7 @@ func _ready() -> void:
 
 # --- spec ------------------------------------------------------------------------------
 
-func _build_spec(family: String, ov: Dictionary, geo: Dictionary, wheel_scene: PackedScene) -> VehicleSpec:
+func _build_spec(family: String, ov: Dictionary, geo: Dictionary, wheels: Array) -> VehicleSpec:
 	var b: Dictionary = BASELINES[family]
 	var get_f := func(key: String) -> float: return float(ov.get(key, b[key]))
 
@@ -145,7 +162,20 @@ func _build_spec(family: String, ov: Dictionary, geo: Dictionary, wheel_scene: P
 	spec.center_of_mass = Vector3(0, float(b["com_y"]), 0)
 	spec.wheel_radius = WHEEL_RADIUS
 	spec.wheel_inertia = float(b["wheel_inertia"])
-	spec.wheel_scene = wheel_scene
+	# Wheel visuals: one scene per axle when they differ (tractor), plus the rendered radii.
+	# Physics stays single-radius — spec.wheel_radius above is the only radius RayWheel uses.
+	var front_wheel: Dictionary = wheels[0]
+	var rear_wheel: Dictionary = wheels[1]
+	spec.wheel_scene = load(String(front_wheel["scene"])) as PackedScene
+	if String(rear_wheel["scene"]) != String(front_wheel["scene"]):
+		spec.wheel_scene_rear = load(String(rear_wheel["scene"])) as PackedScene
+	var front_r := float(front_wheel["radius"])
+	var rear_r := float(rear_wheel["radius"])
+	# Left at 0 (= wheel_radius) only when both axles render at the physics radius; otherwise
+	# both are set explicitly, since the rear field falls back to the front one when unset.
+	if front_r != WHEEL_RADIUS or rear_r != WHEEL_RADIUS:
+		spec.wheel_visual_radius = front_r
+		spec.wheel_visual_radius_rear = rear_r
 	spec.driven_front = bool(b["driven_front"])
 	spec.driven_rear = bool(b["driven_rear"])
 	spec.rest_length = float(b["rest_length"])
@@ -171,7 +201,7 @@ func _build_spec(family: String, ov: Dictionary, geo: Dictionary, wheel_scene: P
 	spec.max_steer_deg = get_f.call("max_steer_deg")
 	spec.steer_speed = get_f.call("steer_speed")
 
-	spec.wheel_positions = _wheel_positions(geo, spec)
+	spec.wheel_positions = _wheel_positions(geo, spec, float(ov.get("wheel_x_out", 0.0)))
 	_derive_brakes(spec)
 
 	spec.headlight_paths.assign(_lamp_paths["headlight_paths"])
@@ -186,7 +216,9 @@ func _build_spec(family: String, ov: Dictionary, geo: Dictionary, wheel_scene: P
 ## the wheel wells. Anchor Y is uniform across the four so the body rests level: at spring
 ## equilibrium the visual wheel centre lands at WHEEL_RADIUS above ground (ground at body
 ## y = 0, the Kenney wheel-contact plane), i.e. wheels flush with the chassis as designed.
-func _wheel_positions(geo: Dictionary, spec: VehicleSpec) -> PackedVector3Array:
+## `x_out` pushes each corner further outboard (open-wheelers): it widens the real track, so
+## suspension and visual move together.
+func _wheel_positions(geo: Dictionary, spec: VehicleSpec, x_out: float) -> PackedVector3Array:
 	var corner_mass := spec.mass / 4.0
 	var comp := clampf(corner_mass * GRAVITY / spec.spring_rate, 0.0, spec.rest_length * 0.8)
 	var y := WHEEL_RADIUS + spec.rest_length - comp
@@ -195,7 +227,7 @@ func _wheel_positions(geo: Dictionary, spec: VehicleSpec) -> PackedVector3Array:
 	var rl := Vector3.ZERO
 	var rr := Vector3.ZERO
 	for xz: Vector2 in geo["wheel_xz"]:
-		var p := Vector3(xz.x, y, xz.y)    # body space (front = -Z, right = +X)
+		var p := Vector3(xz.x + signf(xz.x) * x_out, y, xz.y)  # body space (front = -Z, right = +X)
 		if p.z < 0.0:
 			if p.x < 0.0: fl = p
 			else: fr = p
@@ -377,7 +409,7 @@ func _add(scene_owner: Node, parent: Node, child: Node) -> void:
 ##              rule below (never inset from the authored position).
 ##   body_pairs: [Mesh, native transform] for the wheel-less body (collision hull source)
 ##   box:       body_aabb transformed by xform (lamp placement + hull fallback)
-func _analyze(path: String) -> Dictionary:
+func _analyze(path: String, wheel_models: Array) -> Dictionary:
 	var scene := load(path) as PackedScene
 	if scene == null:
 		push_error("cannot load " + path)
@@ -411,9 +443,10 @@ func _analyze(path: String) -> Dictionary:
 	var xform := Transform3D(basis, Vector3(KIT_SCALE * c.x, 0.0, KIT_SCALE * c.z))
 
 	# Per-wheel flush X: place the wheel's OUTER face at the body side measured in a z-band
-	# around that wheel (fenders differ front/rear), i.e. |x| = body_half - wheel_half. Never
-	# pull a wheel inward from where Kenney put it (open-wheel cars sit proud of a slim body):
-	# take max(flush, authored). The embedded wheel z is kept as-is.
+	# around that wheel (fenders differ front/rear), i.e. |x| = body_half - wheel_half. The
+	# tread half-width is per axle, since the two axles may wear different models (tractor).
+	# Never pull a wheel inward from where Kenney put it (open-wheel cars sit proud of a slim
+	# body): take max(flush, authored). The embedded wheel z is kept as-is.
 	var wheel_xz: Array = []
 	for w: Vector3 in wheels:
 		var tw: Vector3 = xform * w
@@ -422,7 +455,8 @@ func _analyze(path: String) -> Dictionary:
 			var tv: Vector3 = xform * v
 			if absf(tv.z - tw.z) < WHEEL_BAND:
 				body_half = maxf(body_half, absf(tv.x))
-		var flush := body_half - WHEEL_HALF
+		var half: float = wheel_models[0 if tw.z < 0.0 else 1]["half"]
+		var flush := body_half - half
 		var x := signf(tw.x) * maxf(flush, absf(tw.x))
 		wheel_xz.append(Vector2(x, tw.z))
 

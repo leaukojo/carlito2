@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="VehicleSpec" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="VehicleSpec" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/vehicles/base/vehicle_spec.gd" id="1_spec"]
-[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel.tscn" id="2_wheel"]
+[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel-tractor-front.tscn" id="2_wheel"]
+[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel-tractor-rear.tscn" id="3_wheel_rear"]
 
 [resource]
 script = ExtResource("1_spec")
@@ -11,6 +12,9 @@ wheel_positions = PackedVector3Array(-0.8, -0.1, -1.4, 0.8, -0.1, -1.4, -1.1, -0
 wheel_radius = 0.6
 wheel_inertia = 4.0
 wheel_scene = ExtResource("2_wheel")
+wheel_scene_rear = ExtResource("3_wheel_rear")
+wheel_visual_radius = 0.5
+wheel_visual_radius_rear = 0.75
 driven_front = false
 driven_rear = true
 rest_length = 0.4

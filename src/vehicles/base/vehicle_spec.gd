@@ -23,7 +23,17 @@ extends Resource
 ## Optional wheel visual scene, instanced under WheelFL..RR when the vehicle scene has no
 ## authored wheel mesh (the Kenney wheel wrapper). RayWheel drives its transform each tick;
 ## radius is still spec.wheel_radius (visual only). Absent = wheels come from the scene.
+## Wheel scenes are authored radius-NORMALIZED (model scaled to radius 1.0); BaseVehicle
+## scales each instance to the visual radius below.
 @export var wheel_scene: PackedScene
+## Optional separate rear-axle visual (the tractor's big rears); null = wheel_scene.
+@export var wheel_scene_rear: PackedScene
+## Rendered wheel radius in m; 0 = wheel_radius. VISUAL ONLY — RayWheel stays single-radius,
+## so physics keeps using wheel_radius for every corner. A visual bigger/smaller than the
+## physics radius is lifted/dropped so it still meets the ground.
+@export var wheel_visual_radius := 0.0
+## Rendered rear-axle radius in m; 0 = wheel_visual_radius. Visual only, as above.
+@export var wheel_visual_radius_rear := 0.0
 @export var driven_front := false
 @export var driven_rear := true
 

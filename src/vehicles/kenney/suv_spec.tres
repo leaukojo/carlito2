@@ -1,13 +1,13 @@
 [gd_resource type="Resource" script_class="VehicleSpec" format=3]
 
 [ext_resource type="Script" path="res://src/vehicles/base/vehicle_spec.gd" id="1_gc16t"]
-[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel.tscn" id="2_v5bot"]
+[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel-truck.tscn" id="2_v5bot"]
 
 [resource]
 script = ExtResource("1_gc16t")
 mass = 1500.0
 center_of_mass = Vector3(0, 0.2, 0)
-wheel_positions = PackedVector3Array(-0.6600001, 0.47295454, -0.91199964, 0.6600001, 0.47295454, -0.91199976, -0.54000014, 0.47295454, 0.6720004, 0.54000014, 0.47295454, 0.6720003)
+wheel_positions = PackedVector3Array(-0.6900001, 0.47295454, -0.91199964, 0.6900001, 0.47295454, -0.91199976, -0.5700002, 0.47295454, 0.6720004, 0.5700002, 0.47295454, 0.6720003)
 wheel_radius = 0.36
 wheel_scene = ExtResource("2_v5bot")
 driven_front = true

@@ -1,13 +1,13 @@
-[gd_resource type="Resource" script_class="VehicleSpec" format=3]
+[gd_resource type="Resource" script_class="VehicleSpec" format=3 uid="uid://oewnj34ffisn"]
 
-[ext_resource type="Script" path="res://src/vehicles/base/vehicle_spec.gd" id="1_aftqe"]
-[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel.tscn" id="2_rnil7"]
+[ext_resource type="Script" uid="uid://dfx5igkkufs6j" path="res://src/vehicles/base/vehicle_spec.gd" id="1_aftqe"]
+[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel-truck.tscn" id="2_rnil7"]
 
 [resource]
 script = ExtResource("1_aftqe")
 mass = 1300.0
 center_of_mass = Vector3(0, 0.2, 0)
-wheel_positions = PackedVector3Array(-0.6600001, 0.49522728, -0.9719999, 0.6600001, 0.49522728, -0.972, -0.54000014, 0.49522728, 0.972, 0.54000014, 0.49522728, 0.9719999)
+wheel_positions = PackedVector3Array(-0.6900001, 0.49522728, -0.9719999, 0.6900001, 0.49522728, -0.972, -0.5700002, 0.49522728, 0.972, 0.5700002, 0.49522728, 0.9719999)
 wheel_radius = 0.36
 wheel_scene = ExtResource("2_rnil7")
 driven_front = true

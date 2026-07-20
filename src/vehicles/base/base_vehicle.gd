@@ -47,22 +47,37 @@ func _ready() -> void:
 		var front := pos.z < 0.0
 		var driven := (front and spec.driven_front) or (not front and spec.driven_rear)
 		var visual: Node3D = null
+		# Rendered radius for this corner (visual only — physics stays spec.wheel_radius).
+		var vis_radius := spec.wheel_radius
+		if not front and spec.wheel_visual_radius_rear > 0.0:
+			vis_radius = spec.wheel_visual_radius_rear
+		elif spec.wheel_visual_radius > 0.0:
+			vis_radius = spec.wheel_visual_radius
 		if i < WHEEL_VISUAL_NAMES.size():
 			visual = get_node_or_null(NodePath(WHEEL_VISUAL_NAMES[i]))
 			# No authored wheel mesh but the spec ships one (Kenney wheel wrapper): instance
 			# it under the expected name at the anchor. RayWheel then drives its transform.
-			if visual == null and spec.wheel_scene != null:
-				visual = spec.wheel_scene.instantiate()
+			var scene: PackedScene = spec.wheel_scene
+			if not front and spec.wheel_scene_rear != null:
+				scene = spec.wheel_scene_rear
+			if visual == null and scene != null:
+				visual = scene.instantiate()
 				visual.name = WHEEL_VISUAL_NAMES[i]
-				# The wheel model is asymmetric (hub on one face); mirror the right-side wheels
-				# so their hub faces out. The flip rides the child, not the visual root —
-				# RayWheel overwrites the root transform every tick, but not its children.
-				if pos.x > 0.0:
-					for child in visual.get_children():
-						if child is Node3D:
-							(child as Node3D).basis = Basis(Vector3.UP, PI) * (child as Node3D).basis
+				# Wheel scenes are radius-normalized, so the instance is scaled to vis_radius.
+				# The model is also asymmetric (rim on one face, and unmirrored it faces body
+				# -X): turn the RIGHT wheels around so every rim faces out. The flip axis is
+				# Vector3.RIGHT, not UP — RayWheel's root basis maps the wheel's local X to
+				# world up and its local Y to the AXLE, so a 180deg yaw here would just spin
+				# the wheel about its own axle (invisible). Both the flip and the scale ride
+				# the child: RayWheel overwrites the root transform every tick, not children.
+				for child in visual.get_children():
+					if child is Node3D:
+						var b := (child as Node3D).basis.scaled(Vector3.ONE * vis_radius)
+						(child as Node3D).basis = Basis(Vector3.RIGHT, PI) * b if pos.x > 0.0 else b
 				add_child(visual)
-		wheels.append(RayWheel.new(pos, front, driven, visual))
+		var wheel := RayWheel.new(pos, front, driven, visual)
+		wheel.visual_lift = vis_radius - spec.wheel_radius
+		wheels.append(wheel)
 	spawn_transform = global_transform
 	_prev_velocity = linear_velocity
 	_lamps.setup(self, spec)

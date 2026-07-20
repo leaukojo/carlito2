@@ -35,6 +35,10 @@ var in_contact := false
 var suspension_force := 0.0
 var slip := 0.0         ## |longitudinal slip ratio|, for telemetry
 var surface_grip := 1.0  ## grip multiplier from the painted terrain under the contact (F3 readout)
+## m the visual centre rides above the physics hub = visual radius - spec.wheel_radius. Keeps
+## an over/undersized wheel VISUAL meeting the ground while physics stays single-radius. Lives
+## on the root transform, not the visual's children — a child offset would orbit with the spin.
+var visual_lift := 0.0
 
 var _prev_compression := 0.0
 var _spin_angle := 0.0
@@ -176,7 +180,8 @@ func _update_visual(spec: VehicleSpec, delta: float) -> void:
 	if _visual == null:
 		return
 	_spin_angle = wrapf(_spin_angle + omega * delta, -TAU, TAU)
-	var center := anchor + Vector3.DOWN * (spec.rest_length - compression)
+	var center := anchor + Vector3.DOWN * (spec.rest_length - compression) \
+			+ Vector3.UP * visual_lift
 	_visual.transform = Transform3D(
 			Basis(Vector3.UP, steer_angle) * Basis(Vector3.RIGHT, -_spin_angle)
 			* Basis(Vector3.BACK, PI / 2.0),

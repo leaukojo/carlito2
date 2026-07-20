@@ -1,16 +1,20 @@
 [gd_resource type="Resource" script_class="VehicleSpec" format=3]
 
-[ext_resource type="Script" path="res://src/vehicles/base/vehicle_spec.gd" id="1_u2b83"]
-[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel.tscn" id="2_d7t6w"]
+[ext_resource type="Script" path="res://src/vehicles/base/vehicle_spec.gd" id="1_d7t6w"]
+[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel-tractor-front.tscn" id="2_6q52r"]
+[ext_resource type="PackedScene" path="res://src/vehicles/kenney/wheel-tractor-rear.tscn" id="3_3gcuq"]
 
 [resource]
-script = ExtResource("1_u2b83")
+script = ExtResource("1_d7t6w")
 mass = 4000.0
 center_of_mass = Vector3(0, 0.35, 0)
-wheel_positions = PackedVector3Array(-0.41987997, 0.57, -0.74529934, 0.41987997, 0.57, -0.74529934, -0.56520015, 0.57, 0.82164663, 0.56520015, 0.57, 0.82164663)
+wheel_positions = PackedVector3Array(-0.45387998, 0.57, -0.74529934, 0.45387998, 0.57, -0.74529934, -0.52920014, 0.57, 0.82164663, 0.52920014, 0.57, 0.82164663)
 wheel_radius = 0.36
 wheel_inertia = 4.0
-wheel_scene = ExtResource("2_d7t6w")
+wheel_scene = ExtResource("2_6q52r")
+wheel_scene_rear = ExtResource("3_3gcuq")
+wheel_visual_radius = 0.3
+wheel_visual_radius_rear = 0.45
 rest_length = 0.35
 spring_rate = 70000.0
 damper_bump = 6000.0

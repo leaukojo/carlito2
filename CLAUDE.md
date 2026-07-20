@@ -121,7 +121,15 @@ junctions, lane markings, traffic.
   last so drivetrain RPM + telemetry motion are current). Never fork `_physics_process`.
 - BaseVehicle is zero-wheel-safe (boat spec: empty `wheel_positions`; keep its 6
   `gear_ratios` — `auto_shift` indexes up to byte 6).
-- RayWheel is single-radius: the tractor's big-rear/small-front wheels are visual only.
+- RayWheel is single-radius: the tractor's big-rear/small-front wheels are visual only
+  (`wheel_visual_radius`/`_rear` + `RayWheel.visual_lift`, which keeps an over/undersized
+  visual meeting the ground). Wheel scenes are radius-NORMALIZED (model scaled to radius 1);
+  BaseVehicle scales each instance. Per-instance tweaks (scale, the right-side flip) ride the
+  visual's CHILDREN — RayWheel overwrites the root transform every tick.
+- Turning a right-side wheel around is `Basis(Vector3.RIGHT, PI)`, **not** `Basis(UP, PI)`:
+  in the wheel-root frame RayWheel builds, local Y is the AXLE, so a yaw just spins the wheel
+  about its own axis and changes nothing visible. Verify rim direction by rendering both
+  sides, never by reasoning about the basis.
 - Splat-channel grip (`HeightmapTerrain.channel_grip` → `grip_at()`, sampled by RayWheel
   per contact) reads **cached decoded splat Images** — never `get_image()`/decompress
   per tick (the heightmap is cached the same way at runtime, for the surface test below;
