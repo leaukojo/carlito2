@@ -1,24 +1,28 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene format=3 uid="uid://btjsi27fmr0tc"]
 
-[ext_resource type="Script" path="res://src/levels/base/level.gd" id="1_level"]
+[ext_resource type="Script" uid="uid://dfqaw0jscyvlx" path="res://src/levels/base/level.gd" id="1_level"]
 [ext_resource type="Resource" path="res://src/levels/island/level_2/level_2_info.tres" id="2_info"]
-[ext_resource type="Script" path="res://src/vehicles/base/chase_camera.gd" id="3_cam"]
-[ext_resource type="Script" path="res://src/levels/base/vehicle_spawn.gd" id="4_spawn"]
-[ext_resource type="Script" path="res://src/levels/base/heightmap_terrain.gd" id="5_terrain"]
-[ext_resource type="Texture2D" path="res://src/levels/island/level_2/level_2_island_height.png" id="6_height"]
-[ext_resource type="Texture2D" path="res://src/levels/island/level_2/level_2_island_splat.png" id="7_splat"]
-[ext_resource type="Shader" path="res://kit/terrain/terrain_splat.gdshader" id="8_shader"]
-[ext_resource type="Script" path="res://src/water/water_surface.gd" id="9_water"]
-[ext_resource type="Script" path="res://kit/helpers/authoring_root.gd" id="10_authoring"]
-[ext_resource type="Environment" path="res://src/levels/base/default_env.tres" id="11_env"]
+[ext_resource type="Script" uid="uid://ckxshtqj7odax" path="res://src/vehicles/base/chase_camera.gd" id="3_cam"]
+[ext_resource type="Script" uid="uid://5y8krjlda43v" path="res://src/levels/base/vehicle_spawn.gd" id="4_spawn"]
+[ext_resource type="Script" uid="uid://ctk4ghrrwqt7i" path="res://src/levels/base/heightmap_terrain.gd" id="5_terrain"]
+[ext_resource type="Texture2D" uid="uid://dabdrujvdy4oh" path="res://src/levels/island/level_2/level_2_island_height.png" id="6_height"]
+[ext_resource type="Texture2D" uid="uid://cq4tvahpypj0v" path="res://src/levels/island/level_2/level_2_island_splat.png" id="7_splat"]
+[ext_resource type="Shader" uid="uid://bcdkfxw2svriw" path="res://kit/terrain/terrain_splat.gdshader" id="8_shader"]
+[ext_resource type="Script" uid="uid://bqwd2fww3l5yg" path="res://src/water/water_surface.gd" id="9_water"]
+[ext_resource type="Script" uid="uid://t88htpmwukbg" path="res://kit/helpers/authoring_root.gd" id="10_authoring"]
+[ext_resource type="Environment" uid="uid://bjh6g6yntyvh1" path="res://src/levels/base/default_env.tres" id="11_env"]
+[ext_resource type="Script" uid="uid://cpl5vh8pdc04w" path="res://kit/helpers/road_path.gd" id="12_ctgma"]
+[ext_resource type="Resource" uid="uid://dr65wywfdruc0" path="res://kit/roads/city_profile.tres" id="13_m1v3l"]
+[ext_resource type="Resource" uid="uid://cbr1dgepr0f1l" path="res://kit/roads/bridge_profile.tres" id="14_l5rv3"]
 
 [sub_resource type="PlaneMesh" id="SeaBedMesh"]
-size = Vector2(560.0, 560.0)
+size = Vector2(560, 560)
 
 [sub_resource type="StandardMaterial3D" id="SeaBedMat"]
 albedo_color = Color(0.83, 0.76, 0.55, 1)
 
 [sub_resource type="ShaderMaterial" id="SplatMat"]
+render_priority = 0
 shader = ExtResource("8_shader")
 shader_parameter/grass_color = Color(0.35, 0.55, 0.25, 1)
 shader_parameter/dirt_color = Color(0.52, 0.4, 0.26, 1)
@@ -32,64 +36,93 @@ shader_parameter/splatmap = ExtResource("7_splat")
 shader_parameter/blend_sharpness = 8.0
 shader_parameter/roughness_value = 1.0
 
-[node name="Level2" type="Node3D"]
+[sub_resource type="Curve3D" id="Curve3D_moklg"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 3.9628901, -0.43595332, -0.32472593, 122.69677, 67.37182, -140.49506, -2.6870492, -0.6339163, -1.1117364, 6.9830623, 1.647412, 2.8891635, 131.46698, 66.64528, -138.98578, -5.030227, 0.8892771, -5.8077874, 4.787396, -0.8463478, 5.5274205, 150.9609, 74.039764, -128.80109, -2.0057218, -0.038496267, -7.0826154, 5.211914, 0.10003343, 18.404337, 155.9211, 62.322117, -110.7516, -3.000668, -3.2463849, -18.610498, 3.8103905, 4.1224136, 23.632492, 171.34494, 74.431, -56.820877, 2.499564, -7.764999, -22.87936, -2.5821738, 8.02163, 23.635519, 176.23105, 84.2952, 15.213117, 7.2264085, 0.484145, -24.024914, -5.5591016, -0.37244105, 18.481785, 156.5793, 120.30107, 78.33405, 11.974334, 10.834047, -10.576269, -23.7033, -21.446093, 20.93582, 144.635, 82.17837, 120.25734, 35.619774, 4.405997, -13.1114, -19.79315, -2.4483185, 7.285725, 55.196243, 28.572475, 167.88011, 12.002663, -13.177201, 11.538732, -9.561388, 10.497032, -9.191818, 2.893097, 64.64557, 172.43158, -10.277047, -5.605173, 12.20908, 9.470747, 5.1654115, -11.251201, 9.661989, 78.56255, 124.10586, -14.381279, 0.96903974, 5.9334497, 16.975306, -1.1438305, -7.0036974, 53.02481, 91.987755, 112.87536, -4.8802843, 2.7150319, 17.530903, 8.31197, -4.62417, -29.858168, 98.110825, 72.60269, 87.6135, 28.632849, 0.9779892, 12.695887, -32.782917, -1.1197398, -14.536039, 86.0085, 73.638054, -5.6082764, 21.293287, -1.0329019, -28.858255, -14.763195, 0.71613795, 20.008186, -11.907867, 68.84487, 38.830902, 9.93739, -5.6166663, -22.101892, -7.19144, 4.064641, 15.994586, -0.82788086, 77.85034, 112.07888, 16.019382, -7.913318, -2.1962848, -15.671693, 7.741565, 2.1486158, -51.22753, 91.06856, 126.28233, 15.8098, -4.2019606, 6.522584, -20.754978, 5.5162997, -8.562795, -92.99834, 123.381065, 124.71561, 11.435283, 6.221615, 19.106173, -11.070456, -6.0231223, -18.496614, -149.92603, 117.30084, 85.562706, -0.35218167, 0.5496358, 22.372566, 0.43883637, -0.68487436, -27.877361, -153.25163, 90.598946, 24.043861, -18.886492, 11.146054, 17.23005, 22.423548, -13.233484, -20.456888, -147.69531, 113.81946, -56.14476, -23.85596, 6.7946305, 21.935156, 21.22609, -6.0455933, -19.517035, -76.494255, 45.2998, -45.981506, -10.451018, -12.247978, 24.673346, 4.5206976, 5.2979913, -10.672715, -78.68392, 94.163704, -119.59958, -12.105622, 3.3514302, 2.152688, 3.7065444, -1.0261533, -0.65911806, -42.183395, 85.51011, -126.9845, 0, 0, 0, 0, 0, 0, -31.399261, 81.07299, -128.008),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+point_count = 25
+
+[sub_resource type="Curve3D" id="Curve3D_ctgma"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 3.8188138, -0.90536964, -0.7726362, -42.183395, 85.51011, -126.9845, -3.9628901, 0.43595332, 0.32472593, 0, 0, 0, 122.69677, 67.37182, -140.49506),
+"tilts": PackedFloat32Array(0, 0)
+}
+point_count = 2
+
+[node name="Level2" type="Node3D" unique_id=831656400]
 script = ExtResource("1_level")
 info = ExtResource("2_info")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=974361122]
 environment = ExtResource("11_env")
 
-[node name="Sun" type="DirectionalLight3D" parent="."]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=817050080]
 transform = Transform3D(0.866, 0.354, -0.354, 0, 0.707, 0.707, 0.5, -0.612, 0.612, 0, 40, 0)
 light_color = Color(1, 0.96, 0.88, 1)
 shadow_enabled = true
 directional_shadow_max_distance = 150.0
 
-[node name="ChaseCamera" type="Camera3D" parent="."]
+[node name="ChaseCamera" type="Camera3D" parent="." unique_id=1616479266]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 6)
 script = ExtResource("3_cam")
 
-[node name="Spawn" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.0, 19.5, 1.0)
+[node name="Spawn" type="Marker3D" parent="." unique_id=1134507317]
+transform = Transform3D(0.05437512, 0, -0.99852055, 0, 1, 0, 0.99852055, 0, 0.05437512, 1, 83.93975, -131.08318)
 script = ExtResource("4_spawn")
 vehicle_types = PackedStringArray("car", "truck", "tractor")
 
-[node name="WaterSpawn" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 270.0, 1.3, 0)
+[node name="WaterSpawn" type="Marker3D" parent="." unique_id=2087814946]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 270, 1.3, 0)
 script = ExtResource("4_spawn")
 vehicle_types = PackedStringArray("boat")
 is_water = true
 
-[node name="Sea" type="Area3D" parent="."]
+[node name="Sea" type="Area3D" parent="." unique_id=770879758]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 script = ExtResource("9_water")
-size = Vector2(560.0, 560.0)
+size = Vector2(560, 560)
 depth = 3.0
 far_sea_extent = 1900.0
 
-[node name="SeaBed" type="MeshInstance3D" parent="."]
+[node name="SeaBed" type="MeshInstance3D" parent="." unique_id=345938898]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
 mesh = SubResource("SeaBedMesh")
 surface_material_override/0 = SubResource("SeaBedMat")
 
-[node name="Island" type="StaticBody3D" parent="."]
+[node name="Island" type="StaticBody3D" parent="." unique_id=374379151]
 script = ExtResource("5_terrain")
 heightmap = ExtResource("6_height")
-terrain_size = Vector2(512.0, 512.0)
-height = 51.0
+terrain_size = Vector2(512, 512)
+height = 153.0
 material = SubResource("SplatMat")
-preset = 0
-gen_seed = 20025
+gen_seed = 484904
 feature_scale = 180.0
-falloff_start = 0.65
+falloff_start = 0.719
 falloff_end = 0.88
 coast_roughness = 0.7
-terrace_levels = 3
+terrace_flat = 0.095
 splatmap = ExtResource("7_splat")
 channel_names = PackedStringArray("Grass", "Dirt", "Sand", "Rock", "Snow", "Mud", "Asphalt", "Gravel")
 channel_grip = PackedFloat32Array(0.8, 0.7, 0.6, 0.7, 0.75, 0.5, 1, 0.85)
 
-[node name="AuthoringRoot" type="Node3D" parent="."]
+[node name="AuthoringRoot" type="Node3D" parent="." unique_id=1193762569]
 script = ExtResource("10_authoring")
 chunk_size = 64.0
 metadata/_custom_type_script = "uid://t88htpmwukbg"
+
+[node name="RoadPath" type="Node3D" parent="AuthoringRoot" unique_id=956526598]
+script = ExtResource("12_ctgma")
+profile = ExtResource("13_m1v3l")
+metadata/_custom_type_script = "uid://cpl5vh8pdc04w"
+
+[node name="Path" type="Path3D" parent="AuthoringRoot/RoadPath" unique_id=11812304]
+curve = SubResource("Curve3D_moklg")
+
+[node name="RoadPath2" type="Node3D" parent="AuthoringRoot" unique_id=833902857]
+script = ExtResource("12_ctgma")
+profile = ExtResource("14_l5rv3")
+metadata/_custom_type_script = "uid://cpl5vh8pdc04w"
+
+[node name="Path" type="Path3D" parent="AuthoringRoot/RoadPath2" unique_id=761988343]
+curve = SubResource("Curve3D_ctgma")
