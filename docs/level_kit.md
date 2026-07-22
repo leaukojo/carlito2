@@ -29,6 +29,16 @@ runtime-safe logic lives in `kit/` (plain `@tool` scripts with pure, unit-tested
   generator *fails* listing the unaccounted; excludes need a `reason`; per-family member
   counts print (catch-alls tagged) so an oversized "box everything else" bucket is
   visible.
+- **Hand-edited prefabs opt out with `{"manual": true}`** in the family's `assets` block:
+  the generator leaves that `.tscn` completely alone (it still counts for the coverage
+  gate, and the regen prints a `manual (hand-edited, not regenerated)` line per kit). That
+  is how you hand-tune a piece's collision in the editor without the next regen wiping it
+  — say *why* in the recipe's `_notes`. Currently manual: `roads/sign-highway`,
+  `sign-highway-wide`, `sign-highway-detailed`, `commercial/building-a`, `building-c`.
+- **Generated files keep their existing `uid://`** (`gen_kit_assets._keep_uid` re-binds the
+  id before each save). Re-minting one silently breaks every level `.tscn` that references
+  the file by uid — it degrades to "invalid UID: … using text path instead" warnings on
+  level load.
 - **Scales are derived from measurement (lane-fit rule):** road-bearing kits target a
   ~12 m two-lane road (~6 m/lane vs the 1.8 m car). Per-kit scale and the derivation
   note live in each recipe (`kit/import/<kit>.json`) — the recipe is the source of
@@ -52,8 +62,11 @@ runtime-safe logic lives in `kit/` (plain `@tool` scripts with pure, unit-tested
 
 Hybrid: **GridMap palettes** for road/tile kits only; everything else is a **`KitPiece`
 prefab** (`kit/helpers/kit_piece.gd`) whose `collision_mode`
-(`none|box|hull|multiconvex|weld`) rides the prefab root; its `DevCollision` body makes
-unbaked levels playable. All authoring lives under one **`AuthoringRoot`** node
+(`none|box|footprint|hull|multiconvex|weld`) rides the prefab root; its `DevCollision` body
+makes unbaked levels playable. `footprint` measures the XZ area in the piece's bottom 8% of
+height and extrudes it to full height, picking box or cylinder by whichever cross-section is
+tighter — trees, posts, flags and street lights are solid at the trunk/pole only, not across
+their canopy or overhanging arm. All authoring lives under one **`AuthoringRoot`** node
 (`kit/helpers/authoring_root.gd`, `chunk_size` knob + editor **Bake** button). Placed
 prefabs are grouped into per-kit **`<Kit>Props`** folders (plain identity `Node3D`s the
 baker recurses straight through — `_collect` accumulates transforms); GridMaps / RoadPaths

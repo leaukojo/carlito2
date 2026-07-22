@@ -304,12 +304,12 @@ func _rebuild_preview() -> void:
 		preview.add_child(mmi)
 
 		# Mirror the baker's use_collision rule (LevelBaker._collect_scatter) exactly so
-		# dev-play and the bake can never diverge: only box/hull/multiconvex prefabs get dev
+		# dev-play and the bake can never diverge: only box/footprint/hull/multiconvex prefabs get dev
 		# collision (weld is a bake error, none has no shapes).
 		var mode := "none"
 		if template.has_method("is_carlito_kit_piece"):
 			mode = String(template.get("collision_mode"))
-		if not Engine.is_editor_hint() and item.collision and mode in ["box", "hull", "multiconvex"]:
+		if not Engine.is_editor_hint() and item.collision and mode in ["box", "footprint", "hull", "multiconvex"]:
 			var entries := shape_entries(template)
 			if not entries.is_empty():
 				var body := StaticBody3D.new()

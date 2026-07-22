@@ -2,7 +2,7 @@
 	"kit": "roads",
 	"source": "res://kit/raw/roads",
 	"scale": 12.0,
-	"_notes": "City Kit Roads. LANE-FIT: road-straight is a 1x1 unit two-lane tile (measured, XZ-centered, Y=0 base). Forgiving-arcade target = 12 m two-lane tile (~6 m/lane vs the 1.8 m car), so scale = 12.0 (an initial 8 drove too tight). tile-high is 0.25 -> 0.25*12 = 3 m vertical cell, so cell_size [12,3,12]; paint the deck at y-index 1. GridMaps using this palette need cell_center_y = false. NB: road-curve is a 2x2-unit sweeping curve; road-bend is the tight 1x1 corner. Signs/lights/construction/bridge-pillars are props -> prefabs (the palette is for road/tile pieces only).",
+	"_notes": "City Kit Roads. LANE-FIT: road-straight is a 1x1 unit two-lane tile (measured, XZ-centered, Y=0 base). Forgiving-arcade target = 12 m two-lane tile (~6 m/lane vs the 1.8 m car), so scale = 12.0 (an initial 8 drove too tight). tile-high is 0.25 -> 0.25*12 = 3 m vertical cell, so cell_size [12,3,12]; paint the deck at y-index 1. GridMaps using this palette need cell_center_y = false. NB: road-curve is a 2x2-unit sweeping curve; road-bend is the tight 1x1 corner. Signs/lights/construction/bridge-pillars are props -> prefabs (the palette is for road/tile pieces only). The three sign-highway* prefabs carry hand-built post/panel boxes and are `manual` (the generator leaves their .tscn alone).",
 	"palette": {
 		"output": "res://kit/palettes/roads.meshlib",
 		"cell_size": [12.0, 3.0, 12.0],
@@ -31,9 +31,14 @@
 	},
 	"families": [
 		{ "name": "city-lights", "label": "Street lights",
-			"match": ["^light-"], "pipeline": "prefab", "collision_mode": "multiconvex" },
+			"match": ["^light-"], "pipeline": "prefab", "collision_mode": "footprint" },
 		{ "name": "city-signs", "label": "Highway signs",
-			"match": ["^sign-"], "pipeline": "prefab", "collision_mode": "multiconvex" },
+			"match": ["^sign-"], "pipeline": "prefab", "collision_mode": "multiconvex",
+			"assets": {
+				"sign-highway": { "manual": true },
+				"sign-highway-wide": { "manual": true },
+				"sign-highway-detailed": { "manual": true }
+			} },
 		{ "name": "city-fixtures", "label": "Fixtures (cones/barriers/pillars)",
 			"match": ["^(construction|bridge-pillar)"], "pipeline": "prefab", "collision_mode": "box" },
 		{ "name": "city-roads-barrier", "label": "Roads (barrier)",

@@ -3,17 +3,18 @@
 [ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_t4d72"]
 [ext_resource type="PackedScene" path="res://kit/raw/roads/light-square-double.glb" id="2_fc5qs"]
 
-[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_bssas"]
-points = PackedVector3Array(-0.3571428, -0.057142735, -0.32129434, 0.29999998, 6.95238, 2.4309523, -0.3571428, 7.2571425, 2.65, -0.3571428, 7.2571425, -2.607143, 0.32857144, 6.7996416, -2.607143, 0.32857144, -0.057142735, 0.3636369, -0.3571428, -0.057142735, 0.3636369, 0.32857144, 6.7996416, 2.65, 0.29999998, 0.24761946, -0.29273406, -0.3571428, 6.7996416, 2.65, -0.3571428, 6.7996416, -2.607143, 0.29999998, 6.95238, -2.3880951)
+[sub_resource type="BoxShape3D" id="BoxShape3D_bssas"]
+size = Vector3(0.59999996, 7.2, 0.59999996)
 
-[node name="LightSquareDouble" type="Node3D" unique_id=463172457]
+[node name="LightSquareDouble" type="Node3D" unique_id=577912853]
 script = ExtResource("1_t4d72")
-collision_mode = "multiconvex"
+collision_mode = "footprint"
 
 [node name="Model" type="Node3D" parent="." unique_id=1953280420 instance=ExtResource("2_fc5qs")]
 transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 0)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1161928918]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=331030889]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1924803365]
-shape = SubResource("ConvexPolygonShape3D_bssas")
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=370981762]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 0)
+shape = SubResource("BoxShape3D_bssas")

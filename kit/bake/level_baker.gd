@@ -28,7 +28,7 @@ extends RefCounted
 ## v7: correctness pass — true epsilon welding (was grid snapping), nested KitPieces keep
 ## their own collision mode, mirrored transforms keep their winding, finer material keys,
 ## chunk keys from mesh AABB centres, bridge-base end caps, bounded end tangents.
-const BAKER_VERSION := 7
+const BAKER_VERSION := 8
 
 ## Bake-adjacent CODE that no resource dependency edge can reach: GDScript files report
 ## NO dependencies (verified — `ResourceLoader.get_dependencies` on a .gd returns an empty
@@ -607,7 +607,7 @@ static func _collect_piece_content(node: Node, xform: Transform3D, key: Vector2i
 			ctx.add_render_mesh(key, mi.mesh, xform)
 			if mode == "weld":
 				ctx.add_weld_mesh(mi.mesh, xform)
-	elif node is CollisionShape3D and mode in ["box", "hull", "multiconvex"]:
+	elif node is CollisionShape3D and mode in ["box", "footprint", "hull", "multiconvex"]:
 		var cs := node as CollisionShape3D
 		if cs.shape != null:
 			ctx.add_body_shape(key, cs.shape, xform)

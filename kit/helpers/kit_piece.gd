@@ -9,17 +9,19 @@ extends Node3D
 ## Collision modes:
 ##  - "none"        decoration, no collision at all
 ##  - "box"         one box (solid buildings, containers)
+##  - "footprint"   one box or cylinder (whichever fits tighter) covering only the
+##                  area the piece stands on, extruded to full height (trees, posts)
 ##  - "hull"        one convex hull (props hit from outside)
 ##  - "multiconvex" several convex hulls (open structures: grandstands, gantries)
 ##  - "weld"        drivable structure (ramp/bridge/pier): its triangles join the
 ##                  level's single welded drivable body at bake time
 ##
-## For box/hull/multiconvex the generator pre-builds the shapes in a "DevCollision"
+## For box/footprint/hull/multiconvex the generator pre-builds the shapes in a "DevCollision"
 ## StaticBody3D child (so unbaked levels are playable); the baker harvests those
 ## same shapes into the per-chunk body. "weld" pieces get a dev trimesh that the
 ## bake replaces with the welded body.
 
-@export_enum("none", "box", "hull", "multiconvex", "weld") var collision_mode := "box"
+@export_enum("none", "box", "footprint", "hull", "multiconvex", "weld") var collision_mode := "box"
 
 
 ## Duck-typing marker: the baker and export-strip plugin detect kit pieces via

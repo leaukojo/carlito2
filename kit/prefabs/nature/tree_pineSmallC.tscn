@@ -3,17 +3,18 @@
 [ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_51l6q"]
 [ext_resource type="PackedScene" path="res://kit/raw/nature/tree_pineSmallC.glb" id="2_x5g3a"]
 
-[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_wdgbx"]
-points = PackedVector3Array(0.8614698, 0.84717035, 1.0255642, -1.0101658, 0.84717035, 1.0255642, -1.0101658, 0.93595314, -1.024466, 1.0398642, 1.7383481, -0.9351685, 0.3266881, -0.044565678, -0.48928294, 0.3266881, 5.480625, 0.045097504, -0.8323317, 2.96892, 0.5250637, -0.47518343, -0.044565678, 0.31238806, 1.0398642, 1.7383481, 0.758073, -0.8323317, 2.96892, -0.68511707, 0.8614698, 0.93595314, -1.024466, 0.14829378, 5.480625, -0.22199237, 0.8614698, 0.668488, 1.0255642, -0.47518343, -0.044565678, -0.48928294, -1.0101658, 0.668488, 1.0255642, -0.029699232, 5.1243773, 0.13419436, 0.3266881, -0.044565678, 0.31238806, 0.3266881, 5.6598654, -0.13289553, -0.9567752, 0.7799119, -0.9710754, -0.7327699, 3.1217458, -0.6682148, 0.3266881, 5.480625, -0.22199237, -1.0101658, 0.93595314, 0.93626666, 0.3266881, 5.1243773, 0.13419436, 0.3266881, 5.6598654, -0.043798678, 0.14829378, 5.480625, 0.045097504)
+[sub_resource type="BoxShape3D" id="BoxShape3D_wdgbx"]
+size = Vector3(0.74999994, 5.6154995, 0.74999994)
 
-[node name="TreePineSmallC" type="Node3D" unique_id=90654658]
+[node name="TreePineSmallC" type="Node3D" unique_id=1717212182]
 script = ExtResource("1_51l6q")
-collision_mode = "hull"
+collision_mode = "footprint"
 
 [node name="Model" type="Node3D" parent="." unique_id=1500990278 instance=ExtResource("2_x5g3a")]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.07325001, 0.25, -0.08749999)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=2076400890]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1700385083]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1708304299]
-shape = SubResource("ConvexPolygonShape3D_wdgbx")
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=953174540]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.073250026, 2.8077497, -0.087500006)
+shape = SubResource("BoxShape3D_wdgbx")

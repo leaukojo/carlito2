@@ -3,17 +3,18 @@
 [ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_i47wu"]
 [ext_resource type="PackedScene" path="res://kit/raw/nature/tree_blocks.glb" id="2_hdbji"]
 
-[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_iixlw"]
-points = PackedVector3Array(1.25, 5.637558, 1.25, -1.54672, 4.0901875, -1.54672, 0.33377197, 2.8688204, -1.54672, -0.41812104, -0.047023773, 0.42794847, -1.4904764, 5.8629236, 1.5, 0.52182114, 5.9720235, -1.54672, 1.5562437, 2.8688204, 1.5562437, 1.5562437, 2.8688204, -1.54672, 0.42794847, -0.047023773, -0.41812104, -1.5, 5.8813972, -1.5, -1.2647982, 3.1504478, 1.2743218, 1.25, 5.637558, -1.2404764, -0.41812104, -0.047023773, -0.41812104, -0.32394454, 2.8688204, 1.5562437, -0.32394454, 5.9720235, 1.5562437, 1.5, 4.6841297, 1.5, 0.42794847, -0.047023773, 0.42794847, -1.54672, 4.843158, 1.5562437, 1.441518, 4.0067997, -1.4319943)
+[sub_resource type="BoxShape3D" id="BoxShape3D_iixlw"]
+size = Vector3(0.69699997, 5.9249997, 0.69699997)
 
-[node name="TreeBlocks" type="Node3D" unique_id=2044704432]
+[node name="TreeBlocks" type="Node3D" unique_id=1184783003]
 script = ExtResource("1_i47wu")
-collision_mode = "hull"
+collision_mode = "footprint"
 
 [node name="Model" type="Node3D" parent="." unique_id=1279117129 instance=ExtResource("2_hdbji")]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0.25, 0)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=518294511]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1130702603]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1671098295]
-shape = SubResource("ConvexPolygonShape3D_iixlw")
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1162556879]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.9624999, 0)
+shape = SubResource("BoxShape3D_iixlw")

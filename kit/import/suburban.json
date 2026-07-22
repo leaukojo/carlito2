@@ -10,11 +10,9 @@
 			"match": ["^fence"], "pipeline": "prefab", "collision_mode": "box" },
 		{ "name": "suburban-path", "label": "Driveways & paths",
 			"match": ["^(driveway|path)"], "pipeline": "prefab", "collision_mode": "weld" },
-		{ "name": "suburban-plants", "label": "Planters & trees",
-			"match": ["^(planter|tree)"], "pipeline": "prefab", "collision_mode": "box",
-			"assets": {
-				"tree-large": {"collision_mode": "hull"},
-				"tree-small": {"collision_mode": "hull"}
-			} }
+		{ "name": "suburban-trees", "label": "Trees",
+			"match": ["^tree"], "pipeline": "prefab", "collision_mode": "footprint" },
+		{ "name": "suburban-plants", "label": "Planters",
+			"match": ["^planter"], "pipeline": "prefab", "collision_mode": "box" }
 	]
 }

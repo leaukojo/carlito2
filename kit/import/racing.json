@@ -38,13 +38,13 @@
 			"match": ["^grandStand"], "pipeline": "prefab", "collision_mode": "multiconvex" },
 		{ "name": "racing-pits", "label": "Pit buildings",
 			"match": ["^pits"], "pipeline": "prefab", "collision_mode": "box" },
-		{ "name": "racing-props", "label": "Props (barriers/flags/lights/misc)",
+		{ "name": "racing-posts", "label": "Posts (flags/fences/cameras/lights/trees)",
+			"match": ["^(flag|fence|camera|light|tree)"], "pipeline": "prefab",
+			"collision_mode": "footprint" },
+		{ "name": "racing-props", "label": "Props (barriers/misc)",
 			"match": ["."], "pipeline": "prefab", "collision_mode": "box",
 			"assets": {
 				"ramp": {"collision_mode": "weld"},
-				"treeLarge": {"collision_mode": "hull"},
-				"treeSmall": {"collision_mode": "hull"},
-				"lightPostLarge": {"collision_mode": "multiconvex"},
 				"billboardDouble_exclusive": {"collision_mode": "multiconvex"}
 			} }
 	]

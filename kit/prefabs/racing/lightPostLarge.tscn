@@ -3,17 +3,18 @@
 [ext_resource type="Script" path="res://kit/helpers/kit_piece.gd" id="1_oqnrm"]
 [ext_resource type="PackedScene" path="res://kit/raw/racing/lightPostLarge.glb" id="2_voe2c"]
 
-[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_ard43"]
-points = PackedVector3Array(-2.3557773, 9.016987, -0.5065708, -2.052254, 8.562206, -0.658377, -0.23341325, -0.075777054, -0.05208692, -2.052254, 9.016987, 0.7056088, 2.038873, 8.562206, -0.658377, 2.1906345, 8.864127, 0.7056088, 0.22049212, -0.075777054, -0.658377, 0.22049212, 9.623677, -0.20362607, 2.3423963, 9.016987, -0.5065708, 0.22049212, -0.075777054, -0.05208692, -0.23341325, -0.075777054, -0.658377, 2.1906345, 8.107426, 0.25085786, -2.3557773, 9.318908, -0.20362607, -2.052254, 8.2593355, 0.402397, 2.1906345, 9.016987, 0.7056088, 2.3423963, 9.318908, -0.20362607, -2.052254, 8.864127, -0.658377, -2.052254, 8.864127, 0.7056088, -2.3557773, 9.016987, -0.20362607, 2.2751791, 9.188858, -0.49139997, -2.28, 9.172296, -0.48946795, 2.038873, 8.864127, -0.658377, -0.2186461, 9.307799, -0.4720381, -0.23341325, 9.623677, -0.20362607, 2.1906345, 8.107426, -0.05208692, 2.1906345, 8.2593355, 0.402397, 2.3423963, 9.016987, -0.20362607, 0.205695, 9.307799, -0.4720381, -2.052254, 8.107426, 0.25085786)
+[sub_resource type="BoxShape3D" id="BoxShape3D_ard43"]
+size = Vector3(0.4224, 9.548399, 0.4224)
 
-[node name="LightPostLarge" type="Node3D" unique_id=1452770262]
+[node name="LightPostLarge" type="Node3D" unique_id=1111854387]
 script = ExtResource("1_oqnrm")
-collision_mode = "multiconvex"
+collision_mode = "footprint"
 
 [node name="Model" type="Node3D" parent="." unique_id=926783705 instance=ExtResource("2_voe2c")]
 transform = Transform3D(12, 0, 0, 0, 12, 0, 0, 0, 12, 4.2, 0.12, 7.4285994)
 
-[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1570328150]
+[node name="DevCollision" type="StaticBody3D" parent="." unique_id=1216047942]
 
-[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=1406647939]
-shape = SubResource("ConvexPolygonShape3D_ard43")
+[node name="Shape0" type="CollisionShape3D" parent="DevCollision" unique_id=429936296]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.7741995, -0.37140036)
+shape = SubResource("BoxShape3D_ard43")

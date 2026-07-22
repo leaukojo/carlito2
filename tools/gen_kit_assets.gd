@@ -14,6 +14,15 @@ extends SceneTree
 ##                   StaticBody3D the baker harvests into per-chunk bodies.
 ##   - "exclude"  -> not emitted (requires a non-empty reason string).
 ##
+## HAND-EDITED PREFABS: an asset override `{"manual": true}` makes the generator LEAVE the
+## existing .tscn alone (it still counts for the coverage gate). That is the opt-out for
+## pieces whose collision was tuned by hand in the editor — the generator would otherwise
+## overwrite the hand work on the next regen. Say why in the recipe's `_notes`.
+##
+## UIDs: generated files keep whatever `uid://` they already had on disk. Re-minting one
+## breaks every level .tscn that references the file by uid ("invalid UID: ... using text
+## path instead" at load), so _keep_uid re-binds the old id before each save.
+##
 ## COVERAGE GATE: every GLB under kit/raw/<kit>/ must match exactly one family, or the
 ## generator FAILS listing the unaccounted names — availability can no longer be an accident
 ## of pattern-writing. Per-family member counts are printed (catch-all families tagged) so an
@@ -103,6 +112,7 @@ func _run_recipe(recipe_path: String) -> void:
 	var default_output := String(palette_block.get("output", ""))
 	var palette_groups := {}                     # meshlib output -> {items:[], overrides:{}}
 	var prefab_items := {}                       # name -> {mode, ov}
+	var manual := []                             # hand-edited prefabs left untouched
 	for name: String in c.assignments:
 		var fam: Dictionary = fam_by_name[String(c.assignments[name])]
 		var pipeline := String(fam.get("pipeline", "prefab"))
@@ -117,6 +127,9 @@ func _run_recipe(recipe_path: String) -> void:
 				(palette_groups[out].items as Array).append(name)
 				palette_groups[out].overrides[name] = asset_ov
 			"prefab":
+				if bool(asset_ov.get("manual", false)):
+					manual.append(name)
+					continue
 				var mode := String(asset_ov.get("collision_mode", fam.get("collision_mode", "box")))
 				# per-family scale_mul (default 1.0) multiplies the kit scale — e.g. the
 				# distant-skyline low-detail buildings are authored huge for the horizon; a
@@ -140,6 +153,9 @@ func _run_recipe(recipe_path: String) -> void:
 	if not prefab_items.is_empty():
 		_build_prefabs(kit, source, scale, prefab_items, mats)
 	_report(kit, families, c.counts)
+	if not manual.is_empty():
+		manual.sort()
+		print("[%s] manual (hand-edited, not regenerated): %s" % [kit, ", ".join(manual)])
 
 
 ## Per-kit visibility line: family=count, with (catch-all) tagged so an oversized default
@@ -196,6 +212,7 @@ func _build_palette(kit: String, source: String, scale: float, palette: Dictiona
 		if ResourceLoader.exists(thumb):
 			ml.set_item_preview(id, load(thumb))
 	_make_dir_for(output)
+	_keep_uid(output)
 	var err := ResourceSaver.save(ml, output)
 	if err != OK:
 		_error("%s: failed to save %s (error %d)" % [kit, output, err])
@@ -269,6 +286,8 @@ func _add_dev_collision(piece_root: Node3D, mode: String, pairs: Array,
 			var box := BoxShape3D.new()
 			box.size = aabb.size
 			shapes.append({"shape": box, "xform": Transform3D(Basis.IDENTITY, aabb.get_center())})
+		"footprint":
+			shapes.append(_footprint_shape(pairs, xform))
 		"hull":
 			shapes.append({"shape": _merged_mesh(pairs, xform, mats).create_convex_shape(true, true),
 					"xform": Transform3D.IDENTITY})
@@ -286,6 +305,54 @@ func _add_dev_collision(piece_root: Node3D, mode: String, pairs: Array,
 		cs.transform = shapes[i].xform
 		body.add_child(cs)
 		cs.owner = piece_root
+
+
+## Fraction of the piece's height sampled as its "base slab" for footprint mode.
+const FOOTPRINT_SLAB := 0.08
+
+## Footprint mode: the XZ area the piece actually stands on (trunk, pole, base
+## plate), extruded to the piece's FULL height — a tree is then only solid where
+## its trunk is, instead of hitting the car on a canopy it should pass under.
+## Box vs cylinder is decided by which cross-section is tighter (a round pole
+## wants the cylinder; a rail or plate wants the box), never by taste.
+func _footprint_shape(pairs: Array, xform: Transform3D) -> Dictionary:
+	var aabb := _transformed_aabb(pairs, xform)
+	var cut := aabb.position.y + maxf(aabb.size.y * FOOTPRINT_SLAB, 0.001)
+	var slab := PackedVector2Array()
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for pair: Array in pairs:
+		var full: Transform3D = xform * (pair[1] as Transform3D)
+		for v in (pair[0] as Mesh).get_faces():
+			var w := full * v
+			if w.y > cut:
+				continue
+			var p := Vector2(w.x, w.z)
+			slab.append(p)
+			lo = lo.min(p)
+			hi = hi.max(p)
+	if slab.is_empty():  # degenerate (no vertex in the slab) — fall back to the full AABB
+		lo = Vector2(aabb.position.x, aabb.position.z)
+		hi = Vector2(aabb.end.x, aabb.end.z)
+	var mid := (lo + hi) * 0.5
+	var half := (hi - lo) * 0.5
+	var origin := Vector3(mid.x, aabb.get_center().y, mid.y)
+	var radius := half.length()
+	if not slab.is_empty():
+		radius = 0.0
+		for p in slab:
+			radius = maxf(radius, p.distance_to(mid))
+	var shape: Shape3D
+	if PI * radius * radius < half.x * half.y * 4.0:
+		var cyl := CylinderShape3D.new()
+		cyl.radius = radius
+		cyl.height = aabb.size.y
+		shape = cyl
+	else:
+		var box := BoxShape3D.new()
+		box.size = Vector3(half.x * 2.0, aabb.size.y, half.y * 2.0)
+		shape = box
+	return {"shape": shape, "xform": Transform3D(Basis.IDENTITY, origin)}
 
 
 ## V-HACD decomposition for open structures (grandstands, gantries, dock houses);
@@ -395,8 +462,22 @@ func _transformed_aabb(pairs: Array, xform: Transform3D) -> AABB:
 var _unique_id_re := RegEx.create_from_string(" unique_id=\\d+")
 
 
+## Re-bind the uid the file already has so ResourceSaver embeds it again instead of
+## minting a fresh one. Without this, every regen silently invalidates the `uid://`
+## references that placed levels store, and loading a level warns per reference.
+func _keep_uid(path: String) -> void:
+	var id := ResourceLoader.get_resource_uid(path)
+	if id == ResourceUID.INVALID_ID:
+		return
+	if ResourceUID.has_id(id):
+		ResourceUID.set_id(id, path)
+	else:
+		ResourceUID.add_id(id, path)
+
+
 func _save_scene_stable(packed: PackedScene, path: String) -> Error:
 	var before := FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
+	_keep_uid(path)
 	var err := ResourceSaver.save(packed, path)
 	if err != OK or before.is_empty():
 		return err

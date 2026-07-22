@@ -116,7 +116,7 @@ recover with **Re-snap to ground** on the scatter node, or Regenerate.
 Buildings and props: **Palette** tab → pick a kit/family → click a thumbnail to arm, then
 click-to-place (sticky; right-click/Escape disarms) — each drop lands in its kit's
 `<Kit>Props` folder under Authoring. Random-yaw / snap
-toggles on the toolbar. Each prefab's `collision_mode` (`none|box|hull|multiconvex|weld`)
+toggles on the toolbar. Each prefab's `collision_mode` (`none|box|footprint|hull|multiconvex|weld`)
 rides its root; `weld` prefabs join the level-wide drivable body at bake (never use `weld`
 inside scatter — bake error).
 

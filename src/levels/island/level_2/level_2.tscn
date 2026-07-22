@@ -14,7 +14,6 @@
 [ext_resource type="Script" uid="uid://cpl5vh8pdc04w" path="res://kit/helpers/road_path.gd" id="12_ctgma"]
 [ext_resource type="Resource" uid="uid://3r6iaciwp2fk" path="res://kit/roads/asphalt_profile.tres" id="13_6n34x"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/suburban/building-type-b.tscn" id="14_moklg"]
-[ext_resource type="Script" uid="uid://81gx7eh4vwms" path="res://kit/helpers/kit_piece.gd" id="15_0473h"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/suburban/path-stones-messy.tscn" id="16_bfksj"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/suburban/tree-large.tscn" id="17_t0jqp"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/roads/construction-barrier.tscn" id="18_0473h"]
@@ -121,52 +120,34 @@ curve = SubResource("Curve3D_ctgma")
 
 [node name="SuburbanProps" type="Node3D" parent="AuthoringRoot" unique_id=1670716248]
 
-[node name="BuildingTypeB" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=1030771529 instance=ExtResource("14_moklg")]
+[node name="BuildingTypeB" parent="AuthoringRoot/SuburbanProps" unique_id=1030771529 instance=ExtResource("14_moklg")]
 transform = Transform3D(0.69997466, 0, 0.71416765, 0, 1, 0, -0.71416765, 0, 0.69997466, 78.45949, 144.31374, -55.951813)
-script = ExtResource("15_0473h")
 
-[node name="PathStonesMessy" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=161412862 instance=ExtResource("16_bfksj")]
+[node name="PathStonesMessy" parent="AuthoringRoot/SuburbanProps" unique_id=161412862 instance=ExtResource("16_bfksj")]
 transform = Transform3D(-0.6790273, 0, -0.73411304, 0, 1, 0, 0.73411304, 0, -0.6790273, 75.92908, 144.31374, -61.371407)
-script = ExtResource("15_0473h")
-collision_mode = "weld"
 
-[node name="@Node3D@65711" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=695582067 instance=ExtResource("16_bfksj")]
+[node name="@Node3D@65711" parent="AuthoringRoot/SuburbanProps" unique_id=695582067 instance=ExtResource("16_bfksj")]
 transform = Transform3D(-0.8465251, 0, -0.5323489, 0, 1, 0, 0.5323489, 0, -0.8465251, 73.61579, 144.31374, -64.14876)
-script = ExtResource("15_0473h")
-collision_mode = "weld"
 
-[node name="TreeLarge" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=1741990176 instance=ExtResource("17_t0jqp")]
+[node name="TreeLarge" parent="AuthoringRoot/SuburbanProps" unique_id=1741990176 instance=ExtResource("17_t0jqp")]
 transform = Transform3D(-0.87787384, 0, -0.478892, 0, 1, 0, 0.478892, 0, -0.87787384, 66.85305, 144.31374, -47.589836)
-script = ExtResource("15_0473h")
-collision_mode = "hull"
 
-[node name="@Node3D@65712" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=868440817 instance=ExtResource("17_t0jqp")]
+[node name="@Node3D@65712" parent="AuthoringRoot/SuburbanProps" unique_id=868440817 instance=ExtResource("17_t0jqp")]
 transform = Transform3D(0.9873351, 0, -0.15864892, 0, 1, 0, 0.15864892, 0, 0.9873351, 81.7204, 144.31374, -68.81091)
-script = ExtResource("15_0473h")
-collision_mode = "hull"
 
-[node name="@Node3D@65714" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=1367733887 instance=ExtResource("17_t0jqp")]
+[node name="@Node3D@65714" parent="AuthoringRoot/SuburbanProps" unique_id=1367733887 instance=ExtResource("17_t0jqp")]
 transform = Transform3D(-0.9390858, 0, -0.3436829, 0, 1, 0, 0.3436829, 0, -0.9390858, 52.41648, 144.31374, -50.754154)
-script = ExtResource("15_0473h")
-collision_mode = "hull"
 
-[node name="@Node3D@65715" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=343312805 instance=ExtResource("17_t0jqp")]
+[node name="@Node3D@65715" parent="AuthoringRoot/SuburbanProps" unique_id=343312805 instance=ExtResource("17_t0jqp")]
 transform = Transform3D(-0.99752295, 0, 0.07034201, 0, 1, 0, -0.07034201, 0, -0.99752295, 41.092155, 144.3141, -77.36115)
-script = ExtResource("15_0473h")
-collision_mode = "hull"
 
-[node name="@Node3D@65716" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=1245661925 instance=ExtResource("17_t0jqp")]
+[node name="@Node3D@65716" parent="AuthoringRoot/SuburbanProps" unique_id=1245661925 instance=ExtResource("17_t0jqp")]
 transform = Transform3D(-0.998939, 0, 0.046053715, 0, 1, 0, -0.046053715, 0, -0.998939, 34.438286, 145.09804, -69.79941)
-script = ExtResource("15_0473h")
-collision_mode = "hull"
 
-[node name="@Node3D@65717" type="Node3D" parent="AuthoringRoot/SuburbanProps" unique_id=2145717130 instance=ExtResource("17_t0jqp")]
+[node name="@Node3D@65717" parent="AuthoringRoot/SuburbanProps" unique_id=2145717130 instance=ExtResource("17_t0jqp")]
 transform = Transform3D(0.9611692, 0, -0.27595973, 0, 1, 0, 0.27595973, 0, 0.9611692, 94.71671, 145.09804, -69.442856)
-script = ExtResource("15_0473h")
-collision_mode = "hull"
 
 [node name="RoadsProps" type="Node3D" parent="AuthoringRoot" unique_id=1132337609]
 
-[node name="ConstructionBarrier" type="Node3D" parent="AuthoringRoot/RoadsProps" unique_id=1465481513 instance=ExtResource("18_0473h")]
+[node name="ConstructionBarrier" parent="AuthoringRoot/RoadsProps" unique_id=1465481513 instance=ExtResource("18_0473h")]
 transform = Transform3D(0.9290201, 0, 0.37002924, 0, 1, 0, -0.37002924, 0, 0.9290201, 80.19119, 145.09804, -78.20102)
-script = ExtResource("15_0473h")
