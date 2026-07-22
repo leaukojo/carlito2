@@ -21,6 +21,7 @@ func _ready() -> void:
 		contract_state = "v%d, %d signals" % [Contract.data.version, Contract.data.signals.size()]
 	print("carlito2 boot OK (contract: %s, bridge active: %s)" % [contract_state, Bridge.is_active()])
 
+	_touch.menu_pressed.connect(_return_to_menu)
 	_touch.garage_pressed.connect(_open_garage)
 	_touch.respawn_pressed.connect(_respawn)
 	_touch.next_vehicle_pressed.connect(_cycle_vehicle)
@@ -41,7 +42,9 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("garage"):
+	if event.is_action_pressed("to_menu"):
+		_return_to_menu()
+	elif event.is_action_pressed("garage"):
 		_open_garage()
 	elif event.is_action_pressed("next_vehicle"):
 		_cycle_vehicle()
@@ -56,6 +59,19 @@ func _cycle_vehicle() -> void:
 
 
 # --- level select ------------------------------------------------------------
+
+## Tear down the active level and return to the level-select screen (Esc / MENU button).
+func _return_to_menu() -> void:
+	if _select != null:
+		return  # already at the menu
+	_close_garage()
+	if _level != null:
+		_level.queue_free()
+		_level = null
+	Bridge.bind(null)
+	_show_level_select()
+
+
 
 func _show_level_select() -> void:
 	_set_hud_visible(false)

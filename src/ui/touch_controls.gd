@@ -11,6 +11,7 @@ extends Control
 ## (garage / respawn) stay. Widgets respond to touch AND mouse, so the layout is
 ## verifiable on desktop with the F4 toggle.
 
+signal menu_pressed
 signal garage_pressed
 signal respawn_pressed
 signal next_vehicle_pressed
@@ -169,6 +170,7 @@ func _build_joystick() -> void:
 	_joy_center = Vector2(JOY_RADIUS, JOY_RADIUS)
 
 	_joy_knob = Panel.new()
+	_joy_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE  # let presses on the knob reach the base Pad
 	_joy_knob.size = Vector2(KNOB_SIZE, KNOB_SIZE)
 	_joy_knob.add_theme_stylebox_override("panel", _ring_style(KNOB_SIZE * 0.5, Color(0.30, 0.34, 0.42, 0.95)))
 	base.add_child(_joy_knob)
@@ -235,6 +237,7 @@ func _build_button_stack() -> void:
 	col.add_child(_tap_button("GARAGE",func() -> void: garage_pressed.emit()))
 	col.add_child(_tap_button("NEXT CAR", func() -> void: next_vehicle_pressed.emit()))
 	col.add_child(_tap_button("RESPAWN", func() -> void: respawn_pressed.emit()))
+	col.add_child(_tap_button("MENU", func() -> void: menu_pressed.emit()))
 
 
 # --- widget helpers ----------------------------------------------------------
