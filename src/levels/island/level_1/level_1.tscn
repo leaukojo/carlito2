@@ -9,7 +9,6 @@
 [ext_resource type="Texture2D" uid="uid://cyia3e0h3irgf" path="res://src/levels/island/level_1/level_1_island_splat.png" id="7_splat"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/buoy-flag.tscn" id="8_70etm"]
 [ext_resource type="Shader" uid="uid://bcdkfxw2svriw" path="res://kit/terrain/terrain_splat.gdshader" id="8_shader"]
-[ext_resource type="Script" uid="uid://81gx7eh4vwms" path="res://kit/helpers/kit_piece.gd" id="9_4nwvq"]
 [ext_resource type="Script" uid="uid://bqwd2fww3l5yg" path="res://src/water/water_surface.gd" id="9_water"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/watercraft/buoy.tscn" id="10_4nwvq"]
 [ext_resource type="Script" uid="uid://t88htpmwukbg" path="res://kit/helpers/authoring_root.gd" id="10_40d31"]
@@ -220,20 +219,14 @@ metadata/_custom_type_script = "uid://bwvw8p2jvnjnw"
 
 [node name="NatureProps" type="Node3D" parent="AuthoringRoot" unique_id=646312076]
 
-[node name="StoneTallB" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=359169681 instance=ExtResource("30_oyqkw")]
+[node name="StoneTallB" parent="AuthoringRoot/NatureProps" unique_id=359169681 instance=ExtResource("30_oyqkw")]
 transform = Transform3D(-0.7713084, 0, 2.8991523, 0, 3, 0, -2.8991523, 0, -0.7713084, 224.55951, -0.7265663, -107.98529)
-script = ExtResource("9_4nwvq")
-collision_mode = "hull"
 
-[node name="StoneSmallTopB" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=2077628611 instance=ExtResource("32_he40h")]
+[node name="StoneSmallTopB" parent="AuthoringRoot/NatureProps" unique_id=2077628611 instance=ExtResource("32_he40h")]
 transform = Transform3D(-2.7827394, 0, -1.120875, 0, 3, 0, 1.120875, 0, -2.7827394, 253.0401, 0.60398865, -18.74861)
-script = ExtResource("9_4nwvq")
-collision_mode = "hull"
 
-[node name="StoneTallA" type="Node3D" parent="AuthoringRoot/NatureProps" unique_id=1121948848 instance=ExtResource("33_cccir")]
+[node name="StoneTallA" parent="AuthoringRoot/NatureProps" unique_id=1121948848 instance=ExtResource("33_cccir")]
 transform = Transform3D(1.9536728, 0, -2.276656, 0, 3, 0, 2.276656, 0, 1.9536728, 252.26695, 0, -60.637814)
-script = ExtResource("9_4nwvq")
-collision_mode = "hull"
 
 [node name="Island" type="StaticBody3D" parent="." unique_id=1504712988]
 script = ExtResource("5_terrain")
