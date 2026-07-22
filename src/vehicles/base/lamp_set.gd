@@ -33,10 +33,35 @@ const TURN_ON_ENERGY := 3.5
 const TURN_COLOR := Color(1.0, 0.5, 0.0)
 
 ## Headlight SpotLight3D energy + range per level (distinct per state).
-const HEAD_ENERGY := { HL_OFF: 0.0, HL_CLEARANCE: 0.6, HL_LOW: 4.0, HL_HIGH: 8.0 }
-const HEAD_RANGE := { HL_OFF: 0.0, HL_CLEARANCE: 8.0, HL_LOW: 28.0, HL_HIGH: 50.0 }
+const HEAD_ENERGY := { HL_OFF: 0.0, HL_CLEARANCE: 1.2, HL_LOW: 7.5, HL_HIGH: 14.0 }
+const HEAD_RANGE := { HL_OFF: 0.0, HL_CLEARANCE: 8.0, HL_LOW: 32.0, HL_HIGH: 90.0 }
+
+## Beam SHAPE per level. The Compatibility renderer has no light projectors, so the beam
+## pattern is what the cone itself can express: a wide, short, downward-aimed spread for
+## low beam (light on the road just ahead), a narrow, near-level, long throw for high
+## beam. Without the downward pitch every level renders the same disc on whatever wall is
+## in front — which is the artifact these three tables exist to remove.
+##
+## HEAD_ANGLE is the HALF-angle in degrees (Godot's spot_angle), HEAD_PITCH the downward
+## aim in degrees applied to the scene-authored basis, HEAD_FALLOFF the cone-edge exponent
+## (higher = more light concentrated on the axis, i.e. a hotspot rather than a flat disc).
+const HEAD_ANGLE := { HL_OFF: 38.0, HL_CLEARANCE: 36.0, HL_LOW: 44.0, HL_HIGH: 38.0 }
+const HEAD_PITCH := { HL_OFF: 0.0, HL_CLEARANCE: 12.0, HL_LOW: 11.0, HL_HIGH: 1.5 }
+const HEAD_FALLOFF := { HL_OFF: 1.0, HL_CLEARANCE: 1.0, HL_LOW: 1.4, HL_HIGH: 0.7 }
+
+## Real low beams are asymmetric: the kerb-side lamp is kicked up/out to light the verge,
+## the oncoming side is aimed lower so it doesn't dazzle. Left lamps take this much EXTRA
+## downward pitch at low beam (and a matching outward yaw so the pair covers the full lane
+## width instead of two stacked discs). High beam is symmetric — both lamps aim long.
+const LOW_LEFT_EXTRA_PITCH := 4.0
+const LOW_OUTWARD_YAW := 7.0
 
 var _heads: Array[SpotLight3D] = []
+## Authored basis per head, captured at setup — the pitch is applied relative to it so a
+## scene that aims a lamp off-axis keeps its aim.
+var _head_rest: Array[Basis] = []
+## -1.0 for a left-side lamp, +1.0 for a right-side one (from its authored local X).
+var _head_side: Array[float] = []
 var _rear_mat: StandardMaterial3D
 var _turn_l_mat: StandardMaterial3D
 var _turn_r_mat: StandardMaterial3D
@@ -63,6 +88,8 @@ func setup(vehicle: Node, spec: VehicleSpec) -> void:
 		var n := vehicle.get_node_or_null(p)
 		if n is SpotLight3D:
 			_heads.append(n)
+			_head_rest.append((n as SpotLight3D).transform.basis)
+			_head_side.append(-1.0 if (n as SpotLight3D).position.x < 0.0 else 1.0)
 	_rear_mat = _bind(vehicle, spec.brake_lamp_paths, REAR_COLOR, REAR_ENERGY[Rear.OFF])
 	_turn_l_mat = _bind(vehicle, spec.turn_left_paths, TURN_COLOR, TURN_OFF_ENERGY)
 	_turn_r_mat = _bind(vehicle, spec.turn_right_paths, TURN_COLOR, TURN_OFF_ENERGY)
@@ -97,7 +124,22 @@ func apply(brake_on: bool, headlights: int, turn_left: bool, turn_right: bool) -
 		_turn_r_mat.emission_energy_multiplier = TURN_ON_ENERGY if turn_right else TURN_OFF_ENERGY
 
 	var energy: float = HEAD_ENERGY.get(headlights, 0.0)
-	for h in _heads:
+	var angle: float = HEAD_ANGLE.get(headlights, 38.0)
+	var falloff: float = HEAD_FALLOFF.get(headlights, 1.0)
+	# Pitch is a rotation about the lamp's own X (down = negative), applied to the rest
+	# basis so repeated calls never accumulate.
+	var pitch := -float(HEAD_PITCH.get(headlights, 0.0))
+	var low := headlights == HL_LOW
+	for i in _heads.size():
+		var h := _heads[i]
+		var side := _head_side[i]
+		# Left lamp dips further at low beam; both splay outward so the pair reads as one
+		# wide lane-width spread. Yaw is about local Y (+ = left, hence the -side).
+		var p := pitch - (LOW_LEFT_EXTRA_PITCH if low and side < 0.0 else 0.0)
+		var yaw := deg_to_rad(-side * LOW_OUTWARD_YAW) if low else 0.0
 		h.visible = energy > 0.0
 		h.light_energy = energy
 		h.spot_range = HEAD_RANGE.get(headlights, 0.0)
+		h.spot_angle = angle
+		h.spot_angle_attenuation = falloff
+		h.transform.basis = _head_rest[i] * Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, deg_to_rad(p))
