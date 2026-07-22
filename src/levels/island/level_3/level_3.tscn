@@ -12,8 +12,8 @@
 [ext_resource type="Script" uid="uid://t88htpmwukbg" path="res://kit/helpers/authoring_root.gd" id="10_authoring"]
 [ext_resource type="Environment" uid="uid://bjh6g6yntyvh1" path="res://src/levels/base/default_env.tres" id="11_env"]
 [ext_resource type="Texture2D" uid="uid://bnoh5sf83whte" path="res://src/levels/island/level_3/level_3_island_splat2.png" id="11_wqvtp"]
-[ext_resource type="MeshLibrary" uid="uid://cl16o5y8exqb4" path="res://kit/palettes/roads.meshlib" id="13_jnssq"]
-[ext_resource type="MeshLibrary" uid="uid://ch7m2m5vpvn8k" path="res://kit/palettes/roads_barrier.meshlib" id="14_o1n03"]
+[ext_resource type="MeshLibrary" path="res://kit/palettes/roads.meshlib" id="13_jnssq"]
+[ext_resource type="MeshLibrary" path="res://kit/palettes/roads_barrier.meshlib" id="14_o1n03"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/commercial/building-m.tscn" id="15_62u0n"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/commercial/building-skyscraper-e.tscn" id="17_t41s8"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/commercial/building-skyscraper-b.tscn" id="18_dla6c"]
@@ -231,7 +231,7 @@ mesh_library = ExtResource("14_o1n03")
 cell_size = Vector3(12, 3, 12)
 cell_center_y = false
 data = {
-"cells": PackedInt32Array(458744, 18, 18, 458745, 18, 18, 458746, 18, 18, 458747, 18, 18, 458748, 18, 18)
+"cells": PackedInt32Array(458744, 18, 18, 458745, 18, 18, 458746, 18, 18, 458747, 18, 18, 458748, 18, 18, 327671, 18, 15, 327677, 18, 655375)
 }
 metadata/_editor_floor_ = Vector3(0, 4, 0)
 

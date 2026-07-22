@@ -46,7 +46,8 @@
 			"palette_output": "res://kit/palettes/roads_barrier.meshlib",
 			"assets": {
 				"road-curve-barrier": { "x_offset": 6, "z_offset": 6 },
-				"road-curve-intersection-barrier": { "x_offset": 6, "z_offset": 6 }
+				"road-curve-intersection-barrier": { "x_offset": 6, "z_offset": 6 },
+				"road-slant-curve-barrier": { "x_offset": -6 }
 			} },
 		{ "name": "city-roads", "label": "Roads (plain)",
 			"match": ["^road-"], "pipeline": "palette",

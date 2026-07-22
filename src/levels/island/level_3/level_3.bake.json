@@ -1,18 +1,18 @@
 {
 	"baker_version": 8,
 	"chunk_size": 64.0,
-	"input_hash": "66cf360ffcdd74c45ffb9b0194b0eabe9e8c244b854722127f77a6614fe17fdf",
+	"input_hash": "5ebfbba46d7684e70c4ae4e7255be72260263ad88fc8f75e70cfd0e6625fe270",
 	"level": "res://src/levels/island/level_3/level_3.tscn",
-	"output_hash": "338c852c7b08cdceef59d8ed15d219efef39598439a78e717e74698613bda602",
+	"output_hash": "8747985c919e29796d661926cebbe7bf31a2b9f109ed8c4d92cce39abaae2276",
 	"stats": {
 		"bodies": 50,
 		"chunks": 51,
-		"drivable_triangles": 23670,
+		"drivable_triangles": 24510,
 		"roads": 0,
 		"scatter_instances": 1024,
 		"scatter_multimeshes": 159,
 		"shapes": 432,
 		"surfaces": 141,
-		"vertices": 411299
+		"vertices": 412739
 	}
 }
