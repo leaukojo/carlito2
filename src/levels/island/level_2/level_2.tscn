@@ -17,6 +17,7 @@
 [ext_resource type="Script" uid="uid://81gx7eh4vwms" path="res://kit/helpers/kit_piece.gd" id="15_0473h"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/suburban/path-stones-messy.tscn" id="16_bfksj"]
 [ext_resource type="PackedScene" path="res://kit/prefabs/suburban/tree-large.tscn" id="17_t0jqp"]
+[ext_resource type="PackedScene" path="res://kit/prefabs/roads/construction-barrier.tscn" id="18_0473h"]
 
 [sub_resource type="PlaneMesh" id="SeaBedMesh"]
 size = Vector2(560, 560)
@@ -163,3 +164,9 @@ collision_mode = "hull"
 transform = Transform3D(0.9611692, 0, -0.27595973, 0, 1, 0, 0.27595973, 0, 0.9611692, 94.71671, 145.09804, -69.442856)
 script = ExtResource("15_0473h")
 collision_mode = "hull"
+
+[node name="RoadsProps" type="Node3D" parent="AuthoringRoot" unique_id=1132337609]
+
+[node name="ConstructionBarrier" type="Node3D" parent="AuthoringRoot/RoadsProps" unique_id=1465481513 instance=ExtResource("18_0473h")]
+transform = Transform3D(0.9290201, 0, 0.37002924, 0, 1, 0, -0.37002924, 0, 0.9290201, 80.19119, 145.09804, -78.20102)
+script = ExtResource("15_0473h")
