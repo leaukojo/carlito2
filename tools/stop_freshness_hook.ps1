@@ -6,7 +6,7 @@
 # Deliberately NOT the full preflight (tests/import/smoke/export) — that is minutes
 # long and would waste time + tokens on every turn. Freshness only.
 $ErrorActionPreference = 'Continue'
-$GODOT = 'C:\Users\Ccamy\Desktop\Godot\Godot_v4.6.3-stable_win64_console.exe'
+$GODOT = 'C:\Users\Ccamy\Desktop\Godot\Godot_v4.7.1-stable_win64_console.exe'
 $repo  = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 

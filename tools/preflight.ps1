@@ -3,7 +3,7 @@
 # check -> headless smoke -> contract sync check.
 #   powershell -File tools/preflight.ps1
 $ErrorActionPreference = 'Continue'
-$GODOT = 'C:\Users\Ccamy\Desktop\Godot\Godot_v4.6.3-stable_win64_console.exe'
+$GODOT = 'C:\Users\Ccamy\Desktop\Godot\Godot_v4.7.1-stable_win64_console.exe'
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 

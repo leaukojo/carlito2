@@ -3,7 +3,7 @@
 # Fast checks always run; the Godot bake check runs only when staged files touch
 # levels/kit/authoring inputs.
 set -e
-GODOT="C:/Users/Ccamy/Desktop/Godot/Godot_v4.6.3-stable_win64_console.exe"
+GODOT="C:/Users/Ccamy/Desktop/Godot/Godot_v4.7.1-stable_win64_console.exe"
 staged=$(git diff --cached --name-only --diff-filter=ACMR)
 [ -z "$staged" ] && exit 0
 

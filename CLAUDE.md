@@ -6,7 +6,7 @@ Guidance for Claude Code sessions in this repository.
 
 **Carlito** — a browser-based CAN-bus driving sandbox: drive vehicles (car / truck /
 tractor / boat) while exchanging live CAN signals with the sloppyCAN/RAMN simulator over a
-postMessage bridge. Godot 4.6, web-first, physics locked at **60 Hz + interpolation**.
+postMessage bridge. Godot 4.7, web-first, physics locked at **60 Hz + interpolation**.
 Levels are **signal playgrounds** — no missions; content exists to make contract signals
 visibly perform (grades for `engine_load`, hairpins for slip, fields for hitch/PTO, water
 for pitch/roll).
@@ -260,12 +260,12 @@ junctions, lane markings, traffic.
 
 ## Running / testing / exporting
 
-Godot binaries (4.6.3-stable): `C:\Users\Ccamy\Desktop\Godot\`. **Use
-`Godot_v4.6.3-stable_win64_console.exe` for ALL CLI/headless runs** (it streams
+Godot binaries (4.7.1-stable): `C:\Users\Ccamy\Desktop\Godot\`. **Use
+`Godot_v4.7.1-stable_win64_console.exe` for ALL CLI/headless runs** (it streams
 print/push_error back); the non-console exe is for visually running the game.
 
 ```powershell
-$GODOT = 'C:\Users\Ccamy\Desktop\Godot\Godot_v4.6.3-stable_win64_console.exe'
+$GODOT = 'C:\Users\Ccamy\Desktop\Godot\Godot_v4.7.1-stable_win64_console.exe'
 
 # one-time / after adding assets: build the .godot import cache
 & $GODOT --headless --path . --import
