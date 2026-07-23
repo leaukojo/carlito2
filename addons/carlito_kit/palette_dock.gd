@@ -19,6 +19,7 @@ signal tile_selected(kit: String, name: String, meshlib: String)
 signal settings_changed(random_yaw: bool, snap_enabled: bool, snap_step: float, yaw_deg: float)
 signal autofloor_changed(on: bool)
 signal conform_tiles_requested(tile_lift: float, prefab_apron: float)
+signal paint_tiles_requested
 signal tidy_authoring_requested
 
 # Per kit, ordered families: { kit -> [ { label, items:[ {kit,name,kind,thumb} ] } ] ].
@@ -270,6 +271,16 @@ func _build_ui() -> void:
 			+ "building's footprint before the 4 m fade-out starts — larger values push " \
 			+ "the terrain drop further from the walls (fixes the pedestal look)."
 	toolbar.add_child(_conform_apron)
+
+	var paint_btn := Button.new()
+	paint_btn.text = "Paint splat under tiles"
+	paint_btn.tooltip_text = "Paint the terrain splat to Asphalt (channel index 6) under " \
+			+ "each painted tile's ACTUAL mesh (a curve paints only the curve), eroded " \
+			+ "one splat pixel so it stays hidden — the wheels sample the ground splat " \
+			+ "through the tile deck, so an unpainted tile street grips like the grass " \
+			+ "beneath it. Run after Conform. Destructive; one undo step per terrain."
+	paint_btn.pressed.connect(func(): paint_tiles_requested.emit())
+	toolbar.add_child(paint_btn)
 
 	var tidy_btn := Button.new()
 	tidy_btn.text = "Tidy authoring"

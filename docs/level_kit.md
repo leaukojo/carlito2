@@ -232,7 +232,16 @@ everywhere is duck-typed marker methods (`is_carlito_authoring` / `is_carlito_ki
   `channel_names`; its **tire grip** is `channel_grip` (PackedFloat32Array, default all
   1.0 = no effect — the runtime multiplier wheels sample via `grip_at`, see
   `docs/systems.md`; paint Ice/Mud strips or Asphalt under conformed roads to change
-  surface feel without touching collision). Name and color are read by the brush panel (`channel_color()` falls back to the
+  surface feel without touching collision). Painting Asphalt under roads is automated:
+  each RoadPath has a **Paint splat under road** button (centerline + deck strip at the
+  paved half-width minus a 1 m inset) and the palette toolbar a **Paint splat under
+  tiles** button (each cell's actual mesh faces projected to XZ — a curve paints only the
+  curve — eroded one splat pixel); both are destructive-by-button, write channel 6
+  (Asphalt) at full strength with a hard edge, biased to **undercover so the paint stays
+  hidden under the deck** (pure math in `kit/helpers/splat_paint.gd`, tested), one undo
+  step per terrain. Without them a conformed road/tile street inherits the grip of the
+  splat painted beneath it — usually grass, 0.8 — because the wheels sample the terrain
+  splat through the deck. Name and color are read by the brush panel (`channel_color()` falls back to the
   shader's own default via `RenderingServer.shader_get_parameter_default`, since an unset
   param reads back null). Auto-splat classifies only the base 4, so it **zeroes `splatmap2`
   in the same undo action** — stale extra weights would otherwise double-count against the

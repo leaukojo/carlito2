@@ -29,6 +29,16 @@ extends Node3D
 ## out of the box; asphalt/gravel presets remain for highways/tracks).
 const DEFAULT_PROFILE_PATH := "res://kit/roads/city_profile.tres"
 
+const BrushOps := preload("res://kit/helpers/brush_ops.gd")
+const SplatPaint := preload("res://kit/helpers/splat_paint.gd")
+
+## Lateral inset (m) Paint splat keeps INSIDE the paved edge. Splat pixels are ~1 m and
+## bilinear-sampled, so a painted pixel bleeds up to a pixel outward before the shader's
+## sharpening draws the border — painting to the exact paved edge would peek past the
+## ribbon. Undercover on purpose: with a 1 m inset the sharpened border lands ~0.5 m
+## inside the paved edge, safely under the deck (grip mid-road is unaffected).
+const SPLAT_PAINT_INSET := 1.0
+
 ## Cross-section + materials. Auto-assigned the city preset in the editor when null
 ## via a plain property set, so it serializes as an ExtResource and gather_bake_inputs
 ## hash-tracks it (a preload export default equal to the stored value would be omitted
@@ -89,6 +99,16 @@ const DEFAULT_PROFILE_PATH := "res://kit/roads/city_profile.tres"
 @export var conform_epsilon := 0.05
 @warning_ignore("unused_private_class_variable")
 @export_tool_button("Conform terrain (destructive)") var _conform_action := _conform_terrain
+
+@export_group("Paint splat")
+## Terrain paint channel written under the deck (0..7 into the terrain's channel_names /
+## channel_grip tables; default 6 = Asphalt in the stock names). RayWheel samples the
+## terrain splat under a conformed road's deck, so an unpainted road inherits the grip of
+## whatever ground it was built over — this button paints the ribbon footprint so the
+## road grips like its own surface.
+@export_range(0, 7) var splat_channel := 6
+@warning_ignore("unused_private_class_variable")
+@export_tool_button("Paint splat under road (destructive)") var _paint_splat_action := _paint_splat
 
 var _dirty := false
 
@@ -542,6 +562,108 @@ func _conform_terrain() -> void:
 		push_warning("RoadPath: no HeightmapTerrain overlaps this road — nothing conformed.")
 	else:
 		print("RoadPath '%s': conformed %d terrain(s)." % [name, touched])
+
+
+# ------------------------------------------------------------------ paint splat
+# Editor-only, destructive-by-button (the Conform discipline). Same footprint as Conform —
+# centerline samples at the ring offsets plus a deck strip extruded on the ribbon's own
+# frames — but writes the terrain's SPLAT images instead of the heightmap: full-strength
+# splat_channel across the PAVED half-width minus SPLAT_PAINT_INSET (never the skirted
+# full width — the paint must stay hidden under the deck, so it undercovers by design).
+# The pure pixel work is SplatPaint (tested); the PNG write /
+# reimport / undo reuses HeightmapTerrain._commit_generated verbatim.
+
+
+func _paint_splat() -> void:
+	if not Engine.is_editor_hint():
+		return
+	if profile == null:
+		push_warning("RoadPath: assign a profile before painting.")
+		return
+	if profile.base_depth > 0.0:
+		# A bridge spans the gap clear of the terrain — the wheels never sample the
+		# ground splat through its deck, so there is nothing useful to paint.
+		push_warning("RoadPath '%s': bridge profile (base_depth > 0) — Paint splat skipped; wheels on the bridge deck never read the ground splat below." % name)
+		return
+	var path := get_node_or_null(^"Path") as Path3D
+	if path == null or path.curve == null:
+		return
+	var curve := path.curve
+	if curve.get_baked_length() < 0.001:
+		push_warning("RoadPath: the curve has no length.")
+		return
+
+	# Same sample/deck geometry as Conform (see _conform_terrain) — centerline at the
+	# extrusion's ring offsets plus a flat strip on the same frames so yawing segments
+	# are covered — but at the INSET paved width, never the skirted full width.
+	var pw: float = profile.paved_half_width() - SPLAT_PAINT_INSET
+	if pw <= 0.0:
+		push_warning("RoadPath '%s': profile too narrow to paint under (paved half-width %.2f m <= %.1f m inset)." % [name, profile.paved_half_width(), SPLAT_PAINT_INSET])
+		return
+	var to_world := global_transform * path.transform
+	var offsets := RoadBuilder.adaptive_offsets(curve, max_segment_length,
+			max_segment_angle_deg)
+	var world := PackedVector3Array()
+	for o in offsets:
+		world.append(to_world * curve.sample_baked(o))
+	var deck_surfaces: Dictionary = RoadBuilder.extrude(curve,
+			PackedVector2Array([Vector2(-pw, 0), Vector2(pw, 0)]),
+			PackedInt32Array([0]), offsets, banking)
+	var deck_world := PackedVector3Array()
+	for v in RoadBuilder.faces_from_surfaces(deck_surfaces):
+		deck_world.append(to_world * v)
+
+	var terrains: Array[Node] = []
+	ScatterBase.find_terrains_under(owner if owner != null else self, terrains)
+	var touched := 0
+	for t in terrains:
+		if not _overlaps_terrain(t, world, pw):
+			continue
+		var img: Image = SplatPaint.decode(t.get("splatmap"))
+		if img == null:
+			push_warning("RoadPath: terrain '%s' has no usable splatmap — run Auto-splat first." % t.name)
+			continue
+		var img2: Image = SplatPaint.decode(t.get("splatmap2"))
+		if img2 == null and splat_channel >= 4:
+			# The brush's convention: the second weight map appears on the first
+			# stroke of a channel >= 4.
+			img2 = Image.create(img.get_width(), img.get_height(), false,
+					Image.FORMAT_RGBA8)
+			img2.fill(Color(0, 0, 0, 0))
+		if img2 != null and img2.get_size() != img.get_size():
+			push_warning("RoadPath: terrain '%s's splatmap2 size differs from splatmap — repaint it at the base size first (see the terrain's config warning)." % t.name)
+			continue
+		var t3d := t as Node3D
+		var samples := PackedVector2Array()
+		for w in world:
+			samples.append(Vector2(w.x - t3d.global_position.x,
+					w.z - t3d.global_position.z))
+		var deck := PackedVector2Array()
+		for w in deck_world:
+			deck.append(Vector2(w.x - t3d.global_position.x,
+					w.z - t3d.global_position.z))
+		var images: Array[Image] = [img]
+		var units: Array[Color] = [BrushOps.unit_slice(splat_channel, 0)]
+		if img2 != null:
+			images.append(img2)
+			units.append(BrushOps.unit_slice(splat_channel, 1))
+		var size: Vector2 = t.get("terrain_size")
+		var dirty := SplatPaint.paint_strip(images, units, samples, pw,
+				size.x, size.y, deck)
+		if not dirty.has_area():
+			continue
+		var splat_path: String = t.png_path_for("splat")
+		if splat_path.is_empty():
+			continue   # png_path_for already warned (unsaved scene)
+		var entries: Array = [[&"splatmap", splat_path, img]]
+		if img2 != null:
+			entries.append([&"splatmap2", t.png_path_for("splat2"), img2])
+		t._commit_generated("Paint splat under road '%s'" % name, entries, {})
+		touched += 1
+	if touched == 0:
+		push_warning("RoadPath: no terrain splat under this road changed.")
+	else:
+		print("RoadPath '%s': painted splat channel %d on %d terrain(s)." % [name, splat_channel, touched])
 
 
 ## Whether any centerline sample lands within `pad` of the terrain's XZ rect.

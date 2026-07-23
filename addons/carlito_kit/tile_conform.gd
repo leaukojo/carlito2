@@ -12,6 +12,8 @@ extends RefCounted
 ## types are fine here.
 
 const Recipe := preload("res://kit/helpers/kit_recipe.gd")
+const BrushOps := preload("res://kit/helpers/brush_ops.gd")
+const SplatPaint := preload("res://kit/helpers/splat_paint.gd")
 const RECIPE_DIR := "res://kit/import"
 
 ## Flatten fade-out (m) beyond the tile footprint union — the RoadPath default.
@@ -191,6 +193,125 @@ static func _conform_terrains(scene_root: Node, rects: Array[Rect2],
 		push_warning("Kit: no HeightmapTerrain overlaps the footprints — nothing conformed.")
 	else:
 		print("Kit: conformed %d terrain(s) under tiles & buildings." % touched)
+
+
+## World-space XZ triangles (3 verts each) of every painted cell's ACTUAL item mesh —
+## the paint footprint. Unlike footprint_rects' AABB rects (conform wants the full base
+## pad), paint must not spill past the visible mesh: a 2x2 road-curve covers only part of
+## its footprint, and only the curve itself may be painted. Faces cached per item
+## (get_faces is not cheap); cells sorted (deterministic).
+static func footprint_tris(grid: GridMap) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var lib := grid.mesh_library
+	if lib == null:
+		return out
+	var xf := grid.global_transform if grid.is_inside_tree() else grid.transform
+	var cells := grid.get_used_cells()
+	cells.sort()
+	var faces_cache := {}   # item -> PackedVector3Array (mesh faces incl. mesh transform)
+	for cell: Vector3i in cells:
+		var item := grid.get_cell_item(cell)
+		if not faces_cache.has(item):
+			var mesh := lib.get_item_mesh(item)
+			if mesh == null:
+				faces_cache[item] = PackedVector3Array()
+			else:
+				var mt := lib.get_item_mesh_transform(item)
+				var faces := mesh.get_faces()
+				var local := PackedVector3Array()
+				local.resize(faces.size())
+				for i in faces.size():
+					local[i] = mt * faces[i]
+				faces_cache[item] = local
+		var local_faces: PackedVector3Array = faces_cache[item]
+		if local_faces.is_empty():
+			continue
+		var cell_basis := grid.get_basis_with_orthogonal_index(
+				grid.get_cell_item_orientation(cell))
+		var origin := xf * grid.map_to_local(cell)
+		for v in local_faces:
+			var c := xf.basis * (cell_basis * v)
+			out.append(Vector2(c.x + origin.x, c.z + origin.z))
+	return out
+
+
+## Default channel for "Paint splat under tiles" (6 = Asphalt in the stock channel names).
+## Tile roads/tracks sit within RayWheel.SURFACE_GRIP_REACH of the conformed terrain, so
+## the wheels read the ground splat through the deck — unpainted, a tile city street grips
+## like the grass under it.
+const DEFAULT_PAINT_CHANNEL := 6
+
+
+## Paint every terrain's splat under the ACTUAL mesh of every painted tile
+## (footprint_tris — a curve paints only the curve; prefab buildings are left alone —
+## nothing drives through a wall, and grass up to it looks right). SplatPaint erodes the
+## coverage by one splat pixel, so the paint stays hidden under the tile. Entry point for
+## the palette dock's Paint-splat button. Destructive-by-button, pure pixel work in
+## SplatPaint (tested), one undoable _commit_generated per terrain.
+static func paint_all(scene_root: Node, channel := DEFAULT_PAINT_CHANNEL) -> void:
+	if scene_root == null:
+		push_warning("Kit: no scene open to paint under.")
+		return
+	var authoring := _find_authoring(scene_root)
+	if authoring == null:
+		push_warning("Kit: no AuthoringRoot in the scene to paint under.")
+		return
+	var tris := PackedVector2Array()
+	for node in authoring.find_children("*", "GridMap", true, false):
+		var grid := node as GridMap
+		if _meshlib_excluded(grid):
+			continue
+		tris.append_array(footprint_tris(grid))
+	if tris.is_empty():
+		push_warning("Kit: no painted tiles to paint under.")
+		return
+
+	var terrains: Array[Node] = []
+	ScatterBase.find_terrains_under(scene_root, terrains)
+	var touched := 0
+	for t in terrains:
+		var t3d := t as Node3D
+		var half: Vector2 = t.get("terrain_size") * 0.5
+		var t_origin := Vector2(t3d.global_position.x, t3d.global_position.z)
+		var local_tris := PackedVector2Array()
+		local_tris.resize(tris.size())
+		for i in tris.size():
+			local_tris[i] = tris[i] - t_origin
+		var img: Image = SplatPaint.decode(t.get("splatmap"))
+		if img == null:
+			push_warning("Kit: terrain '%s' has no usable splatmap — run Auto-splat first." % t.name)
+			continue
+		var img2: Image = SplatPaint.decode(t.get("splatmap2"))
+		if img2 == null and channel >= 4:
+			# The brush's convention: the second weight map appears on the first
+			# stroke of a channel >= 4.
+			img2 = Image.create(img.get_width(), img.get_height(), false,
+					Image.FORMAT_RGBA8)
+			img2.fill(Color(0, 0, 0, 0))
+		if img2 != null and img2.get_size() != img.get_size():
+			push_warning("Kit: terrain '%s's splatmap2 size differs from splatmap — repaint it at the base size first (see the terrain's config warning)." % t.name)
+			continue
+		var images: Array[Image] = [img]
+		var units: Array[Color] = [BrushOps.unit_slice(channel, 0)]
+		if img2 != null:
+			images.append(img2)
+			units.append(BrushOps.unit_slice(channel, 1))
+		var dirty: Rect2i = SplatPaint.paint_tris(images, units, local_tris,
+				half.x * 2.0, half.y * 2.0)
+		if not dirty.has_area():
+			continue
+		var splat_path: String = t.png_path_for("splat")
+		if splat_path.is_empty():
+			continue   # png_path_for already warned (unsaved scene)
+		var entries: Array = [[&"splatmap", splat_path, img]]
+		if img2 != null:
+			entries.append([&"splatmap2", t.png_path_for("splat2"), img2])
+		t._commit_generated("Paint splat under tiles", entries, {})
+		touched += 1
+	if touched == 0:
+		push_warning("Kit: no terrain splat under the painted tiles changed.")
+	else:
+		print("Kit: painted splat channel %d under tiles on %d terrain(s)." % [channel, touched])
 
 
 ## Whether a GridMap's meshlib basename is in CONFORM_EXCLUDE_MESHLIBS (or it has no lib).
