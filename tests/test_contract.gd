@@ -27,10 +27,10 @@ func _real_contract() -> ContractScript.ContractData:
 	return _parse_file(ContractScript.CONTRACT_PATH)
 
 
-func test_real_contract_is_valid_v6() -> void:
+func test_real_contract_is_valid_v7() -> void:
 	var data := _real_contract()
 	assert_array(data.errors).is_empty()
-	assert_int(data.version).is_equal(6)
+	assert_int(data.version).is_equal(7)
 
 
 func _assert_core_signals_present(names: PackedStringArray, dir: String) -> void:
@@ -122,6 +122,48 @@ func test_contract_is_fully_implemented() -> void:
 		assert_bool(sig.todo) \
 			.override_failure_message("signal still marked todo: %s/%s" % [sig.dir, sig.name]) \
 			.is_false()
+
+
+func test_flying_signals_present_and_flavored() -> void:
+	var data := _real_contract()
+	# New flavored in signals.
+	var elevator := data.get_signal_def("elevator", "in")
+	assert_object(elevator).is_not_null()
+	assert_str(elevator.flavor).is_equal("canaerospace")
+	assert_str(elevator.type).is_equal("i8")
+	assert_str(data.get_signal_def("flaps", "in").flavor).is_equal("canaerospace")
+	assert_str(data.get_signal_def("climb", "in").flavor).is_equal("dronecan")
+	var arm := data.get_signal_def("arm", "in")
+	assert_object(arm).is_not_null()
+	assert_str(arm.flavor).is_equal("dronecan")
+	assert_str(arm.type).is_equal("bool")
+	# New out signals: altitude/vspeed are cross-family instruments (bars via range).
+	var altitude := data.get_signal_def("altitude", "out")
+	assert_array(altitude.range).is_equal([0.0, 500.0])
+	assert_array(data.get_signal_def("vspeed", "out").range).is_equal([-20.0, 20.0])
+	assert_str(data.get_signal_def("rotor_rpm", "out").flavor).is_equal("dronecan")
+	assert_str(data.get_signal_def("armed", "out").type).is_equal("bool")
+
+
+func test_plane_and_drone_wired_into_shared_signals() -> void:
+	var data := _real_contract()
+	# Plane: engine + wheels — joins rpm/gear/fuel/coolant/ground plus the shared set.
+	var plane_out := data.signals_for_vehicle("plane", "out").map(
+			func(s: ContractScript.SignalDef) -> String: return s.name)
+	assert_array(plane_out).contains(["kmh", "rpm", "gear", "ground", "fuel", "altitude", "vspeed", "pitch", "roll"])
+	var plane_in := data.signals_for_vehicle("plane", "in").map(
+			func(s: ContractScript.SignalDef) -> String: return s.name)
+	assert_array(plane_in).contains(["accel", "brake", "elevator", "flaps", "gear"])
+	assert_array(plane_in).not_contains(["climb", "arm", "rudder"])
+	# Drone: battery-electric — no rpm/gear/fuel/coolant/ground, but altitude/vspeed/climb/arm.
+	var drone_out := data.signals_for_vehicle("drone", "out").map(
+			func(s: ContractScript.SignalDef) -> String: return s.name)
+	assert_array(drone_out).contains(["kmh", "altitude", "vspeed", "rotor_rpm", "armed", "pitch", "roll"])
+	assert_array(drone_out).not_contains(["rpm", "gear", "ground", "fuel", "coolant"])
+	var drone_in := data.signals_for_vehicle("drone", "in").map(
+			func(s: ContractScript.SignalDef) -> String: return s.name)
+	assert_array(drone_in).contains(["accel", "brake", "steer", "climb", "arm"])
+	assert_array(drone_in).not_contains(["elevator", "flaps", "gear", "handbrake"])
 
 
 func test_signals_for_vehicle_filters() -> void:

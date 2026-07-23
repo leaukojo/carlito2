@@ -245,6 +245,53 @@ func test_bridge_steer_unchanged_without_rudder() -> void:
 	assert_float(out.steer).is_equal_approx(0.9, 1e-6)
 
 
+# --- flight controls (plane elevator / drone climb + arm) ---------------------
+
+func test_local_flight_axes_pass_through_clamped() -> void:
+	var raw := _raw()
+	raw["elevator"] = 0.7
+	raw["climb"] = -1.4  # out of range on purpose
+	raw["arm"] = true
+	var out: RouterScript.VehicleInput = RouterScript.arbitrate_local(raw, 0.0, GEAR_D1)
+	assert_float(out.elevator).is_equal_approx(0.7, 1e-6)
+	assert_float(out.climb).is_equal(-1.0)  # clamped
+	assert_bool(out.arm).is_true()
+	# Defaults when absent: neutral axes, disarmed.
+	var bare: RouterScript.VehicleInput = RouterScript.arbitrate_local(_raw(), 0.0, GEAR_D1)
+	assert_float(bare.elevator).is_equal(0.0)
+	assert_float(bare.climb).is_equal(0.0)
+	assert_bool(bare.arm).is_false()
+
+
+func test_bridge_normalizes_flight_axes_and_mirrors_arm() -> void:
+	var vals := _bridge(0.0, 0.0, 0.0, 0.0, GEAR_D1)
+	vals["elevator"] = 0.5   # already %→unit normalized by bridge_source
+	vals["climb"] = 1.6      # out of range on purpose
+	vals["arm"] = true
+	var out: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(vals)
+	assert_float(out.elevator).is_equal_approx(0.5, 1e-6)
+	assert_float(out.climb).is_equal(1.0)  # clamped
+	assert_bool(out.arm).is_true()
+	# Absent → neutral / disarmed (arm is authoritative from the bridge, no local toggle).
+	var bare: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(0.0, 0.0, 0.0, 0.0, GEAR_D1))
+	assert_float(bare.elevator).is_equal(0.0)
+	assert_float(bare.climb).is_equal(0.0)
+	assert_bool(bare.arm).is_false()
+
+
+func test_merge_local_combines_flight_axes_and_arm_edge() -> void:
+	var kbd := {"elevator": 0.5, "climb": 0.0, "arm_toggle": false}
+	var touch := {"elevator": 0.8, "climb": -0.3, "arm_toggle": true}
+	var m := RouterScript.merge_local(kbd, touch)
+	assert_float(m["elevator"]).is_equal(1.0)  # 0.5 + 0.8 clamped
+	assert_float(m["climb"]).is_equal_approx(-0.3, 1e-6)
+	assert_bool(m["arm_toggle"]).is_true()
+	# Neither pressed → axes 0, edge false.
+	var none := RouterScript.merge_local({}, {})
+	assert_float(none["elevator"]).is_equal(0.0)
+	assert_bool(none["arm_toggle"]).is_false()
+
+
 func test_bridge_mirrors_lamp_bits_verbatim() -> void:
 	var vals := _bridge(0.0, 0.0, 0.0, 0.0, GEAR_D1)
 	vals["turnL"] = true

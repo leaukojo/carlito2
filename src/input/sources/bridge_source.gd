@@ -31,6 +31,11 @@ func poll() -> Dictionary:
 		# arbitrate_bridge normalizes hitch_pos %→unit. Absent → raised/off (§6 default).
 		"hitch_pos": clampf(float(v.get("hitch_pos", 100.0)), 0.0, 100.0),
 		"pto": bool(v.get("pto", false)),
+		# Flight controls (plane/drone). elevator/climb are i8 %; normalize %→unit like
+		# steer. arm is a bool. Absent → neutral/disarmed (arbitrate_bridge defaults them).
+		"elevator": clampf(float(v.get("elevator", 0.0)) / 100.0, -1.0, 1.0),
+		"climb": clampf(float(v.get("climb", 0.0)) / 100.0, -1.0, 1.0),
+		"arm": bool(v.get("arm", false)),
 	}
 	# Boat rudder: included ONLY when sloppyCAN sends it —
 	# presence is what makes it override 'steer' in arbitrate_bridge. Normalized %→unit

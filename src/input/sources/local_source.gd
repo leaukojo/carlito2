@@ -6,6 +6,9 @@ extends RefCounted
 
 
 func poll(_delta: float) -> Dictionary:
+	# R/F drive one vertical axis shared by both aircraft (plane elevator / drone climb);
+	# the families are mutually exclusive so each reads only its own field. + = up.
+	var vert := Input.get_action_strength("aircraft_up") - Input.get_action_strength("aircraft_down")
 	return {
 		"accel": Input.get_action_strength("accel"),
 		"brake_reverse": Input.get_action_strength("brake_reverse"),
@@ -15,4 +18,7 @@ func poll(_delta: float) -> Dictionary:
 		"lights_cycle": Input.is_action_just_pressed("headlights"),
 		"hitch_toggle": Input.is_action_just_pressed("hitch"),
 		"pto_toggle": Input.is_action_just_pressed("pto"),
+		"elevator": vert,
+		"climb": vert,
+		"arm_toggle": Input.is_action_just_pressed("arm"),
 	}
