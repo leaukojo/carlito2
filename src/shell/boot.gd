@@ -101,7 +101,7 @@ func _load_level(scene_path: String) -> void:
 	_loading = LoadingScreen.new()
 	_ui.add_child(_loading)
 	_loading_path = scene_path
-	ResourceLoader.load_threaded_request(scene_path)
+	ResourceLoader.load_threaded_request(scene_path, "", true)  # sub-threads: parallel sub-resource loads
 
 
 func _process(_delta: float) -> void:
