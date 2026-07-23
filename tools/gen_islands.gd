@@ -167,6 +167,7 @@ environment = ExtResource("11_env")
 transform = Transform3D(0.866, 0.354, -0.354, 0, 0.707, 0.707, 0.5, -0.612, 0.612, 0, 40, 0)
 light_color = Color(1, 0.96, 0.88, 1)
 shadow_enabled = true
+directional_shadow_blend_splits = true
 directional_shadow_max_distance = 150.0
 
 [node name="ChaseCamera" type="Camera3D" parent="."]
