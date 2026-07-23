@@ -4,8 +4,11 @@
 [ext_resource type="Resource" path="res://src/vehicles/kenney/tractor-shovel_spec.tres" id="2_xhcxs"]
 [ext_resource type="Texture2D" path="res://src/vehicles/kenney/models/Textures/colormap.png" id="3_wdkly"]
 
-[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_qundx"]
-points = PackedVector3Array(-0.8987238, 1.0842597, 0.3760126, 0.84308916, 0.8554956, 1.4277763, -0.85272723, 0.8554956, 1.4277763, 0.7733202, 0.12, -1.4645472, 0.5597339, 1.8372381, 0.14085738, -0.80457324, 0.1436758, -1.505229, 0.13328058, 0.206, 1.4755666, -0.80457324, 0.8963133, -1.316928, -0.50497943, 1.8081108, 1.1819999, 0.79493517, 0.8963133, -1.316928, -0.5222968, 1.8372381, 0.14085738, 0.5164, 1.7704294, 1.1290557, -0.8987238, 0.3317926, 0.14085738, 0.8890857, 1.2255177, 0.7523199, 0.8890857, 0.66133773, 1.4109312, -0.6028954, 0.34568602, 1.242, -0.80457324, 0.0964762, -1.316928, 0.79493517, 0.0964762, -1.316928, -0.8987238, 1.2255177, 0.8934719, 0.5934285, 0.34568602, 1.242, -0.8987238, 0.66133773, 1.4109312, 0.8890857, 0.7081965, 0.14085738, 0.79493517, 0.1436758, -1.505229, 0.8890857, 1.2255177, 0.8934719, -0.8987238, 1.2255177, 0.7523199, -0.8987238, 0.7081965, 0.14085738, -0.8619963, 0.76408434, 1.4433843, 0.8523582, 0.76408434, 1.4433843, 0.8890857, 1.0842597, 0.3760126, -0.71042275, 0.0964762, -1.2697792, 0.7007847, 0.0964762, -1.2697792, -0.1346, 0.25360352, 1.3832469)
+[sub_resource type="BoxShape3D" id="BoxLower"]
+size = Vector3(1.7503, 0.9072, 2.9641)
+
+[sub_resource type="BoxShape3D" id="BoxUpper"]
+size = Vector3(1.7503, 0.9072, 2.9641)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_840rj"]
 resource_name = "colormap"
@@ -87,8 +90,13 @@ size = Vector3(0.2, 0.12, 0.06)
 script = ExtResource("1_fvd71")
 spec = ExtResource("2_xhcxs")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1855049554]
-shape = SubResource("ConvexPolygonShape3D_qundx")
+[node name="CollisionLower" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4536, 0)
+shape = SubResource("BoxLower")
+
+[node name="CollisionUpper" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3608, 0)
+shape = SubResource("BoxUpper")
 
 [node name="Model" type="Node3D" parent="." unique_id=1700125623]
 transform = Transform3D(-1.2, 0, -1.04907336e-07, 0, 1.2, 0, 1.04907336e-07, 0, -1.2, 0, 0, -4.2915343e-07)
@@ -139,3 +147,6 @@ mesh = SubResource("BoxMesh_4mtho")
 [node name="TurnRR" type="MeshInstance3D" parent="Lamps" unique_id=1211160746]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7526377, 0.6350595, 1.4523598)
 mesh = SubResource("BoxMesh_4mtho")
+
+[node name="HoodCam" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9344, -0.3557)

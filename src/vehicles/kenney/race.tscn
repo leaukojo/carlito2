@@ -4,8 +4,11 @@
 [ext_resource type="Resource" path="res://src/vehicles/kenney/race_spec.tres" id="2_bvt6q"]
 [ext_resource type="Texture2D" path="res://src/vehicles/kenney/models/Textures/colormap.png" id="3_03rs3"]
 
-[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_rkdwx"]
-points = PackedVector3Array(0.6911122, 0.26888776, 0.4821495, 0.4258063, 0.77814746, 1.5602794, 0.57198703, 0.33943814, -1.5602794, -0.6955538, 0.63193804, -0.24375546, -0.42, 0.12400986, 1.4078766, -0.5162482, 0.12, -1.4684981, -0.45172197, 0.77814746, 1.5602794, 0.07547096, 0.87348366, 0.2563265, 0.71999997, 0.12147229, 0.5026403, 0.41289666, 0.1557755, 1.5116755, 0.66949016, 0.63193804, -0.24375546, -0.5492251, 0.33943814, -1.5602794, 0.53901017, 0.12, -1.4684981, -0.6999228, 0.12, 0.5045447, 0.4014283, 0.12, 1.4224998, -0.6955538, 0.63193804, -0.048567817, -0.42, 0.16943313, 1.4534022, 0.66949016, 0.63193804, -0.048567817, -0.45172197, 0.77814746, 1.3162184, 0.4258063, 0.77814746, 1.3162184)
+[sub_resource type="BoxShape3D" id="BoxLower"]
+size = Vector3(1.44, 0.3795, 3.0717)
+
+[sub_resource type="BoxShape3D" id="BoxUpper"]
+size = Vector3(1.44, 0.3795, 3.0717)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vdr7i"]
 resource_name = "colormap"
@@ -53,8 +56,13 @@ size = Vector3(0.2, 0.12, 0.06)
 script = ExtResource("1_oi7w4")
 spec = ExtResource("2_bvt6q")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1523278507]
-shape = SubResource("ConvexPolygonShape3D_rkdwx")
+[node name="CollisionLower" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3098, 0)
+shape = SubResource("BoxLower")
+
+[node name="CollisionUpper" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6893, 0)
+shape = SubResource("BoxUpper")
 
 [node name="Model" type="Node3D" parent="." unique_id=1122404654]
 transform = Transform3D(-1.2, 0, -1.04907336e-07, 0, 1.2, 0, 1.04907336e-07, 0, -1.2, 0, 0, 0)
@@ -102,3 +110,6 @@ mesh = SubResource("BoxMesh_k41il")
 [node name="TurnRR" type="MeshInstance3D" parent="Lamps" unique_id=1179765932]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.61920005, 0.38565004, 1.5051625)
 mesh = SubResource("BoxMesh_k41il")
+
+[node name="HoodCam" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9991, -0.3686)

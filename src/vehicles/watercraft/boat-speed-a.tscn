@@ -4,8 +4,11 @@
 [ext_resource type="Resource" path="res://src/vehicles/watercraft/boat-speed-a_spec.tres" id="2_d828g"]
 [ext_resource type="Texture2D" path="res://kit/raw/watercraft/Textures/colormap.png" id="3_ojql5"]
 
-[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_trje3"]
-points = PackedVector3Array(0.04715653, -0.35437578, -0.5909711, 1.0793808, 0.5988769, 1.797132, 0.6613, 1.3900577, 1.9583802, -0.8115321, -0.14325285, 1.661001, -0.071799465, 0.5325905, -1.8672055, -0.71770114, 1.4334284, 1.6688516, -1.0248525, 0.29444125, -0.8339513, 1.0149115, 0.29161, -0.8452905, 0.5278431, -0.3669264, 1.4990634, 0.16105393, 0.9927491, -0.749579, 1.0793808, 0.7269751, -0.19221954, -1.0378555, 0.47268513, 1.6896904, -0.5436902, -0.35456693, 0, -0.071713775, -0.12876475, -1.3833292, -1.0385782, 0.7269751, -0.19221954, 0.8123544, -0.11542871, -0.52969384, 0.6942002, 1.4334284, 1.6688516, 0.40966317, 0.4123989, -1.746496, 0.9561554, 0.10950437, 1.6940191, -0.1830374, 0.9883818, -0.7428993, -0.6613, 1.359055, 1.8899606, -0.5439791, -0.3550326, 1.47856, -0.48565358, 0.5321092, -1.5999124, -0.78155994, -0.1783901, -0.41443473, -0.43199456, 0.2928037, -1.7415932, 0.40113, -0.11675074, -1.1799437, 0.51775783, -0.3506764, -0.058620807, 0.108019896, 0.29288745, -1.9210433, 0.52198714, 0.5321356, -1.5422585, -1.023329, 0.23496483, 1.6657671, 0.8290278, -0.12793249, 1.6216042, -0.36732623, -0.17930974, -1.0673938)
+[sub_resource type="BoxShape3D" id="BoxLower"]
+size = Vector3(2.142, 0.9, 4.044)
+
+[sub_resource type="BoxShape3D" id="BoxUpper"]
+size = Vector3(2.142, 0.9, 4.044)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_blslv"]
 resource_name = "colormap"
@@ -59,8 +62,13 @@ drag_yaw = 3800.0
 keel_offset = -0.546
 spec = ExtResource("2_d828g")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1341040206]
-shape = SubResource("ConvexPolygonShape3D_trje3")
+[node name="CollisionLower" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.054, 0)
+shape = SubResource("BoxLower")
+
+[node name="CollisionUpper" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.954, 0)
+shape = SubResource("BoxUpper")
 
 [node name="Model" type="Node3D" parent="." unique_id=1618170797]
 transform = Transform3D(-1.2, 0, -1.04907336e-07, 0, 1.2, 0, 1.04907336e-07, 0, -1.2, 0, -0.396, 0)
@@ -76,3 +84,6 @@ visible = false
 light_energy = 0.0
 spot_range = 28.0
 spot_angle = 38.0
+
+[node name="HoodCam" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.524, -0.4853)

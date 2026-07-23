@@ -7,7 +7,7 @@
 script = ExtResource("1_bmgo7")
 mass = 1600.0
 center_of_mass = Vector3(0, 0.2, 0)
-wheel_positions = PackedVector3Array(-0.6900001, 0.4618182, -0.9419999, 0.6900001, 0.4618182, -0.94200003, -0.5700002, 0.4618182, 0.882, 0.5700002, 0.4618182, 0.8819999)
+wheel_positions = PackedVector3Array(-0.6900001, 0.4618182, -0.9419999, 0.6900001, 0.4618182, -0.94200003, -0.6900001, 0.4618182, 0.882, 0.6900001, 0.4618182, 0.8819999)
 wheel_radius = 0.36
 wheel_scene = ExtResource("2_pufi0")
 driven_front = true

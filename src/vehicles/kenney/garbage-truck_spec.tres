@@ -7,7 +7,7 @@
 script = ExtResource("1_jld4v")
 mass = 8000.0
 center_of_mass = Vector3(0, 0.3, 0)
-wheel_positions = PackedVector3Array(-0.7500001, 0.424, -1.302, 0.7500001, 0.424, -1.302, -0.5700001, 0.424, 0.642, 0.5700001, 0.424, 0.6419999)
+wheel_positions = PackedVector3Array(-0.7500001, 0.424, -1.302, 0.7500001, 0.424, -1.302, -0.7500001, 0.424, 0.642, 0.7500001, 0.424, 0.6419999)
 wheel_radius = 0.36
 wheel_inertia = 3.0
 wheel_scene = ExtResource("2_p1exh")

@@ -7,7 +7,7 @@
 script = ExtResource("1_gc16t")
 mass = 1500.0
 center_of_mass = Vector3(0, 0.2, 0)
-wheel_positions = PackedVector3Array(-0.6900001, 0.47295454, -0.91199964, 0.6900001, 0.47295454, -0.91199976, -0.5700002, 0.47295454, 0.6720004, 0.5700002, 0.47295454, 0.6720003)
+wheel_positions = PackedVector3Array(-0.6900001, 0.47295454, -0.91199964, 0.6900001, 0.47295454, -0.91199976, -0.6900001, 0.47295454, 0.6720004, 0.6900001, 0.47295454, 0.6720003)
 wheel_radius = 0.36
 wheel_scene = ExtResource("2_v5bot")
 driven_front = true

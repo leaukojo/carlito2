@@ -25,8 +25,8 @@ const MIN_PIVOT_DIST := 0.35
 @export var smoothing := 5.0  ## 1/s exponential position catch-up rate
 @export_flags_3d_physics var collision_mask := 1  ## layers the camera may not pass through
 @export var collision_margin := 0.3  ## keep-out distance from a hit surface
-## Bonnet-cam seat offset in body space (-Z is forward). Roughly right for the car; the
-## taller cabs override it on their level/vehicle scene.
+## Bonnet-cam seat offset in body space (-Z is forward). Fallback only: a vehicle scene
+## with a "HoodCam" Marker3D child overrides it (marker position only, rotation ignored).
 @export var hood_offset := Vector3(0.0, 1.35, -0.55)
 @export var iso_offset := Vector3(14.0, 16.0, 14.0)  ## fixed world-space 3/4 view
 @export var iso_size := 26.0  ## orthogonal frustum height for ISO
@@ -72,7 +72,13 @@ func _follow(weight: float) -> void:
 	var tt := target.get_global_transform_interpolated()
 	if mode == Mode.HOOD:
 		# Rigid to the body: the whole point of this view is feeling the pitch and roll.
-		global_transform = Transform3D(tt.basis, tt * hood_offset)
+		# Per-vehicle "HoodCam" marker wins over the one-size hood_offset fallback —
+		# looked up per frame so switching vehicles can never serve a stale marker.
+		var offset := hood_offset
+		var marker := target.get_node_or_null(^"HoodCam") as Node3D
+		if marker != null:
+			offset = marker.position
+		global_transform = Transform3D(tt.basis, tt * offset)
 		_has_free = false
 		return
 	var pivot := tt.origin + Vector3.UP * look_height

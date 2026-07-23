@@ -7,7 +7,7 @@
 script = ExtResource("1_cj202")
 mass = 1250.0
 center_of_mass = Vector3(0, 0.2, 0)
-wheel_positions = PackedVector3Array(-0.6900001, 0.5007955, -0.9419999, 0.6900001, 0.5007955, -0.94200003, -0.5700002, 0.5007955, 0.8820001, 0.5700002, 0.5007955, 0.88199997)
+wheel_positions = PackedVector3Array(-0.6900001, 0.5007955, -0.9419999, 0.6900001, 0.5007955, -0.94200003, -0.6900001, 0.5007955, 0.8820001, 0.6900001, 0.5007955, 0.88199997)
 wheel_radius = 0.36
 wheel_scene = ExtResource("2_af8ow")
 driven_front = true
