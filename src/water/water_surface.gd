@@ -52,9 +52,16 @@ const MESH_SUBDIV := 32
 ## How far the far-sea quad sits below the surface (must clear the wave troughs).
 const FAR_SEA_DROP := 0.25
 
+## Invisible perimeter walls at the water's edge so boats can't sail off the map into
+## the (visual-only) far sea. Four thin static boxes ring the `size` rect.
+## Height above/below the surface and thickness in metres.
+const WALL_HEIGHT := 20.0
+const WALL_THICKNESS := 2.0
+
 var _mesh: MeshInstance3D
 var _shape: CollisionShape3D
 var _far_mesh: MeshInstance3D
+var _walls: StaticBody3D
 
 
 func _ready() -> void:
@@ -99,7 +106,36 @@ func _rebuild() -> void:
 	var box_height := maxf(depth - kill_margin, 0.05)
 	(_shape.shape as BoxShape3D).size = Vector3(size.x, box_height, size.y)
 	_shape.position = Vector3(0.0, -kill_margin - box_height * 0.5, 0.0)
+	_rebuild_walls()
 	_rebuild_far_sea()
+
+
+## Ring the water region with four thin static walls at its outer edge. The vehicle
+## sits on the near side of the wall, so the collision boxes hug the `size` rect from
+## outside; the wall spans WALL_HEIGHT centred on the surface (blocks both floating and
+## airborne vehicles). Rebuilt with size like everything else.
+func _rebuild_walls() -> void:
+	if _walls == null:
+		_walls = StaticBody3D.new()
+		add_child(_walls, false, Node.INTERNAL_MODE_BACK)
+	for child in _walls.get_children():
+		child.queue_free()
+	var half := size * 0.5
+	var t := WALL_THICKNESS
+	# Each entry: (box size, centre offset). Long axis spans the full side plus corners.
+	var walls := [
+		[Vector3(size.x + t * 2.0, WALL_HEIGHT, t), Vector3(0.0, 0.0, half.y + t * 0.5)],
+		[Vector3(size.x + t * 2.0, WALL_HEIGHT, t), Vector3(0.0, 0.0, -half.y - t * 0.5)],
+		[Vector3(t, WALL_HEIGHT, size.y), Vector3(half.x + t * 0.5, 0.0, 0.0)],
+		[Vector3(t, WALL_HEIGHT, size.y), Vector3(-half.x - t * 0.5, 0.0, 0.0)],
+	]
+	for w in walls:
+		var cs := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = w[0]
+		cs.shape = box
+		cs.position = w[1]
+		_walls.add_child(cs)
 
 
 func _rebuild_far_sea() -> void:
