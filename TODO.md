@@ -69,6 +69,22 @@ architecture change. Boat wind/engine and tractor PTO whine follow the same patt
 Lands after the perf pass. Verify: engine pitch follows the tacho through the gears;
 silent in menus.
 
+## Drone follow-ups (from 2026-07-23 code review)
+
+- **Touch arm/climb controls:** touch input exposes no arm_toggle/climb, so the drone
+  can never arm on touch devices — it's an inert brick. Needs new touch-UI buttons
+  (design call on layout).
+- **Map containment for flight:** boundary walls top out at y=+10; the drone flies over
+  them into the collision-less far sea and only respawns below y=-20. Decide: taller
+  walls, a ceiling, or an out-of-bounds volume.
+- **`ST_GROUND` honesty:** the drone (no wheels) publishes "all wheels on ground" = true
+  while hovering — a false CAN-side reading (the boat shares the quirk). Fold into the
+  `status` bitfield finalization with sloppyCAN (see Open questions).
+- **Boat/drone math duplication:** `pitch_deg`/`roll_deg` and the one-tick
+  damper/inertia helpers are duplicated verbatim between boat and drone; consider
+  extracting shared statics (touches boat.gd + tests).
+- **`docs/systems.md`:** vehicle rosters/sections don't mention the drone family yet.
+
 ## 6. Launch checklist
 
 - [ ] Levels 2-5 authored (they ship as blank generated islands today) — or trimmed from

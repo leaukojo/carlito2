@@ -5,5 +5,5 @@
 [resource]
 script = ExtResource("1_info")
 display_name = "Garage"
-allowed_vehicles = PackedStringArray("car", "truck", "tractor", "boat", "bike")
+allowed_vehicles = PackedStringArray("car", "truck", "tractor", "boat", "bike", "drone")
 default_vehicle = "car"

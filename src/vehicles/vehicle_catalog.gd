@@ -1,15 +1,15 @@
 class_name VehicleCatalog
 extends RefCounted
 ## Static registry of vehicle VARIANTS. A *variant* is one concrete body scene; a
-## *family* is the contract type id (car / truck / tractor / boat / bike) that drives the
-## bridge marshaling, dashboard cluster and spawn filter. Many variants share one family —
-## the garage still chooses a family, and V cycles the variants within it.
+## *family* is the contract type id (car / truck / tractor / boat / bike / drone) that
+## drives the bridge marshaling, dashboard cluster and spawn filter. Many variants share
+## one family — the garage still chooses a family, and V cycles the variants within it.
 ##
 ## The hand-built vehicles are variants of their own family (listed first, so a family
 ## resolves to its legacy body). The rest are the Kenney car kit and Watercraft pack (CC0),
 ## each generated with its own feel (tools/gen_kenney_vehicles, tools/gen_boat_variants).
 ## Pure static data + helpers, unit-tested in tests/test_vehicle_catalog.gd. The contract file is NOT touched:
-## every variant maps to one of the four existing families.
+## every variant maps to a family the contract already declares.
 
 const KENNEY := "res://src/vehicles/kenney/"
 const WATERCRAFT := "res://src/vehicles/watercraft/"
@@ -22,6 +22,7 @@ const VARIANTS := {
 	"tractor": {"scene": "res://src/vehicles/tractor/tractor.tscn", "family": "tractor"},
 	"boat": {"scene": "res://src/vehicles/boat/boat.tscn", "family": "boat"},
 	"bike": {"scene": "res://src/vehicles/bike/bike.tscn", "family": "bike"},
+	"drone": {"scene": "res://src/vehicles/drone/drone.tscn", "family": "drone"},
 	# -- bike family: recolors of the one hand-built body (variant == body colour) --
 	"bike-motocross": {"scene": "res://src/vehicles/bike/bike-motocross.tscn", "family": "bike"},
 	"bike-scooter": {"scene": "res://src/vehicles/bike/bike-scooter.tscn", "family": "bike"},

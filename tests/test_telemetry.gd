@@ -9,6 +9,7 @@ const T := preload("res://src/vehicles/base/vehicle_telemetry.gd")
 const TractorT := preload("res://src/vehicles/tractor/tractor_telemetry.gd")
 const BoatT := preload("res://src/vehicles/boat/boat_telemetry.gd")
 const BikeT := preload("res://src/vehicles/bike/bike_telemetry.gd")
+const DroneT := preload("res://src/vehicles/drone/drone_telemetry.gd")
 const ContractScript := preload("res://src/bridge/contract.gd")
 
 
@@ -148,6 +149,7 @@ func test_to_bridge_dict_covers_every_ground_out_signal() -> void:
 		"tractor": TractorT.new().to_bridge_dict().keys(),
 		"boat": BoatT.new().to_bridge_dict().keys(),
 		"bike": BikeT.new().to_bridge_dict().keys(),
+		"drone": DroneT.new().to_bridge_dict().keys(),
 	}
 	for vehicle in keys_by_vehicle:
 		var keys: Array = keys_by_vehicle[vehicle]
