@@ -558,11 +558,14 @@ everywhere is duck-typed marker methods (`is_carlito_authoring` / `is_carlito_ki
   painted tile GridMap under Authoring (meshlib not in `CONFORM_EXCLUDE_MESHLIBS`) **plus**
   every placed prefab building whose recipe family is in `CONFORM_PREFAB_FAMILIES` (both
   easy-to-edit lists at the top of the file; prefab footprint = merged world AABB of its
-  mesh descendants, target = the piece's world origin Y). Tile footprints come from the
-  item mesh AABB in the painted orientation (so 2×2 / 3×3 overhang cells are covered), 4 m
-  falloff beyond the union, targets **ROUND-quantized** (closest 8-bit height either side
-  of the base — the deck hides the residual, unlike road ribbons which floor), one undo per
-  terrain. Grid-aligned plateaus (terrain `terrace_levels`, plateau bands in whole 3 m
+  mesh descendants grown by the toolbar's **apron** spinbox — flat ground kept past the
+  walls before the falloff drop, target = the piece's world origin Y, round-quantized).
+  Tile footprints come from the item mesh AABB in the painted orientation (so 2×2 / 3×3
+  overhang cells are covered), 4 m falloff beyond the union; tile targets are
+  **FLOOR-quantized at base + the toolbar's lift spinbox** (terrain meets the highest
+  8-bit step at or below base + lift — never above, so a tall island's coarse steps
+  can't poke terrain through the 0.24 m road deck; raise the lift to close the
+  terrain-to-tile gap), one undo per terrain. Grid-aligned plateaus (terrain `terrace_levels`, plateau bands in whole 3 m
   roads-GridMap cells, flats snapped to the nearest 8-bit value — byte-exact at
   `height = 51`) mean painted road pads usually sit flush already, so Conform becomes a
   touch-up rather than a required step. Road Conform's plateau meets the tile at road − ε and `edge_drop`

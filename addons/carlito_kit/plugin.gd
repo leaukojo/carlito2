@@ -54,8 +54,9 @@ func _enter_tree() -> void:
 	_dock.tile_selected.connect(_on_tile_selected)
 	_dock.settings_changed.connect(_on_settings_changed)
 	_dock.autofloor_changed.connect(_on_autofloor_changed)
-	_dock.conform_tiles_requested.connect(func():
-		TileConform.conform_all(EditorInterface.get_edited_scene_root()))
+	_dock.conform_tiles_requested.connect(func(tile_lift: float, prefab_apron: float):
+		TileConform.conform_all(EditorInterface.get_edited_scene_root(),
+				tile_lift, prefab_apron))
 	_dock.tidy_authoring_requested.connect(func(): _tool.tidy_authoring())
 	_tool.yaw_changed.connect(func(deg): _dock.set_yaw_display(deg))
 

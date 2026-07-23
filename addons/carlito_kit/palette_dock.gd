@@ -7,6 +7,7 @@ extends VBoxContainer
 ## logic (that lives in placement_tool.gd), matching the editor/runtime split.
 
 const Recipe := preload("res://kit/helpers/kit_recipe.gd")
+const TileConform := preload("res://addons/carlito_kit/tile_conform.gd")
 const RECIPE_DIR := "res://kit/import"
 const PREFAB_DIR := "res://kit/prefabs"
 const PALETTE_DIR := "res://kit/palettes"
@@ -17,7 +18,7 @@ signal prefab_armed(kit: String, name: String)
 signal tile_selected(kit: String, name: String, meshlib: String)
 signal settings_changed(random_yaw: bool, snap_enabled: bool, snap_step: float, yaw_deg: float)
 signal autofloor_changed(on: bool)
-signal conform_tiles_requested
+signal conform_tiles_requested(tile_lift: float, prefab_apron: float)
 signal tidy_authoring_requested
 
 # Per kit, ordered families: { kit -> [ { label, items:[ {kit,name,kind,thumb} ] } ] ].
@@ -32,6 +33,8 @@ var _yaw_field: SpinBox
 var _snap: CheckButton
 var _snap_step: SpinBox
 var _autofloor_btn: CheckButton
+var _conform_lift: SpinBox
+var _conform_apron: SpinBox
 var _content: VBoxContainer
 var _button_group := ButtonGroup.new()
 
@@ -159,28 +162,32 @@ func _thumb_path(kit: String, name: String) -> String:
 # ------------------------------------------------------------------ ui
 
 func _build_ui() -> void:
-	var toolbar := HBoxContainer.new()
-	add_child(toolbar)
+	# Two toolbar rows: kit tabs + search on the first, placement/conform tools on the
+	# second — one row overflows the dock width with this many kits.
+	var tabs_row := HBoxContainer.new()
+	add_child(tabs_row)
 
 	_tabs = TabBar.new()
-	_tabs.clip_tabs = false
+	_tabs.clip_tabs = true   # overflow scrolls with arrows instead of blocking the row
+	_tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for kit in _kits:
 		_tabs.add_tab(kit.capitalize())
 	_tabs.tab_changed.connect(func(_i):
 		_apply_kit_snap()
 		_rebuild_content())
-	toolbar.add_child(_tabs)
+	tabs_row.add_child(_tabs)
 
-	toolbar.add_child(VSeparator.new())
+	tabs_row.add_child(VSeparator.new())
 
 	_search = LineEdit.new()
 	_search.placeholder_text = "Search all kits"
 	_search.custom_minimum_size = Vector2(160, 0)
 	_search.clear_button_enabled = true
 	_search.text_changed.connect(func(_t): _rebuild_content())
-	toolbar.add_child(_search)
+	tabs_row.add_child(_search)
 
-	toolbar.add_child(VSeparator.new())
+	var toolbar := HBoxContainer.new()
+	add_child(toolbar)
 
 	_random_yaw = CheckButton.new()
 	_random_yaw.text = "Random yaw"
@@ -236,8 +243,33 @@ func _build_ui() -> void:
 			+ "structures) to its base height (footprint incl. multi-cell overhangs, 4 m " \
 			+ "fade-out) — the pad-flattening brush pass, automated. Destructive; one undo " \
 			+ "step per terrain."
-	conform_btn.pressed.connect(func(): conform_tiles_requested.emit())
+	conform_btn.pressed.connect(func():
+		conform_tiles_requested.emit(_conform_lift.value, _conform_apron.value))
 	toolbar.add_child(conform_btn)
+
+	_conform_lift = SpinBox.new()
+	_conform_lift.min_value = -1.0
+	_conform_lift.max_value = 1.0
+	_conform_lift.step = 0.05
+	_conform_lift.value = TileConform.DEFAULT_TILE_LIFT
+	_conform_lift.suffix = "m"
+	_conform_lift.tooltip_text = "Tile lift: how far above the tile base plane the " \
+			+ "conformed terrain may rise. Terrain lands on the highest 8-bit heightmap " \
+			+ "step at or below base + lift (with a 151 m terrain one step is ~0.6 m), " \
+			+ "so raising this closes the terrain-to-tile gap; past the road deck height " \
+			+ "(0.24 m) terrain can poke through the roadway."
+	toolbar.add_child(_conform_lift)
+
+	_conform_apron = SpinBox.new()
+	_conform_apron.min_value = 0.0
+	_conform_apron.max_value = 8.0
+	_conform_apron.step = 0.5
+	_conform_apron.value = TileConform.DEFAULT_PREFAB_APRON
+	_conform_apron.suffix = "m"
+	_conform_apron.tooltip_text = "Building apron: flat ground kept around each prefab " \
+			+ "building's footprint before the 4 m fade-out starts — larger values push " \
+			+ "the terrain drop further from the walls (fixes the pedestal look)."
+	toolbar.add_child(_conform_apron)
 
 	var tidy_btn := Button.new()
 	tidy_btn.text = "Tidy authoring"

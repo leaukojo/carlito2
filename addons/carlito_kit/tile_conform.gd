@@ -5,15 +5,26 @@ extends RefCounted
 ## height — so a tile city sits on terrain without hand-stroking 12 m flatten pads.
 ## The RoadPath Conform discipline throughout: destructive-by-button, the pure pixel
 ## work is RoadBuilder.conform_rects (tested), one undoable _commit_generated action
-## per terrain. Targets ROUND-quantize to the 8-bit grid (closest meet either side of
-## the base; the tiles' deck height hides the residual — see conform_rects' doc).
-## Editor-only (addons/), so editor API types are fine here.
+## per terrain. Tile targets FLOOR-quantize to the 8-bit grid with an adjustable lift
+## (terrain meets the highest step at or below base + lift — never above, so a tall
+## island's coarse quantization can't poke terrain through a thin road deck); prefab
+## targets keep the round-quantize closest meet. Editor-only (addons/), so editor API
+## types are fine here.
 
 const Recipe := preload("res://kit/helpers/kit_recipe.gd")
 const RECIPE_DIR := "res://kit/import"
 
 ## Flatten fade-out (m) beyond the tile footprint union — the RoadPath default.
 const FALLOFF := 4.0
+
+## Default tile lift (m): how far above the tile base plane the terrain may rise.
+## Floor-quantized, so terrain lands on the highest 8-bit step at or below
+## base + lift. Road decks are 0.24 m tall — keep the lift under that.
+const DEFAULT_TILE_LIFT := 0.2
+
+## Default flat apron (m) grown around each prefab building's footprint before the
+## falloff drop starts — keeps the building off a "pedestal" edge.
+const DEFAULT_PREFAB_APRON := 2.0
 
 ## Prefab families whose placed pieces flatten a terrain pad under themselves on Conform.
 ## Add/remove family names (from kit/import/*.json) to change behavior.
@@ -73,8 +84,11 @@ static func footprint_rects(grid: GridMap) -> Dictionary:
 
 ## Conform every terrain under ALL painted tile GridMaps (any meshlib not excluded) plus
 ## every placed prefab building whose family is in CONFORM_PREFAB_FAMILIES, in one pass.
-## Entry point for the palette dock's Conform button.
-static func conform_all(scene_root: Node) -> void:
+## Entry point for the palette dock's Conform button. tile_lift raises the tile targets
+## (floor-quantized — see the class doc); prefab_apron grows each building footprint so
+## flat ground extends past the walls before the falloff drop.
+static func conform_all(scene_root: Node, tile_lift := DEFAULT_TILE_LIFT,
+		prefab_apron := DEFAULT_PREFAB_APRON) -> void:
 	if scene_root == null:
 		push_warning("Kit: no scene open to conform.")
 		return
@@ -85,6 +99,7 @@ static func conform_all(scene_root: Node) -> void:
 
 	var rects: Array[Rect2] = []
 	var base_ys := PackedFloat32Array()
+	var is_tile := PackedByteArray()
 
 	# Every painted tile GridMap (skip excluded meshlibs); reuse footprint_rects verbatim.
 	for node in authoring.find_children("*", "GridMap", true, false):
@@ -97,9 +112,11 @@ static func conform_all(scene_root: Node) -> void:
 		for i in g_rects.size():
 			rects.append(g_rects[i])
 			base_ys.append(g_base[i])
+			is_tile.append(1)
 
 	# Every placed KitPiece (duck-typed) whose family is listed: footprint = merged
-	# world-space AABB of its mesh descendants, target = the piece's world origin Y.
+	# world-space AABB of its mesh descendants + the flat apron, target = the piece's
+	# world origin Y.
 	var recipe_cache := {}
 	for node in authoring.find_children("*", "Node3D", true, false):
 		if not node.has_method("is_carlito_kit_piece"):
@@ -109,19 +126,24 @@ static func conform_all(scene_root: Node) -> void:
 		var fp := _piece_footprint(node as Node3D)
 		if not fp.has_area():
 			continue
-		rects.append(fp)
+		rects.append(fp.grow(maxf(prefab_apron, 0.0)))
 		base_ys.append((node as Node3D).global_position.y)
+		is_tile.append(0)
 
 	if rects.is_empty():
 		push_warning("Kit: no painted tiles or listed prefab buildings to conform under.")
 		return
-	_conform_terrains(scene_root, rects, base_ys)
+	_conform_terrains(scene_root, rects, base_ys, is_tile, tile_lift)
 
 
 ## Flatten every overlapping terrain to the given world-space XZ footprint rects + target
-## base-plane world heights (paired arrays). One undoable _commit_generated per terrain.
+## base-plane world heights (paired arrays; is_tile flags tile entries). Tile targets get
+## tile_lift added, then FLOOR-quantize to the terrain's 8-bit grid here (a per-rect
+## constant, so pre-quantizing is exact; conform_rects' round downstream is then an
+## identity) — terrain never rises past base + lift. Prefab targets stay unquantized and
+## take conform_rects' round (closest meet). One undoable _commit_generated per terrain.
 static func _conform_terrains(scene_root: Node, rects: Array[Rect2],
-		base_ys: PackedFloat32Array) -> void:
+		base_ys: PackedFloat32Array, is_tile: PackedByteArray, tile_lift: float) -> void:
 	var terrains: Array[Node] = []
 	ScatterBase.find_terrains_under(scene_root, terrains)
 	var touched := 0
@@ -141,10 +163,14 @@ static func _conform_terrains(scene_root: Node, rects: Array[Rect2],
 			local_rects.append(Rect2(rects[i].position
 					- Vector2(t3d.global_position.x, t3d.global_position.z),
 					rects[i].size))
-			var tn := (base_ys[i] - t3d.global_position.y) / amp
+			var base_y := base_ys[i] + (tile_lift if is_tile[i] == 1 else 0.0)
+			var tn := (base_y - t3d.global_position.y) / amp
 			if tn < 0.0 or tn > 1.0:
 				clamped = true
-			targets.append(clampf(tn, 0.0, 1.0))
+			tn = clampf(tn, 0.0, 1.0)
+			if is_tile[i] == 1:
+				tn = floorf(tn * 255.0) / 255.0
+			targets.append(tn)
 		if local_rects.is_empty():
 			continue
 		if clamped:
