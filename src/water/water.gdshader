@@ -16,12 +16,38 @@ uniform float deep_alpha = 0.96;
 uniform float depth_fade_m = 6.0;
 uniform float wave_height = 0.10;
 uniform float wave_speed = 1.1;
+// Sky tint mixed in at grazing angles (Fresnel). Keep close to the level's sky/horizon.
+uniform vec4 sky_color : source_color = vec4(0.55, 0.70, 0.85, 1.0);
+// How much the moving wave normals ripple the surface (0 = flat lighting).
+uniform float normal_strength = 0.6;
+// Distance (m) over which wave normals settle back to flat, so distant water reflects the
+// sky cleanly instead of making the clouds look wavy. Ripple stays full up close.
+uniform float normal_fade_dist = 60.0;
 
 uniform sampler2D depth_tex : hint_depth_texture, repeat_disable, filter_nearest;
 
+// Same displacement the vertex uses, plus its analytic slope so lighting reacts to the
+// waves. A second, faster/finer octave rides on the normals only (no extra displacement)
+// to add sparkle without more vertex motion. All ALU — no texture reads.
 void vertex() {
 	float t = TIME * wave_speed;
-	VERTEX.y += sin(t + VERTEX.x * 0.55) * sin(t * 0.8 + VERTEX.z * 0.47) * wave_height;
+	float sx = sin(t + VERTEX.x * 0.55);
+	float sz = sin(t * 0.8 + VERTEX.z * 0.47);
+	VERTEX.y += sx * sz * wave_height;
+
+	// d/dx and d/dz of the wave surface -> tangent-space slope.
+	float dx = 0.55 * cos(t + VERTEX.x * 0.55) * sz * wave_height;
+	float dz = 0.47 * sx * cos(t * 0.8 + VERTEX.z * 0.47) * wave_height;
+	// Finer ripple octave (normal only).
+	float t2 = TIME * wave_speed * 1.7;
+	dx += 0.9 * cos(t2 + VERTEX.x * 1.9) * wave_height * 0.5;
+	dz += 0.9 * cos(t2 * 0.9 + VERTEX.z * 2.1) * wave_height * 0.5;
+
+	// Settle the ripple to flat with distance: near water stays wavy, far water goes
+	// glassy so the reflected sky/clouds aren't distorted.
+	float view_dist = -(MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).z;
+	float fade = clamp(1.0 - view_dist / max(normal_fade_dist, 0.001), 0.0, 1.0);
+	NORMAL = normalize(vec3(-dx * normal_strength * fade, 1.0, -dz * normal_strength * fade));
 }
 
 void fragment() {
@@ -37,8 +63,14 @@ void fragment() {
 	float water_depth = scene_dist - frag_dist;
 	float t = clamp(water_depth / max(depth_fade_m, 0.001), 0.0, 1.0);
 
-	ALBEDO = mix(water_color.rgb, deep_color.rgb, t);
-	ALPHA = mix(shallow_alpha, deep_alpha, t);
-	ROUGHNESS = 0.12;
-	SPECULAR = 0.6;
+	vec3 base = mix(water_color.rgb, deep_color.rgb, t);
+
+	// Fresnel: at grazing angles water turns reflective and picks up the sky; looking
+	// straight down it stays its own color. NORMAL/VIEW are view-space here.
+	float fresnel = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
+	ALBEDO = mix(base, sky_color.rgb, fresnel * 0.6);
+	ALPHA = mix(mix(shallow_alpha, deep_alpha, t), 1.0, fresnel * 0.5);
+
+	ROUGHNESS = 0.08;
+	SPECULAR = 0.7;
 }
