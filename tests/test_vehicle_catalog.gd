@@ -15,6 +15,7 @@ func test_family_of_and_scene_of() -> void:
 	assert_str(VehicleCatalog.family_of("firetruck")).is_equal("truck")
 	assert_str(VehicleCatalog.family_of("tractor-shovel")).is_equal("tractor")
 	assert_str(VehicleCatalog.family_of("boat")).is_equal("boat")
+	assert_str(VehicleCatalog.family_of("bike")).is_equal("bike")
 	assert_str(VehicleCatalog.family_of("nope")).is_equal("")
 	assert_str(VehicleCatalog.scene_of("sedan")).is_equal("res://src/vehicles/kenney/sedan.tscn")
 	assert_str(VehicleCatalog.scene_of("nope")).is_equal("")
@@ -26,6 +27,7 @@ func test_legacy_variant_is_first_in_its_family() -> void:
 	assert_str(VehicleCatalog.first_in_family("truck")).is_equal("truck")
 	assert_str(VehicleCatalog.first_in_family("tractor")).is_equal("tractor")
 	assert_str(VehicleCatalog.first_in_family("boat")).is_equal("boat")
+	assert_str(VehicleCatalog.first_in_family("bike")).is_equal("bike")
 
 
 func test_variants_in_family_grouping() -> void:
@@ -36,6 +38,7 @@ func test_variants_in_family_grouping() -> void:
 	assert_int(VehicleCatalog.variants_in_family("truck").size()).is_equal(6)
 	assert_int(VehicleCatalog.variants_in_family("tractor").size()).is_equal(4)
 	assert_int(VehicleCatalog.variants_in_family("boat").size()).is_equal(4)  # legacy + 3 watercraft
+	assert_int(VehicleCatalog.variants_in_family("bike").size()).is_equal(3)  # speed + motocross + scooter
 
 
 func test_next_in_family_wraps() -> void:
@@ -45,7 +48,11 @@ func test_next_in_family_wraps() -> void:
 	assert_str(VehicleCatalog.next_in_family("car")).is_equal(car[1])
 	var boat := VehicleCatalog.variants_in_family("boat")
 	assert_str(VehicleCatalog.next_in_family("boat")).is_equal(boat[1])
-	# unknown is returned unchanged (and a lone family would be, too).
+	# the bike family cycles through its recolors and wraps back to the legacy body.
+	var bike := VehicleCatalog.variants_in_family("bike")
+	assert_str(VehicleCatalog.next_in_family("bike")).is_equal(bike[1])
+	assert_str(VehicleCatalog.next_in_family(bike[bike.size() - 1])).is_equal("bike")
+	# unknown is returned unchanged.
 	assert_str(VehicleCatalog.next_in_family("nope")).is_equal("nope")
 
 

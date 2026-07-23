@@ -26,6 +26,7 @@ var telemetry: VehicleTelemetry  ## built in _ready via _make_telemetry (subclas
 var spawn_transform: Transform3D
 
 var _steer := 0.0
+var _applied_steer := 0.0  ## steer angle applied to steered wheels this tick (rad); read by visual-only subclasses (bike)
 var _grip_terrains: Array[Node] = []  ## painted terrains the wheels sample for surface grip
 var _terrains_found := false           ## one-shot guard for the terrain scan below
 var _prev_velocity := Vector3.ZERO  ## last tick's linear_velocity, for accel/impact
@@ -41,6 +42,10 @@ func _ready() -> void:
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
 	center_of_mass = spec.center_of_mass
 	can_sleep = false
+	# Stability-assist yaw/roll bleed (bikes only; 0 leaves the engine default untouched).
+	if spec.angular_damping > 0.0:
+		angular_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
+		angular_damp = spec.angular_damping
 	drivetrain = Drivetrain.new(spec)
 	for i in spec.wheel_positions.size():
 		var pos := spec.wheel_positions[i]
@@ -113,9 +118,17 @@ func _physics_process(delta: float) -> void:
 		_grip_terrains = _find_grip_terrains()
 		_terrains_found = true
 
+	# High-speed steering falloff: shrink usable lock as speed rises (min_steer_frac == 1.0
+	# disables it — the default for every vehicle except the bikes).
+	var steer_falloff := 1.0
+	if spec.steer_falloff_speed > 0.0:
+		steer_falloff = lerpf(1.0, spec.min_steer_frac,
+				clampf(absf(ground_speed) / spec.steer_falloff_speed, 0.0, 1.0))
+	_applied_steer = -_steer * deg_to_rad(spec.max_steer_deg * steer_falloff)
+
 	var space := get_world_3d().direct_space_state
 	for w in wheels:
-		w.steer_angle = -_steer * deg_to_rad(spec.max_steer_deg) if w.steered else 0.0
+		w.steer_angle = _applied_steer if w.steered else 0.0
 		var drive_t := axle_torque / driven_count if w.driven else 0.0
 		var brake_t := input.brake * spec.brake_torque
 		if w.is_rear:

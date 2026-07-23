@@ -60,7 +60,7 @@ var _heads: Array[SpotLight3D] = []
 ## Authored basis per head, captured at setup — the pitch is applied relative to it so a
 ## scene that aims a lamp off-axis keeps its aim.
 var _head_rest: Array[Basis] = []
-## -1.0 for a left-side lamp, +1.0 for a right-side one (from its authored local X).
+## -1.0 left / +1.0 right / 0.0 centred lamp (from its authored local X).
 var _head_side: Array[float] = []
 var _rear_mat: StandardMaterial3D
 var _turn_l_mat: StandardMaterial3D
@@ -89,7 +89,9 @@ func setup(vehicle: Node, spec: VehicleSpec) -> void:
 		if n is SpotLight3D:
 			_heads.append(n)
 			_head_rest.append((n as SpotLight3D).transform.basis)
-			_head_side.append(-1.0 if (n as SpotLight3D).position.x < 0.0 else 1.0)
+			# -1 left / +1 right / 0 centred (a lone centre lamp must not splay sideways).
+			var head_x := (n as SpotLight3D).position.x
+			_head_side.append(0.0 if absf(head_x) < 0.01 else signf(head_x))
 	_rear_mat = _bind(vehicle, spec.brake_lamp_paths, REAR_COLOR, REAR_ENERGY[Rear.OFF])
 	_turn_l_mat = _bind(vehicle, spec.turn_left_paths, TURN_COLOR, TURN_OFF_ENERGY)
 	_turn_r_mat = _bind(vehicle, spec.turn_right_paths, TURN_COLOR, TURN_OFF_ENERGY)

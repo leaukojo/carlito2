@@ -11,6 +11,10 @@ extends Resource
 @export_group("Body")
 @export var mass := 1200.0                         ## kg, applied to the RigidBody3D
 @export var center_of_mass := Vector3(0, -0.3, 0)  ## body-space; low COM keeps the car flat
+## Angular damping applied to the RigidBody (0 = engine default, the case for every wheeled
+## car/truck/tractor). The bikes raise it: the narrow-track trick gives them a tiny yaw
+## inertia, so a stability-assist yaw bleed is what stops a light bike spinning out.
+@export var angular_damping := 0.0
 
 @export_group("Wheels")
 ## Hub anchors in body space, order FL, FR, RL, RR (front = -Z, right = +X).
@@ -81,6 +85,11 @@ extends Resource
 @export_group("Steering")
 @export var max_steer_deg := 32.0
 @export var steer_speed := 2.5  ## normalized steer units/s slewed toward input
+## High-speed steering falloff: at/above steer_falloff_speed the usable lock shrinks to
+## this fraction of max_steer_deg (linear below it). 1.0 = constant lock, the default for
+## every vehicle — only the bikes lower it, to stay controllable past ~80 km/h.
+@export_range(0.0, 1.0) var min_steer_frac := 1.0
+@export var steer_falloff_speed := 30.0  ## m/s at which min_steer_frac is fully reached
 
 @export_group("Lamps")
 ## NodePaths (relative to the vehicle root) naming the scene-authored lamp nodes

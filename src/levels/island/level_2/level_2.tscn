@@ -66,7 +66,7 @@ script = ExtResource("3_cam")
 [node name="Spawn" type="Marker3D" parent="." unique_id=1134507317]
 transform = Transform3D(-0.44203833, 0, 0.89699626, 0, 1, 0, -0.89699626, 0, -0.44203833, 126.54504, 51.396133, 186.87962)
 script = ExtResource("4_spawn")
-vehicle_types = PackedStringArray("car", "truck", "tractor")
+vehicle_types = PackedStringArray("car", "truck", "tractor", "bike")
 
 [node name="WaterSpawn" type="Marker3D" parent="." unique_id=2087814946]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 270, 1.3, 0)
