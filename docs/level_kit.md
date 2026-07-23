@@ -236,8 +236,11 @@ everywhere is duck-typed marker methods (`is_carlito_authoring` / `is_carlito_ki
   each RoadPath has a **Paint splat under road** button (centerline + deck strip at the
   paved half-width minus a 1 m inset) and the palette toolbar a **Paint splat under
   tiles** button (each cell's actual mesh faces projected to XZ — a curve paints only the
-  curve — eroded one splat pixel); both are destructive-by-button, write channel 6
-  (Asphalt) at full strength with a hard edge, biased to **undercover so the paint stays
+  curve — eroded one splat pixel); both are destructive-by-button and paint at full
+  strength with a hard edge — the RoadPath button writes the **profile's**
+  `splat_channel` (asphalt/city presets 6, gravel preset 7; swapping a profile does NOT
+  repaint, and repainting never erases the old strip's excess — recovery is Auto-splat +
+  repaint), the tiles button channel 6 — biased to **undercover so the paint stays
   hidden under the deck** (pure math in `kit/helpers/splat_paint.gd`, tested), one undo
   step per terrain. Without them a conformed road/tile street inherits the grip of the
   splat painted beneath it — usually grass, 0.8 — because the wheels sample the terrain

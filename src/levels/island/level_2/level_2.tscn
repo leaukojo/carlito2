@@ -10,6 +10,7 @@
 [ext_resource type="Shader" uid="uid://bcdkfxw2svriw" path="res://kit/terrain/terrain_splat.gdshader" id="8_shader"]
 [ext_resource type="Script" uid="uid://bqwd2fww3l5yg" path="res://src/water/water_surface.gd" id="9_water"]
 [ext_resource type="Script" uid="uid://t88htpmwukbg" path="res://kit/helpers/authoring_root.gd" id="10_authoring"]
+[ext_resource type="Texture2D" uid="uid://b1rclbqqfpp0r" path="res://src/levels/island/level_2/level_2_island_splat2.png" id="11_0473h"]
 [ext_resource type="Environment" uid="uid://bjh6g6yntyvh1" path="res://src/levels/base/default_env.tres" id="11_env"]
 [ext_resource type="Script" uid="uid://cpl5vh8pdc04w" path="res://kit/helpers/road_path.gd" id="12_ctgma"]
 [ext_resource type="Resource" uid="uid://3r6iaciwp2fk" path="res://kit/roads/asphalt_profile.tres" id="13_6n34x"]
@@ -36,6 +37,7 @@ shader_parameter/color6 = Color(0.3, 0.24, 0.17, 1)
 shader_parameter/color7 = Color(0.22, 0.22, 0.24, 1)
 shader_parameter/color8 = Color(0.62, 0.6, 0.56, 1)
 shader_parameter/splatmap = ExtResource("7_splat")
+shader_parameter/splatmap2 = ExtResource("11_0473h")
 shader_parameter/blend_sharpness = 8.0
 shader_parameter/roughness_value = 1.0
 
@@ -74,7 +76,7 @@ script = ExtResource("4_spawn")
 vehicle_types = PackedStringArray("boat")
 is_water = true
 
-[node name="PlaneSpawn" type="Marker3D" parent="."]
+[node name="PlaneSpawn" type="Marker3D" parent="." unique_id=1159526462]
 transform = Transform3D(-0.9995494, 0, -0.0300165, 0, 1, 0, 0.0300165, 0, -0.9995494, -169.5, 80.9, 68)
 script = ExtResource("4_spawn")
 vehicle_types = PackedStringArray("plane")
@@ -105,6 +107,7 @@ falloff_end = 1.0
 coast_roughness = 0.7
 terrace_flat = 0.095
 splatmap = ExtResource("7_splat")
+splatmap2 = ExtResource("11_0473h")
 channel_names = PackedStringArray("Grass", "Dirt", "Sand", "Rock", "Snow", "Mud", "Asphalt", "Gravel")
 channel_grip = PackedFloat32Array(0.8, 0.7, 0.6, 0.7, 0.75, 0.5, 1, 0.85)
 dirt_slope_deg = 45.0

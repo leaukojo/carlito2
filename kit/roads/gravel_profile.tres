@@ -13,6 +13,7 @@ script = ExtResource("1_profile")
 lane_width = 2.2
 shoulder_width = 0.8
 edge_line_width = 0.0
+splat_channel = 7
 edge_drop = 0.25
 drop_run = 0.6
 surface_material = SubResource("mat_gravel")

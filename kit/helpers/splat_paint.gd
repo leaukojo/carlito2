@@ -97,8 +97,8 @@ static func paint_strip(images: Array[Image], units: Array[Color],
 ## Paint every pixel whose center lies inside one of the terrain-local XZ triangles
 ## (`tris`: meters, 3 verts per triangle — a GridMap cell's actual item-mesh faces
 ## projected to XZ, so a curve tile paints only the curve, never its full cell AABB),
-## then ERODED by one pixel (4-neighbor): a covered pixel with any uncovered neighbor is
-## dropped. Undercoverage on purpose — splat weights are bilinear-sampled, so a painted
+## then ERODED by one pixel (8-neighbor, diagonals included): a covered pixel with any
+## uncovered neighbor is dropped. Undercoverage on purpose — splat weights are bilinear-sampled, so a painted
 ## pixel bleeds up to one pixel outward; eroding keeps the sharpened border under the
 ## mesh instead of peeking past its edge. Returns the tight dirty Rect2i in pixels.
 static func paint_tris(images: Array[Image], units: Array[Color], tris: PackedVector2Array,
@@ -115,11 +115,19 @@ static func paint_tris(images: Array[Image], units: Array[Color], tris: PackedVe
 		for px in iw:
 			if mask[pz * iw + px] != 1:
 				continue
-			# 4-neighbor erosion; off-image counts as uncovered (a mesh reaching the
-			# map border still stays inset).
-			if px == 0 or px == iw - 1 or pz == 0 or pz == ih - 1 \
-					or mask[pz * iw + px - 1] == 0 or mask[pz * iw + px + 1] == 0 \
-					or mask[(pz - 1) * iw + px] == 0 or mask[(pz + 1) * iw + px] == 0:
+			# 8-neighbor erosion — diagonals INCLUDED: at a convex corner (two road
+			# tiles meeting at an angle) a 4-neighbor check keeps the corner pixel
+			# (both its axis neighbors lie on the L's arms) and its bilinear bleed
+			# peeks diagonally past the mesh edge. Off-image counts as uncovered (a
+			# mesh reaching the map border still stays inset).
+			if px == 0 or px == iw - 1 or pz == 0 or pz == ih - 1:
+				continue
+			var open := false
+			for dz in range(-1, 2):
+				for dx in range(-1, 2):
+					if mask[(pz + dz) * iw + px + dx] == 0:
+						open = true
+			if open:
 				continue
 			_paint(images, units, px, pz, dirty)
 	return _dirty_rect(dirty)

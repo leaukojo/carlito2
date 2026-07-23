@@ -42,6 +42,15 @@ const SLOT_BASE := 3
 	set(value):
 		drop_run = value
 		emit_changed()
+## Terrain paint channel RoadPath's "Paint splat under road" writes under the deck (0..7
+## into the terrain's channel_names / channel_grip tables — stock names: 6 = Asphalt,
+## 7 = Gravel). Lives on the profile because the profile IS the surface: swapping a road
+## to the gravel preset makes the next repaint write gravel. Repainting is still a
+## button — changing this (or any width) does NOT touch already-painted splat.
+@export_range(0, 7) var splat_channel := 6:
+	set(value):
+		splat_channel = value
+		emit_changed()
 ## Bridge underside: a solid box (two vertical walls + a bottom strip) hanging this far
 ## below the road's outer edge. 0 = no base (default) — every non-bridge profile stays
 ## byte-identical. Deep enough should reach below the gap it spans (e.g. under sea level).

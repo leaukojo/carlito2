@@ -101,12 +101,12 @@ const SPLAT_PAINT_INSET := 1.0
 @export_tool_button("Conform terrain (destructive)") var _conform_action := _conform_terrain
 
 @export_group("Paint splat")
-## Terrain paint channel written under the deck (0..7 into the terrain's channel_names /
-## channel_grip tables; default 6 = Asphalt in the stock names). RayWheel samples the
-## terrain splat under a conformed road's deck, so an unpainted road inherits the grip of
-## whatever ground it was built over — this button paints the ribbon footprint so the
-## road grips like its own surface.
-@export_range(0, 7) var splat_channel := 6
+## Paints the profile's `splat_channel` (asphalt preset 6, gravel preset 7) under the
+## deck. RayWheel samples the terrain splat under a conformed road's deck, so an
+## unpainted road inherits the grip of whatever ground it was built over — this button
+## paints the ribbon footprint so the road grips like its own surface. Destructive and
+## additive: swapping the profile does NOT repaint, and repainting a narrower profile
+## does not erase the old strip's excess (recovery: Auto-splat, then repaint).
 @warning_ignore("unused_private_class_variable")
 @export_tool_button("Paint splat under road (destructive)") var _paint_splat_action := _paint_splat
 
@@ -596,6 +596,7 @@ func _paint_splat() -> void:
 	# Same sample/deck geometry as Conform (see _conform_terrain) — centerline at the
 	# extrusion's ring offsets plus a flat strip on the same frames so yawing segments
 	# are covered — but at the INSET paved width, never the skirted full width.
+	var channel: int = profile.splat_channel
 	var pw: float = profile.paved_half_width() - SPLAT_PAINT_INSET
 	if pw <= 0.0:
 		push_warning("RoadPath '%s': profile too narrow to paint under (paved half-width %.2f m <= %.1f m inset)." % [name, profile.paved_half_width(), SPLAT_PAINT_INSET])
@@ -624,7 +625,7 @@ func _paint_splat() -> void:
 			push_warning("RoadPath: terrain '%s' has no usable splatmap — run Auto-splat first." % t.name)
 			continue
 		var img2: Image = SplatPaint.decode(t.get("splatmap2"))
-		if img2 == null and splat_channel >= 4:
+		if img2 == null and channel >= 4:
 			# The brush's convention: the second weight map appears on the first
 			# stroke of a channel >= 4.
 			img2 = Image.create(img.get_width(), img.get_height(), false,
@@ -643,10 +644,10 @@ func _paint_splat() -> void:
 			deck.append(Vector2(w.x - t3d.global_position.x,
 					w.z - t3d.global_position.z))
 		var images: Array[Image] = [img]
-		var units: Array[Color] = [BrushOps.unit_slice(splat_channel, 0)]
+		var units: Array[Color] = [BrushOps.unit_slice(channel, 0)]
 		if img2 != null:
 			images.append(img2)
-			units.append(BrushOps.unit_slice(splat_channel, 1))
+			units.append(BrushOps.unit_slice(channel, 1))
 		var size: Vector2 = t.get("terrain_size")
 		var dirty := SplatPaint.paint_strip(images, units, samples, pw,
 				size.x, size.y, deck)
@@ -663,7 +664,7 @@ func _paint_splat() -> void:
 	if touched == 0:
 		push_warning("RoadPath: no terrain splat under this road changed.")
 	else:
-		print("RoadPath '%s': painted splat channel %d on %d terrain(s)." % [name, splat_channel, touched])
+		print("RoadPath '%s': painted splat channel %d on %d terrain(s)." % [name, channel, touched])
 
 
 ## Whether any centerline sample lands within `pad` of the terrain's XZ rect.

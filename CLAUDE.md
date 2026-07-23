@@ -142,6 +142,16 @@ junctions, lane markings, traffic.
   hierarchy, <0 inverts friction and skips the friction circle); and the wheel picks the
   terrain whose **surface is nearest the contact** within `RayWheel.SURFACE_GRIP_REACH`,
   never XZ alone — otherwise a bridge or ramp inherits the ice painted under it.
+- Corollary: roads/tiles conformed onto terrain DO read the splat under the deck, so an
+  unpainted road grips like grass (0.8), not asphalt (1.0). Fix is authoring, not code:
+  RoadPath's **Paint splat under road** button and the palette dock's **Paint splat under
+  tiles** button (`kit/helpers/splat_paint.gd`, tested) paint under the deck (roads:
+  the PROFILE's `splat_channel` — asphalt/city 6, gravel 7; tiles: 6; paint is
+  destructive AND additive — profile swaps don't repaint, repaints don't erase),
+  biased to UNDERCOVER (paved width − 1 m inset for ribbons; actual mesh faces + 1 px
+  8-neighbor erosion for tiles) so the paint never peeks past the deck — don't "fix" the
+  inset/erosion to widen coverage. Bridges need nothing and are skipped on purpose: out
+  of grip reach = neutral 1.0 = asphalt.
 
 **Input, lamps, bridge**
 
