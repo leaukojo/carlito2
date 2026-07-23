@@ -13,6 +13,8 @@ extends Node3D
 var _level: Node3D = null
 var _select: LevelSelect = null
 var _garage: GarageMenu = null
+var _loading: LoadingScreen = null
+var _loading_path := ""  # non-empty while a threaded level load is in flight
 
 
 func _ready() -> void:
@@ -62,8 +64,8 @@ func _cycle_vehicle() -> void:
 
 ## Tear down the active level and return to the level-select screen (Esc / MENU button).
 func _return_to_menu() -> void:
-	if _select != null:
-		return  # already at the menu
+	if _select != null or _loading_path != "":
+		return  # already at the menu, or a level load is in flight
 	_close_garage()
 	if _level != null:
 		_level.queue_free()
@@ -87,10 +89,48 @@ func _on_level_chosen(scene_path: String) -> void:
 	_load_level(scene_path)
 
 
+## Kick off a threaded level load behind a loading screen; _process polls progress.
+## Headless (CI smoke) keeps the synchronous path — nobody is watching a bar there.
 func _load_level(scene_path: String) -> void:
 	if _level != null:
 		_level.queue_free()
-	_level = (load(scene_path) as PackedScene).instantiate()
+		_level = null
+	if DisplayServer.get_name() == "headless":
+		_finish_load(load(scene_path) as PackedScene)
+		return
+	_loading = LoadingScreen.new()
+	_ui.add_child(_loading)
+	_loading_path = scene_path
+	ResourceLoader.load_threaded_request(scene_path)
+
+
+func _process(_delta: float) -> void:
+	if _loading_path == "":
+		return
+	var progress: Array = []
+	var status := ResourceLoader.load_threaded_get_status(_loading_path, progress)
+	match status:
+		ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			_loading.set_progress(float(progress[0]))
+		ResourceLoader.THREAD_LOAD_LOADED:
+			var scene := ResourceLoader.load_threaded_get(_loading_path) as PackedScene
+			_loading_path = ""
+			_loading.set_progress(1.0)
+			# Instantiate blocks this frame (level._ready spawns the vehicle
+			# synchronously); the loading screen stays up over the freeze.
+			_finish_load(scene)
+			_loading.queue_free()
+			_loading = null
+		_:
+			push_error("Level load failed: %s" % _loading_path)
+			_loading_path = ""
+			_loading.queue_free()
+			_loading = null
+			_show_level_select()
+
+
+func _finish_load(scene: PackedScene) -> void:
+	_level = scene.instantiate()
 	add_child(_level)  # level._ready() spawns the vehicle synchronously here
 	_level.vehicle_changed.connect(_on_vehicle_changed)
 	_bind_hud()
