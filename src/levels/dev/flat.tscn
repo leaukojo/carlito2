@@ -33,6 +33,7 @@ environment = ExtResource("4_env")
 transform = Transform3D(0.866025, 0.353553, -0.353553, 0, 0.707107, 0.707107, 0.5, -0.612372, 0.612372, 0, 20, 0)
 light_color = Color(1, 0.96, 0.88, 1)
 shadow_enabled = true
+directional_shadow_blend_splits = true
 directional_shadow_max_distance = 150.0
 
 [node name="Ground" type="StaticBody3D" parent="."]
