@@ -54,10 +54,11 @@ class VehicleInput:
 	var hitch_request := 1.0  ## 0..1 requested hitch height (1 = raised/transport)
 	var pto := false          ## PTO engage request
 	# Flight controls. Defaulted so ground vehicles ignore them (the hitch/pto pattern):
-	# only PlaneVehicle reads elevator; only DroneVehicle reads climb/arm.
+	# only PlaneVehicle reads elevator/flaps; only DroneVehicle reads climb/arm.
 	var elevator := 0.0       ## -1..1, + = nose up (plane elevator)
 	var climb := 0.0          ## -1..1, + = ascend (drone vertical rate)
 	var arm := false          ## drone motor arm (rotors spin only when armed)
+	var flaps := 0.0          ## 0..1 requested flap extension (plane only)
 
 	func copy() -> VehicleInput:
 		var c := VehicleInput.new()
@@ -80,6 +81,7 @@ class VehicleInput:
 		c.elevator = elevator
 		c.climb = climb
 		c.arm = arm
+		c.flaps = flaps
 		return c
 
 
@@ -94,6 +96,7 @@ var _lights := 1  ## headlight level owned here so keyboard + touch share one st
 var _hitch_up := true  ## true = raised (transport), toggled by the local hitch key
 var _pto := false      ## local PTO engage, toggled by the local PTO key
 var _armed := false    ## local drone motor arm, toggled by the local arm key (like _pto)
+var _flaps_down := false  ## local plane flaps extended, toggled by the local flaps key
 
 
 ## Vehicles register on _ready so arbitration can read speed/gear (local reverse
@@ -139,9 +142,12 @@ func _physics_process(delta: float) -> void:
 		_pto = not _pto
 	if bool(raw.get("arm_toggle", false)):
 		_armed = not _armed
+	if bool(raw.get("flaps_toggle", false)):
+		_flaps_down = not _flaps_down
 	raw["hitch_request"] = 1.0 if _hitch_up else 0.0
 	raw["pto"] = _pto
 	raw["arm"] = _armed
+	raw["flaps"] = 1.0 if _flaps_down else 0.0
 	var speed := 0.0
 	var gear := GEAR_N
 	if _vehicle != null:
@@ -169,10 +175,11 @@ static func merge_local(a: Dictionary, b: Dictionary) -> Dictionary:
 		"lights_cycle": bool(a.get("lights_cycle", false)) or bool(b.get("lights_cycle", false)),
 		"hitch_toggle": bool(a.get("hitch_toggle", false)) or bool(b.get("hitch_toggle", false)),
 		"pto_toggle": bool(a.get("pto_toggle", false)) or bool(b.get("pto_toggle", false)),
-		# Flight axes (-1..1) sum-clamp like steer; arm edge ORs like the other toggles.
+		# Flight axes (-1..1) sum-clamp like steer; arm/flaps edges OR like the other toggles.
 		"elevator": clampf(float(a.get("elevator", 0.0)) + float(b.get("elevator", 0.0)), -1.0, 1.0),
 		"climb": clampf(float(a.get("climb", 0.0)) + float(b.get("climb", 0.0)), -1.0, 1.0),
 		"arm_toggle": bool(a.get("arm_toggle", false)) or bool(b.get("arm_toggle", false)),
+		"flaps_toggle": bool(a.get("flaps_toggle", false)) or bool(b.get("flaps_toggle", false)),
 	}
 
 
@@ -197,6 +204,7 @@ static func arbitrate_local(raw: Dictionary, speed: float, gear_byte: int,
 	out.elevator = clampf(float(raw.get("elevator", 0.0)), -1.0, 1.0)
 	out.climb = clampf(float(raw.get("climb", 0.0)), -1.0, 1.0)
 	out.arm = bool(raw.get("arm", false))
+	out.flaps = clampf(float(raw.get("flaps", 0.0)), 0.0, 1.0)
 
 	var accel := clampf(float(raw.get("accel", 0.0)), 0.0, 1.0)
 	var brake_rev := clampf(float(raw.get("brake_reverse", 0.0)), 0.0, 1.0)
@@ -256,10 +264,11 @@ static func arbitrate_bridge(vals: Dictionary) -> VehicleInput:
 	out.hitch_request = clampf(float(vals.get("hitch_pos", 100.0)) / 100.0, 0.0, 1.0)
 	out.pto = bool(vals.get("pto", false))
 	# Flight controls mirrored from sloppyCAN (already %→unit normalized in bridge_source);
-	# absent → neutral/disarmed. arm is authoritative here, no local toggle.
+	# absent → neutral/disarmed/retracted. arm and flaps are authoritative here, no local toggles.
 	out.elevator = clampf(float(vals.get("elevator", 0.0)), -1.0, 1.0)
 	out.climb = clampf(float(vals.get("climb", 0.0)), -1.0, 1.0)
 	out.arm = bool(vals.get("arm", false))
+	out.flaps = clampf(float(vals.get("flaps", 0.0)), 0.0, 1.0)
 	out.gear_auto = false  # bridge byte is exact and owns direction
 
 	var gear := int(vals.get("gear", GEAR_N))

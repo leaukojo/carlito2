@@ -1,0 +1,177 @@
+[gd_scene load_steps=23 format=3]
+
+[ext_resource type="Script" path="res://src/vehicles/plane/plane.gd" id="1_plane"]
+[ext_resource type="Resource" path="res://src/vehicles/plane/plane_spec.tres" id="2_spec"]
+
+[sub_resource type="BoxShape3D" id="FuselageShape"]
+size = Vector3(0.9, 0.9, 5.2)
+
+[sub_resource type="BoxShape3D" id="WingShape"]
+size = Vector3(7.0, 0.14, 1.4)
+
+[sub_resource type="StandardMaterial3D" id="BodyMat"]
+albedo_color = Color(0.92, 0.92, 0.9, 1)
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="AccentMat"]
+albedo_color = Color(0.78, 0.16, 0.16, 1)
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="PropMat"]
+albedo_color = Color(0.08, 0.08, 0.09, 1)
+roughness = 0.4
+
+[sub_resource type="StandardMaterial3D" id="GlassMat"]
+albedo_color = Color(0.15, 0.2, 0.28, 1)
+roughness = 0.2
+
+[sub_resource type="StandardMaterial3D" id="GearMat"]
+albedo_color = Color(0.15, 0.15, 0.16, 1)
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="WheelMat"]
+albedo_color = Color(0.1, 0.1, 0.11, 1)
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="FuselageMesh"]
+size = Vector3(0.9, 0.9, 3.4)
+
+[sub_resource type="BoxMesh" id="NoseMesh"]
+size = Vector3(0.82, 0.75, 1.0)
+
+[sub_resource type="CylinderMesh" id="SpinnerMesh"]
+top_radius = 0.16
+bottom_radius = 0.16
+height = 0.3
+
+[sub_resource type="BoxMesh" id="PropMesh"]
+size = Vector3(1.9, 0.16, 0.05)
+
+[sub_resource type="BoxMesh" id="WingMesh"]
+size = Vector3(7.0, 0.12, 1.4)
+
+[sub_resource type="BoxMesh" id="StrutMesh"]
+size = Vector3(0.06, 0.5, 0.12)
+
+[sub_resource type="BoxMesh" id="TailBoomMesh"]
+size = Vector3(0.5, 0.5, 1.4)
+
+[sub_resource type="BoxMesh" id="TailplaneMesh"]
+size = Vector3(2.6, 0.08, 0.8)
+
+[sub_resource type="BoxMesh" id="FinMesh"]
+size = Vector3(0.08, 1.0, 0.85)
+
+[sub_resource type="BoxMesh" id="CanopyMesh"]
+size = Vector3(0.84, 0.5, 1.2)
+
+[sub_resource type="BoxMesh" id="GearLegMesh"]
+size = Vector3(0.08, 0.45, 0.1)
+
+[sub_resource type="CylinderMesh" id="WheelMesh"]
+top_radius = 0.22
+bottom_radius = 0.22
+height = 0.14
+
+[node name="Plane" type="RigidBody3D"]
+script = ExtResource("1_plane")
+spec = ExtResource("2_spec")
+
+[node name="FuselageCollision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0.2)
+shape = SubResource("FuselageShape")
+
+[node name="WingCollision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.36, -0.2)
+shape = SubResource("WingShape")
+
+[node name="Fuselage" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0.2)
+mesh = SubResource("FuselageMesh")
+surface_material_override/0 = SubResource("BodyMat")
+
+[node name="Nose" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, -2.0)
+mesh = SubResource("NoseMesh")
+surface_material_override/0 = SubResource("AccentMat")
+
+[node name="Spinner" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.5, -2.6)
+mesh = SubResource("SpinnerMesh")
+surface_material_override/0 = SubResource("PropMat")
+
+[node name="Prop" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -2.72)
+mesh = SubResource("PropMesh")
+surface_material_override/0 = SubResource("PropMat")
+
+[node name="Canopy" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, -0.3)
+mesh = SubResource("CanopyMesh")
+surface_material_override/0 = SubResource("GlassMat")
+
+[node name="Wing" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.36, -0.2)
+mesh = SubResource("WingMesh")
+surface_material_override/0 = SubResource("BodyMat")
+
+[node name="StrutL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 1.05, 0.1)
+mesh = SubResource("StrutMesh")
+surface_material_override/0 = SubResource("BodyMat")
+
+[node name="StrutR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 1.05, 0.1)
+mesh = SubResource("StrutMesh")
+surface_material_override/0 = SubResource("BodyMat")
+
+[node name="TailBoom" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 2.3)
+mesh = SubResource("TailBoomMesh")
+surface_material_override/0 = SubResource("BodyMat")
+
+[node name="Tailplane" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 2.6)
+mesh = SubResource("TailplaneMesh")
+surface_material_override/0 = SubResource("BodyMat")
+
+[node name="Fin" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 2.7)
+mesh = SubResource("FinMesh")
+surface_material_override/0 = SubResource("AccentMat")
+
+[node name="NoseGearLeg" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, -2.0)
+mesh = SubResource("GearLegMesh")
+surface_material_override/0 = SubResource("GearMat")
+
+[node name="MainGearLegL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1, -0.05, 0.6)
+mesh = SubResource("GearLegMesh")
+surface_material_override/0 = SubResource("GearMat")
+
+[node name="MainGearLegR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, -0.05, 0.6)
+mesh = SubResource("GearLegMesh")
+surface_material_override/0 = SubResource("GearMat")
+
+[node name="WheelFL" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2)
+
+[node name="WheelFLMesh" type="MeshInstance3D" parent="WheelFL"]
+mesh = SubResource("WheelMesh")
+surface_material_override/0 = SubResource("WheelMat")
+
+[node name="WheelFR" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1, 0, 0.6)
+
+[node name="WheelFRMesh" type="MeshInstance3D" parent="WheelFR"]
+mesh = SubResource("WheelMesh")
+surface_material_override/0 = SubResource("WheelMat")
+
+[node name="WheelRL" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1, 0, 0.6)
+
+[node name="WheelRLMesh" type="MeshInstance3D" parent="WheelRL"]
+mesh = SubResource("WheelMesh")
+surface_material_override/0 = SubResource("WheelMat")

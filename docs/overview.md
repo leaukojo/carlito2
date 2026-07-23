@@ -1,7 +1,7 @@
 # Carlito — Architecture Overview
 
-A browser-based CAN-bus driving sandbox: drive vehicles (car / truck / tractor / boat)
-while exchanging live CAN signals with the sloppyCAN/RAMN simulator. Godot 4.6, web-first,
+A browser-based CAN-bus driving sandbox: drive vehicles (car / truck / tractor / boat /
+bike / drone / plane) while exchanging live CAN signals with the sloppyCAN/RAMN simulator. Godot 4.6, web-first,
 physics locked at 60 Hz + interpolation.
 
 This document is the human-readable map. `CLAUDE.md` is the working reference (commands,
@@ -67,9 +67,11 @@ tuning — adding a vehicle is a new spec + scene, no code), `Drivetrain` (pure 
 Vehicles needing per-tick systems beyond driving subclass `BaseVehicle` through exactly two
 virtual seams: `_make_telemetry()` (return a telemetry subclass) and `_tick_extras(input, delta)`
 (run last each physics tick). The tractor (`TractorVehicle` + cosmetic `Implement` + ISOBUS
-signals) and the boat (`BoatVehicle`, probe buoyancy) are the two subclasses.
+signals), the boat (`BoatVehicle`, probe buoyancy), and the flying pair — the drone
+(`DroneVehicle`, DroneCAN flavor: arm/climb, rotor thrust) and the plane (`PlaneVehicle`,
+CANaerospace flavor: elevator/flaps, prop thrust + lift) — are the subclasses.
 
-On top of the four contract *families*, `VehicleCatalog` maps cosmetic *variants* (the
+On top of the contract *families*, `VehicleCatalog` maps cosmetic *variants* (the
 Kenney car-kit bodies: taxi, firetruck, ambulance, …) onto them — V cycles variants
 in-game; the contract, dashboard and bridge only ever see the family. Tire grip is
 per-surface: wheels sample the terrain's painted splat channels (`channel_grip`), so an

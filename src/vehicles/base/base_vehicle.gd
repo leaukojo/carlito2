@@ -42,6 +42,11 @@ func _ready() -> void:
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
 	center_of_mass = spec.center_of_mass
 	can_sleep = false
+	# Continuous CD on every chassis: a body coming down hard (ramp jump, dive, free
+	# fall) can otherwise cross the thin terrain collision in one 60 Hz tick and tunnel
+	# through. The RayWheels are raycasts and unaffected; only one vehicle is active at a
+	# time, so the CCD cost is negligible.
+	continuous_cd = true
 	# Stability-assist yaw/roll bleed (bikes only; 0 leaves the engine default untouched).
 	if spec.angular_damping > 0.0:
 		angular_damp_mode = RigidBody3D.DAMP_MODE_REPLACE

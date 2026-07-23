@@ -60,6 +60,11 @@ script = ExtResource("4_spawn")
 vehicle_types = PackedStringArray("boat")
 is_water = true
 
+[node name="PlaneSpawn" type="Marker3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 98, 37.3, -2)
+script = ExtResource("4_spawn")
+vehicle_types = PackedStringArray("plane")
+
 [node name="Sea" type="Area3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 script = ExtResource("9_water")

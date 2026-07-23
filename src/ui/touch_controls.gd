@@ -27,10 +27,18 @@ var _brake := 0.0
 var _handbrake := 0.0
 var _horn := false
 var _lights_cycle_pending := false  ## latched on the LIGHTS tap, consumed by poll()
+var _vert := 0.0                    ## shared flight vertical axis (plane elevator / drone climb)
+var _arm_toggle_pending := false    ## latched on the ARM tap, consumed by poll()
+var _flaps_toggle_pending := false  ## latched on the FLAPS tap, consumed by poll()
 
 var _joy_knob: Panel
 var _joy_center := Vector2.ZERO
 var _bridge_buttons: Array[Pad] = []  ## hidden while the bridge drives
+# Flight widgets, shown per vehicle family (and hidden while the bridge drives —
+# sloppyCAN owns elevator/climb/arm/flaps then). UP/DOWN serve both aircraft.
+var _flight_col: Control = null  ## UP/DOWN pads (plane + drone)
+var _arm_btn: Pad = null         ## drone only
+var _flaps_btn: Pad = null       ## plane only
 
 
 ## Touch-first press widget. It tracks WHICH pointer is holding it (a finger index, or
@@ -118,6 +126,10 @@ func poll() -> Dictionary:
 		return {}
 	var cycle := _lights_cycle_pending
 	_lights_cycle_pending = false
+	var arm_edge := _arm_toggle_pending
+	_arm_toggle_pending = false
+	var flaps_edge := _flaps_toggle_pending
+	_flaps_toggle_pending = false
 	return {
 		"accel": _accel,
 		"brake_reverse": _brake,
@@ -125,6 +137,12 @@ func poll() -> Dictionary:
 		"handbrake": _handbrake,
 		"horn": _horn,
 		"lights_cycle": cycle,
+		# One vertical axis shared by both aircraft (local_source.gd does the same);
+		# the families are mutually exclusive so each reads only its own field.
+		"elevator": _vert,
+		"climb": _vert,
+		"arm_toggle": arm_edge,
+		"flaps_toggle": flaps_edge,
 	}
 
 
@@ -138,6 +156,13 @@ func _process(_dt: float) -> void:
 		# so it can't persist once the bridge releases and they reappear.
 		_horn = false
 		_handbrake = 0.0
+	# Flight widgets only for the flying families (and never while sloppyCAN drives —
+	# elevator/climb/arm/flaps are bridge-authoritative). A pad hidden mid-hold clears
+	# itself via Pad's visibility notification, so _vert can't stick.
+	var family: String = GameState.current_vehicle
+	_flight_col.visible = not driving and family in ["plane", "drone"]
+	_arm_btn.visible = not driving and family == "drone"
+	_flaps_btn.visible = not driving and family == "plane"
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -209,6 +234,20 @@ func _build_pedals() -> void:
 	gas.custom_minimum_size = Vector2(110, 150)
 	row.add_child(gas)
 
+	# Flight vertical pads (plane elevator / drone climb) extend the pedal row leftward;
+	# shown only for the flying families (visibility managed in _process).
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 14)
+	var up := _hold_button("UP", func(down: bool) -> void: _vert = 1.0 if down else minf(_vert, 0.0))
+	up.custom_minimum_size = Vector2(110, 68)
+	col.add_child(up)
+	var down_pad := _hold_button("DOWN", func(down: bool) -> void: _vert = -1.0 if down else maxf(_vert, 0.0))
+	down_pad.custom_minimum_size = Vector2(110, 68)
+	col.add_child(down_pad)
+	row.add_child(col)
+	row.move_child(col, 0)
+	_flight_col = col
+
 
 # --- right-edge button stack -------------------------------------------------
 
@@ -232,6 +271,13 @@ func _build_button_stack() -> void:
 	var hand := _hold_button("HAND", func(down: bool) -> void: _handbrake = 1.0 if down else 0.0)
 	col.add_child(hand)
 	_bridge_buttons.append(hand)
+
+	# Flight toggles (family-gated in _process, like _flight_col — not _bridge_buttons,
+	# which would re-show them on every vehicle once the bridge goes quiet).
+	_arm_btn = _tap_button("ARM", func() -> void: _arm_toggle_pending = true)
+	col.add_child(_arm_btn)
+	_flaps_btn = _tap_button("FLAPS", func() -> void: _flaps_toggle_pending = true)
+	col.add_child(_flaps_btn)
 
 	col.add_child(_tap_button("VIEW", func() -> void: camera_pressed.emit()))
 	col.add_child(_tap_button("GARAGE",func() -> void: garage_pressed.emit()))

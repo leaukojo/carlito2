@@ -21,14 +21,18 @@ extends BaseVehicle
 
 const ROTOR_IDLE_RPM := 2600   ## mean rotor speed at hover-idle (armed, no lift demand floor)
 const ROTOR_MAX_RPM := 12000   ## contract 'rotor_rpm' range max (full thrust)
+## Visual rotor spin: blade rad/s per rotor rpm — a cosmetic ratio far below the real rev
+## rate (which would alias to a shimmer at 60 fps); the honest number stays the published
+## rotor_rpm, the spinning blades are its readable stand-in (the Implement rotor precedent).
+const ROTOR_VISUAL_SPIN := 0.005
 
 @export_group("Lift")
 @export var max_thrust := 150.0      ## N total rotor thrust cap (hard cap, like max_suspension_force)
-@export var climb_force := 30.0      ## N added/removed at full climb stick (< m*g so full-down still descends gently)
-@export var vertical_drag := 12.0    ## N per m/s of vertical speed (sets terminal climb/descent rate)
+@export var climb_force := 45.0      ## N added/removed at full climb stick (< m*g so full-down still descends gently)
+@export var vertical_drag := 6.0     ## N per m/s of vertical speed (sets terminal climb/descent rate)
 
 @export_group("Attitude")
-@export var max_tilt_deg := 28.0             ## forward/back lean at full throttle
+@export var max_tilt_deg := 32.0             ## forward/back lean at full throttle
 @export var attitude_stiffness := 14.0       ## N*m per unit leveling error (~sin of the attitude error)
 @export var attitude_damping := 3.0          ## N*m per rad/s of off-axis (non-yaw) angular velocity
 @export var max_attitude_torque := 20.0      ## N*m cap on the leveling torque
@@ -37,7 +41,7 @@ const ROTOR_MAX_RPM := 12000   ## contract 'rotor_rpm' range max (full thrust)
 @export var max_yaw_torque := 6.0            ## N*m cap on the yaw torque
 
 @export_group("Translation")
-@export var horizontal_drag := 4.0   ## N per m/s of horizontal speed (air resistance, sets top forward speed)
+@export var horizontal_drag := 0.5   ## N per m/s of horizontal speed (air resistance, sets top forward speed)
 
 ## Body footprint (m), used only to derive the representative moment of inertia the
 ## one-tick torque clamps need — the same role the boat's probe span plays for its yaw cap.
@@ -45,6 +49,22 @@ const ROTOR_MAX_RPM := 12000   ## contract 'rotor_rpm' range max (full thrust)
 
 var _gravity := 9.8
 var _inertia := 0.6   ## representative moment (kg*m^2) for the one-tick torque clamps
+
+@onready var _rotors_cw: Array[Node3D] = [$RotorFL, $RotorRR]   ## counter-rotating pairs,
+@onready var _rotors_ccw: Array[Node3D] = [$RotorFR, $RotorRL]  ## like a real quad
+
+
+## Cosmetic only: spin the rotor blades from the published rotor_rpm (visuals in
+## _process, physics untouched — the tractor Implement's rotor pattern).
+func _process(delta: float) -> void:
+	var t := telemetry as DroneTelemetry
+	if t == null:
+		return
+	var step := t.rotor_rpm * ROTOR_VISUAL_SPIN * delta
+	for r in _rotors_cw:
+		r.rotate_y(step)
+	for r in _rotors_ccw:
+		r.rotate_y(-step)
 
 
 func _make_telemetry() -> VehicleTelemetry:
@@ -65,15 +85,17 @@ func _tick_extras(input: InputRouter.VehicleInput, delta: float) -> void:
 	var up := body_basis.y
 	var armed := input.arm and input.key == InputRouter.KEY_IGNITION
 
-	# Air drag always acts (the drone is always in the air) — one-tick clamped, on the
-	# horizontal velocity and the vertical velocity separately.
+	# Horizontal air drag always acts — one-tick clamped. The VERTICAL damper is
+	# rotor-borne (it exists to set the armed terminal climb/descent rate), so it only
+	# acts while armed: disarmed, the craft is an inert body in near free fall (a 1.2 m
+	# quad's real body drag is negligible at these speeds).
 	var h_vel := Vector3(linear_velocity.x, 0.0, linear_velocity.z)
 	apply_central_force(clamped_damper(h_vel, horizontal_drag, spec.mass, delta))
-	var v_vel := Vector3(0.0, linear_velocity.y, 0.0)
-	apply_central_force(clamped_damper(v_vel, vertical_drag, spec.mass, delta))
 
 	var thrust := 0.0
 	if armed:
+		var v_vel := Vector3(0.0, linear_velocity.y, 0.0)
+		apply_central_force(clamped_damper(v_vel, vertical_drag, spec.mass, delta))
 		# Rotor thrust along body up: hover feedforward counters gravity, climb stick trims it.
 		thrust = lift_thrust(spec.mass, _gravity, clampf(input.climb, -1.0, 1.0), climb_force, max_thrust)
 		apply_central_force(up * thrust)

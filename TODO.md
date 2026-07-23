@@ -71,9 +71,6 @@ silent in menus.
 
 ## Drone follow-ups (from 2026-07-23 code review)
 
-- **Touch arm/climb controls:** touch input exposes no arm_toggle/climb, so the drone
-  can never arm on touch devices — it's an inert brick. Needs new touch-UI buttons
-  (design call on layout).
 - **Map containment for flight:** boundary walls top out at y=+10; the drone flies over
   them into the collision-less far sea and only respawns below y=-20. Decide: taller
   walls, a ceiling, or an out-of-bounds volume.
@@ -83,7 +80,13 @@ silent in menus.
 - **Boat/drone math duplication:** `pitch_deg`/`roll_deg` and the one-tick
   damper/inertia helpers are duplicated verbatim between boat and drone; consider
   extracting shared statics (touches boat.gd + tests).
-- **`docs/systems.md`:** vehicle rosters/sections don't mention the drone family yet.
+
+## Plane follow-ups (from 2026-07-23 code review)
+
+- **Plane/drone math duplication:** `plane.gd` duplicates five pure-math statics verbatim
+  from `drone.gd` (`clamped_damper`, `yaw_torque`, `inertia_of`, `pitch_deg`, `roll_deg`)
+  plus their unit tests — same pattern as the boat/drone duplication above; fold into the
+  same shared-statics extraction decision.
 
 ## 6. Launch checklist
 

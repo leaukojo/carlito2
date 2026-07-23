@@ -20,17 +20,19 @@ const ENUM_CHIPS: PackedStringArray = ["key", "lights"]
 const LAMP_TEXT := {
 	"handbrake": "BRAKE", "turnL": "<L", "turnR": "R>", "horn": "HORN",
 	"checkEngine": "CHECK", "battery": "BATT", "brakeLamp": "STOP",
-	"pto_state": "PTO",
+	"pto_state": "PTO", "arm": "ARM", "armed": "ARMED",
 }
 const LAMP_COLOR := {
 	"handbrake": Color(0.95, 0.35, 0.30), "turnL": Color(0.35, 0.85, 0.45),
 	"turnR": Color(0.35, 0.85, 0.45), "horn": Color(0.45, 0.72, 1.0),
 	"checkEngine": Color(1.0, 0.70, 0.15), "battery": Color(0.95, 0.35, 0.30),
 	"brakeLamp": Color(0.95, 0.35, 0.30), "pto_state": Color(0.35, 0.85, 0.45),
+	"arm": Color(0.35, 0.85, 0.45), "armed": Color(0.35, 0.85, 0.45),
 }
 ## Cosmetic short captions for the generated "out" bars (like LAMP_TEXT for lamps).
 const BAR_LABEL := {
 	"hitch_pos_actual": "HITCH", "pto_rpm": "PTO", "engine_load": "LOAD",
+	"altitude": "ALT", "vspeed": "V/S", "flaps_actual": "FLAPS", "rotor_rpm": "ROTOR",
 }
 const LAMP_OFF := Color(0.28, 0.30, 0.34)
 const CHIP_COLOR := Color(0.85, 0.88, 0.93)
@@ -152,10 +154,10 @@ func _build_telltale_row(vehicle_type: String) -> Control:
 			continue
 		_lamps[sig.name] = _make_lamp(sig.name, row)
 
-	# ISOBUS bool "out" signals become tell-tales too (e.g. pto_state), driven from
-	# telemetry rather than input — generated from contract signal metadata.
+	# Flavored bool "out" signals become tell-tales too (isobus pto_state, dronecan
+	# armed), driven from telemetry rather than input — generated from contract metadata.
 	for sig in Contract.data.signals_for_vehicle(vehicle_type, "out"):
-		if sig.type != "bool" or sig.flavor != "isobus":
+		if sig.type != "bool" or sig.flavor == "":
 			continue
 		_out_lamps[sig.name] = _make_lamp(sig.name, row)
 	return row
@@ -172,13 +174,14 @@ func _make_lamp(sig_name: String, into: Node) -> Label:
 
 
 ## Bars for every "out" signal (this vehicle) that has a range and is either warn'd
-## (fuel/coolant) or an ISOBUS signal (the tractor implement panel — driven
-## from the contract 'flavor' metadata, not hardcoded names), except the two gauges.
+## (fuel/coolant, altitude/vspeed) or flavored (isobus implement panel, canaerospace
+## flaps, dronecan rotor — driven from the contract 'flavor' metadata, not hardcoded
+## names), except the two gauges.
 func _build_bars(vehicle_type: String, into: Node) -> void:
 	for sig in Contract.data.signals_for_vehicle(vehicle_type, "out"):
 		if sig.name in GAUGE_SIGNALS or sig.range.size() != 2:
 			continue
-		if not sig.has_warn() and sig.flavor != "isobus":
+		if not sig.has_warn() and sig.flavor == "":
 			continue
 		var bar := DashBar.new()
 		bar.custom_minimum_size = Vector2(0, 18)
@@ -266,6 +269,7 @@ func _update_telltales() -> void:
 		"brakeLamp": vi.brake_lamp,
 		"checkEngine": vi.check_engine,
 		"battery": vi.battery_warn,
+		"arm": vi.arm,
 	}
 	for sig_name in _lamps:
 		var on: bool = active.get(sig_name, false)

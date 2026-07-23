@@ -1,7 +1,7 @@
 class_name VehicleCatalog
 extends RefCounted
 ## Static registry of vehicle VARIANTS. A *variant* is one concrete body scene; a
-## *family* is the contract type id (car / truck / tractor / boat / bike / drone) that
+## *family* is the contract type id (car / truck / tractor / boat / bike / drone / plane) that
 ## drives the bridge marshaling, dashboard cluster and spawn filter. Many variants share
 ## one family — the garage still chooses a family, and V cycles the variants within it.
 ##
@@ -23,6 +23,7 @@ const VARIANTS := {
 	"boat": {"scene": "res://src/vehicles/boat/boat.tscn", "family": "boat"},
 	"bike": {"scene": "res://src/vehicles/bike/bike.tscn", "family": "bike"},
 	"drone": {"scene": "res://src/vehicles/drone/drone.tscn", "family": "drone"},
+	"plane": {"scene": "res://src/vehicles/plane/plane.tscn", "family": "plane"},
 	# -- bike family: recolors of the one hand-built body (variant == body colour) --
 	"bike-motocross": {"scene": "res://src/vehicles/bike/bike-motocross.tscn", "family": "bike"},
 	"bike-scooter": {"scene": "res://src/vehicles/bike/bike-scooter.tscn", "family": "bike"},

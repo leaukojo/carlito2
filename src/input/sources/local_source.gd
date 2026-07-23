@@ -21,4 +21,5 @@ func poll(_delta: float) -> Dictionary:
 		"elevator": vert,
 		"climb": vert,
 		"arm_toggle": Input.is_action_just_pressed("arm"),
+		"flaps_toggle": Input.is_action_just_pressed("flaps"),
 	}

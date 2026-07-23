@@ -54,7 +54,7 @@ src/shell/    game shell: boot, level select, garage menu (+ GameState autoload)
 src/bridge/   Contract + Bridge autoloads (contract loader; web CAN bridge)
 src/input/    InputRouter autoload + input sources; ALL input arbitration lives here
 src/vehicles/ base/ (BaseVehicle, VehicleSpec, wheels, drivetrain) + car/ truck/ tractor/
-              boat/ + kenney/ variant bodies (vehicle_catalog.gd maps variants → families)
+              boat/ bike/ drone/ plane/ + kenney/ variant bodies (vehicle_catalog.gd maps variants → families)
 src/levels/   base/ (Level scene, LevelInfo, markers, HeightmapTerrain) + garage/ showroom
               + island/level_1..level_5/ (the five playable islands) + dev/ flat plane
 src/ui/       dashboard, touch controls, menus

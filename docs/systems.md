@@ -5,8 +5,10 @@ Per-system detail for everything that runs in the game. Editor/authoring tooling
 
 ## Signal contract
 
-`contract/carlito_contract.json` (currently v5) defines every bridge signal: name, dir,
-type, unit, range, optional `warn`, enum, vehicles, optional `flavor: "isobus"`. The
+`contract/carlito_contract.json` (currently v8) defines every bridge signal: name, dir,
+type, unit, range, optional `warn`, enum, vehicles, optional `flavor` (`"isobus"` —
+tractor, `"canaerospace"` — plane, `"dronecan"` — drone: protocol signal names/semantics
+borrowed, frame layout stays on the sloppyCAN side). The
 `Contract` autoload loads + validates it at startup; `tests/test_contract.gd` fails if a
 required signal goes missing. Signals are unique by **(name, dir)** — `battery` exists in
 both directions (in = warning LED, out = voltage). `warn` is the danger threshold the
@@ -33,7 +35,8 @@ step). Run it after any contract edit.
   brake never throttle; key gates throttle. Lamp/warning bits (`turnL`/`turnR`/`brakeLamp`/
   `checkEngine`/`battery`) are mirrored **verbatim** — sloppyCAN is the sole authority; any
   absent bit defaults off. ISOBUS fields (`hitch_request`, `pto`) mirror sloppyCAN verbatim
-  (`hitch_pos` %→unit; absent → raised/off). The `rudder` in-signal, when present,
+  (`hitch_pos` %→unit; absent → raised/off), and so do the flight fields
+  (`elevator`/`climb`/`arm`/`flaps`; absent → neutral/disarmed/retracted). The `rudder` in-signal, when present,
   **overrides `steer`** (the boat's rudder IS the steer channel; `bridge_source.gd` includes
   the key only when sent).
 - `merge_local` (pure): combines keyboard + touch (max analog, summed steer, OR'd bits)
@@ -45,12 +48,14 @@ fields (%→unit); `local_source.gd` reads the keyboard; the touch overlay regis
 via `InputRouter.set_touch_source()`.
 
 Toggle-state owners: the router owns the shared headlight level `_lights` (cycles
-OFF→CLEARANCE→LOW→HIGH), the hitch toggle `_hitch_up`, and the PTO toggle `_pto`; sources
-report per-frame edges (`lights_cycle`, `hitch_toggle`, `pto_toggle`) that `merge_local`
-ORs, so keyboard and touch share one owner.
+OFF→CLEARANCE→LOW→HIGH), the hitch toggle `_hitch_up`, the PTO toggle `_pto`, the drone
+arm toggle `_armed`, and the plane flaps toggle `_flaps_down`; sources report per-frame
+edges (`lights_cycle`, `hitch_toggle`, `pto_toggle`, `arm_toggle`, `flaps_toggle`) that
+`merge_local` ORs, so keyboard and touch share one owner.
 
 Local keys: W/S (or arrows) accel + brake-then-reverse, A/D steer, Space handbrake,
-H horn, L lights, V next vehicle variant, I hitch, P PTO, G garage, N day/night,
+H horn, L lights, V next vehicle variant, I hitch, P PTO, R/F flight up/down (plane
+elevator / drone climb — one shared axis), T arm, B flaps, G garage, N day/night,
 Backspace respawn, F3 debug overlay, F4 force-show touch controls.
 `tests/test_input_map.gd` asserts no two actions share a physical key.
 
@@ -62,9 +67,9 @@ Backspace respawn, F3 debug overlay, F4 force-show touch controls.
   Feel tuning is data-only: edit the spec numbers, keep the input-hierarchy test green
   (brake > peak drive > handbrake; handbrake holds only below ~30% throttle).
 - **`VehicleCatalog`** (`src/vehicles/vehicle_catalog.gd`) — static registry of vehicle
-  *variants* (one concrete body scene each: the four hand-built vehicles + the Kenney
-  car-kit bodies + the Watercraft-pack boats) mapped onto the four contract *families*
-  (car/truck/tractor/boat). The FAMILY drives bridge marshaling, dashboard cluster and
+  *variants* (one concrete body scene each: the hand-built vehicles + the Kenney
+  car-kit bodies + the Watercraft-pack boats) mapped onto the contract *families*
+  (car/truck/tractor/boat/bike/drone/plane). The FAMILY drives bridge marshaling, dashboard cluster and
   spawn filtering; a variant carries its own spec (and, for boats, its own hull/buoyancy
   knobs), so it drives differently but signals identically. Generated one-shot by
   `tools/gen_kenney_vehicles.tscn` and `tools/gen_boat_variants.tscn` (game-mode tool
@@ -116,9 +121,10 @@ lock the rears — drift comes from the grip cut, not brake torque.
   in contract units (throttle/steer as %, slip as ratio); a `test_telemetry` case fails if
   it stops covering a non-todo ground "out" signal. Subclasses = `super()` + append.
 - **Dashboard** (`src/ui/`): `dashboard.gd` **generates** the tell-tale row (a lamp per
-  bool "in" signal + `key`/`lights` enum chips, plus a telemetry-driven lamp for each bool
-  ISOBUS "out" — the PTO lamp) and the bars (each "out" signal that has a `range` **and**
-  a `warn`, or `flavor == "isobus"` — the HITCH/PTO/LOAD implement panel) by walking the
+  bool "in" signal + `key`/`lights` enum chips, plus a telemetry-driven lamp for each
+  flavored bool "out" — the PTO and ARMED lamps) and the bars (each "out" signal that has
+  a `range` **and** a `warn` — fuel/coolant, altitude/vspeed, pitch/roll — or a `flavor`
+  — the HITCH/PTO/LOAD implement panel, FLAPS, ROTOR) by walking the
   contract for the active vehicle type. The two radial gauges (`gauge.gd`, one bespoke
   widget instanced twice: speedo + tacho) are **hand-built** and only read scale/redline
   from the contract; each is built only when the vehicle declares its signal (`kmh`/`rpm`
@@ -199,7 +205,10 @@ lock the rears — drift comes from the grip cut, not brake torque.
   stack (HORN/LIGHTS/HAND + GARAGE/RESPAWN). Widgets take touch **and** mouse. Visible
   only on touch/web (`_should_show()`); **F4** force-toggles for desktop tests. The
   bridge-conflicting buttons (HORN/LIGHTS/HAND — sloppyCAN owns those) hide while
-  `Bridge.is_active()`.
+  `Bridge.is_active()`. Flight widgets — UP/DOWN pads left of the pedals (the shared
+  elevator/climb axis) plus ARM (drone) and FLAPS (plane) taps — appear only for the
+  flying families, and also hide while the bridge drives (those signals are
+  bridge-authoritative).
 
 ## Tractor, implement & ISOBUS
 
@@ -262,6 +271,28 @@ lock the rears — drift comes from the grip cut, not brake torque.
   30/45); `rudder_actual`/`trim` are bridge-only (no honest warn).
 - Every island level's sea is a `WaterSurface` — the boat/drown-respawn rig (drive the
   car in → drown respawn); the boat is in every island roster.
+
+## Plane & drone (flight)
+
+- Protocols are **flavors** like the tractor's ISOBUS: plane = `canaerospace`
+  (`elevator`/`flaps` in, `altitude`/`vspeed`/`flaps_actual` out), drone = `dronecan`
+  (`climb`/`arm` in, `altitude`/`vspeed`/`rotor_rpm`/`armed` out). Both share the boat's
+  `pitch`/`roll` outs. Bodies are primitive low-poly builds (no external assets).
+- **`DroneVehicle`** (`src/vehicles/drone/`) — zero wheels (boat template: empty
+  `wheel_positions`, 6 `gear_ratios` kept). `_tick_extras`: vertical thrust (gravity
+  feedforward + climb axis), self-leveling attitude torque (accel/brake = tilt, steer =
+  yaw), linear/angular drag. Rotors spin only when armed **and** key = Ignition;
+  `rotor_rpm` is a modeled honest value derived from thrust demand. Battery-electric:
+  declares no rpm/gear/fuel/coolant/ground.
+- **`PlaneVehicle`** (`src/vehicles/plane/`) — three RayWheels (steered nose wheel, two
+  mains) so ground roll/takeoff/wheel braking come from the base. `_tick_extras`: prop
+  thrust from drivetrain rpm × throttle (the published `rpm` IS the number the thrust is
+  computed from — modeled, since undriven wheels would idle the wheel-derived rpm), lift
+  with a simplified stall fade, drag, control torques whose authority scales with
+  airspeed. Steer = coordinated roll+yaw; elevator = pitch; flaps slew toward the request.
+- All force terms follow the boat's **one-tick clamp discipline** as pure statics,
+  unit-tested in `tests/test_plane.gd` / `tests/test_drone.gd`. The 60 Hz tick and the
+  existing clamps are untouched.
 
 ## Level framework
 

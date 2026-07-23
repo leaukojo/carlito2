@@ -245,7 +245,7 @@ func test_bridge_steer_unchanged_without_rudder() -> void:
 	assert_float(out.steer).is_equal_approx(0.9, 1e-6)
 
 
-# --- flight controls (plane elevator / drone climb + arm) ---------------------
+# --- flight controls (plane elevator + flaps / drone climb + arm) -------------
 
 func test_local_flight_axes_pass_through_clamped() -> void:
 	var raw := _raw()
@@ -290,6 +290,41 @@ func test_merge_local_combines_flight_axes_and_arm_edge() -> void:
 	var none := RouterScript.merge_local({}, {})
 	assert_float(none["elevator"]).is_equal(0.0)
 	assert_bool(none["arm_toggle"]).is_false()
+
+
+func test_local_flaps_pass_through_clamped() -> void:
+	# InputRouter owns the local _flaps_down toggle and injects "flaps" as 0/1; the
+	# arbitration just clamps and passes it through (the hitch_request pattern).
+	var raw := _raw()
+	raw["flaps"] = 1.0
+	var out: RouterScript.VehicleInput = RouterScript.arbitrate_local(raw, 0.0, GEAR_D1)
+	assert_float(out.flaps).is_equal(1.0)
+	raw["flaps"] = 3.0  # out of range on purpose
+	out = RouterScript.arbitrate_local(raw, 0.0, GEAR_D1)
+	assert_float(out.flaps).is_equal(1.0)  # clamped
+	# Absent → retracted.
+	var bare: RouterScript.VehicleInput = RouterScript.arbitrate_local(_raw(), 0.0, GEAR_D1)
+	assert_float(bare.flaps).is_equal(0.0)
+
+
+func test_bridge_flaps_mirrored_clamped() -> void:
+	# Already %→unit normalized by bridge_source; the bridge value is authoritative
+	# (no local toggle on that path), absent → retracted.
+	var vals := _bridge(0.0, 0.0, 0.0, 0.0, GEAR_D1)
+	vals["flaps"] = 0.4
+	var out: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(vals)
+	assert_float(out.flaps).is_equal_approx(0.4, 1e-6)
+	vals["flaps"] = 1.7  # out of range on purpose
+	out = RouterScript.arbitrate_bridge(vals)
+	assert_float(out.flaps).is_equal(1.0)  # clamped
+	var bare: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(_bridge(0.0, 0.0, 0.0, 0.0, GEAR_D1))
+	assert_float(bare.flaps).is_equal(0.0)
+
+
+func test_merge_local_combines_flaps_edge() -> void:
+	var m := RouterScript.merge_local({"flaps_toggle": false}, {"flaps_toggle": true})
+	assert_bool(m["flaps_toggle"]).is_true()
+	assert_bool(RouterScript.merge_local({}, {})["flaps_toggle"]).is_false()
 
 
 func test_bridge_mirrors_lamp_bits_verbatim() -> void:

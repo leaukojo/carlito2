@@ -1,5 +1,5 @@
 {
-	"version": 7,
+	"version": 8,
 	"notes": [
 		"Carlito signal contract. Defines every signal crossing the sloppyCAN<->game bridge.",
 		"Signals are unique by (name, dir). 'battery' exists in both directions on purpose: in = warning LED, out = battery voltage.",
@@ -64,8 +64,8 @@
 		{ "name": "flaps", "dir": "in", "type": "u8", "unit": "%", "range": [0, 100], "vehicles": ["plane"], "flavor": "canaerospace", "desc": "Flap setting request (CANaerospace flavor); arcade lift/drag boost." },
 		{ "name": "climb", "dir": "in", "type": "i8", "unit": "%", "range": [-100, 100], "vehicles": ["drone"], "flavor": "dronecan", "desc": "Vertical rate command (DroneCAN flavor), + = ascend." },
 		{ "name": "arm", "dir": "in", "type": "bool", "unit": "flag", "vehicles": ["drone"], "flavor": "dronecan", "desc": "Motor arm (DroneCAN flavor); rotors spin only when armed (key must also be Ignition)." },
-		{ "name": "altitude", "dir": "out", "type": "f32", "unit": "m", "range": [0, 500], "vehicles": ["plane", "drone"], "desc": "Altitude above sea level (world Y; water is y=0)." },
-		{ "name": "vspeed", "dir": "out", "type": "f32", "unit": "m/s", "range": [-20, 20], "vehicles": ["plane", "drone"], "desc": "Vertical speed (variometer), + = climbing." },
+		{ "name": "altitude", "dir": "out", "type": "f32", "unit": "m", "range": [0, 500], "warn": 450, "vehicles": ["plane", "drone"], "desc": "Altitude above sea level (world Y; water is y=0). 'warn' is the arcade service-ceiling threshold." },
+		{ "name": "vspeed", "dir": "out", "type": "f32", "unit": "m/s", "range": [-20, 20], "warn": -15, "vehicles": ["plane", "drone"], "desc": "Vertical speed (variometer), + = climbing. 'warn' is the excessive-descent threshold." },
 		{ "name": "flaps_actual", "dir": "out", "type": "u8", "unit": "%", "range": [0, 100], "vehicles": ["plane"], "flavor": "canaerospace", "desc": "Actual flap position (slewed toward the request)." },
 		{ "name": "rotor_rpm", "dir": "out", "type": "u16", "unit": "rev/min", "range": [0, 12000], "vehicles": ["drone"], "flavor": "dronecan", "desc": "Mean rotor speed. Honest model derived from thrust demand (labelled, like trim)." },
 		{ "name": "armed", "dir": "out", "type": "bool", "unit": "flag", "vehicles": ["drone"], "flavor": "dronecan", "desc": "Motors armed (arm request and key Ignition)." }

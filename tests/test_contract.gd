@@ -27,10 +27,10 @@ func _real_contract() -> ContractScript.ContractData:
 	return _parse_file(ContractScript.CONTRACT_PATH)
 
 
-func test_real_contract_is_valid_v7() -> void:
+func test_real_contract_is_valid_v8() -> void:
 	var data := _real_contract()
 	assert_array(data.errors).is_empty()
-	assert_int(data.version).is_equal(7)
+	assert_int(data.version).is_equal(8)
 
 
 func _assert_core_signals_present(names: PackedStringArray, dir: String) -> void:

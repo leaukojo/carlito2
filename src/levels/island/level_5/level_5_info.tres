@@ -5,5 +5,5 @@
 [resource]
 script = ExtResource("1_info")
 display_name = "Level 5 - Plateau"
-allowed_vehicles = PackedStringArray("car", "truck", "tractor", "boat")
+allowed_vehicles = PackedStringArray("car", "truck", "tractor", "boat", "plane")
 default_vehicle = "car"
