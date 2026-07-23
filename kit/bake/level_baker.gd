@@ -28,7 +28,7 @@ extends RefCounted
 ## v7: correctness pass — true epsilon welding (was grid snapping), nested KitPieces keep
 ## their own collision mode, mirrored transforms keep their winding, finer material keys,
 ## chunk keys from mesh AABB centres, bridge-base end caps, bounded end tangents.
-const BAKER_VERSION := 8
+const BAKER_VERSION := 9
 
 ## Bake-adjacent CODE that no resource dependency edge can reach: GDScript files report
 ## NO dependencies (verified — `ResourceLoader.get_dependencies` on a .gd returns an empty
@@ -673,7 +673,7 @@ static func _collect_scatter(region: Node, xform: Transform3D, ctx: BakeContext,
 				mesh.surface_set_material(si, ctx.materials[mk])
 				ctx.total_vertices += (mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
 						as PackedVector3Array).size()
-			var mesh_index := ctx.add_scatter_mesh(mesh)
+			var mesh_index := ctx.add_scatter_mesh(mesh, bool(item.get("cast_shadow")))
 			var entries: Array = region.call("shape_entries", template) if use_collision else []
 			for t in xforms:
 				var key := chunk_key(t.origin, ctx.chunk_size)
@@ -793,6 +793,8 @@ static func _assemble(ctx: BakeContext) -> Node3D:
 				var mmi := MultiMeshInstance3D.new()
 				mmi.name = "scatter_%d_%d_%d" % [mid, key.x, key.y]
 				mmi.multimesh = mm
+				if not ctx.scatter_shadows[mid]:
+					mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				mmi.position = chunk_origin(key, ctx.chunk_size)
 				scatter.add_child(mmi)
 
@@ -920,6 +922,8 @@ class BakeContext:
 	var total_vertices := 0
 	## Scatter: merged item meshes, geometry stored ONCE (shared across chunks)
 	var scatter_meshes: Array[ArrayMesh] = []
+	## Parallel to scatter_meshes: whether that item's MultiMeshes cast shadows.
+	var scatter_shadows: Array[bool] = []
 	## Vector2i chunk key -> { mesh index -> Array of world Transform3D }
 	var multimesh := {}
 	var scatter_instances := 0
@@ -969,8 +973,9 @@ class BakeContext:
 			body_shapes[key] = []
 		(body_shapes[key] as Array).append([shape, world_xform])
 
-	func add_scatter_mesh(mesh: ArrayMesh) -> int:
+	func add_scatter_mesh(mesh: ArrayMesh, shadow: bool) -> int:
 		scatter_meshes.append(mesh)
+		scatter_shadows.append(shadow)
 		return scatter_meshes.size() - 1
 
 	func add_multimesh(key: Vector2i, mesh_index: int, world_xform: Transform3D) -> void:

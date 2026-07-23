@@ -57,7 +57,14 @@ Hard constraints: physics stays 60 Hz + interpolation; never set `scaling_3d/sca
 below 1; the `.web` overrides (msaa_3d.web=0, soft shadows off) already exist — check they
 still apply before adding new ones. If a level is heavy on draw calls, suspect its bake
 (chunk count / material dedup — the bake stats predict draw calls) before touching
-renderer settings. Stretch (only if budget already met): custom export template with
+renderer settings.
+
+- **Level-wide scatter MultiMeshes:** the baker currently emits one MultiMeshInstance3D
+  per chunk × item (level 3: 159 MMs for 1024 instances, ~6 per MM). Merging to one MM
+  per item level-wide would drop that to ~one per item mesh — the biggest win in the
+  flying view, where chunk frustum culling buys nothing anyway. Cost: level-sized AABBs
+  (always drawn, incl. shadow pass). Moderate `level_baker.gd` change; bump
+  `BAKER_VERSION`, re-bake all. Stretch (only if budget already met): custom export template with
 unused modules stripped to shrink the wasm.
 
 ## 5. Procedural engine audio (deliberately last — nothing may depend on it)

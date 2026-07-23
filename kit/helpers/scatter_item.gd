@@ -15,3 +15,8 @@ extends Resource
 ## chunk instead of merging the prefab's verts into chunk meshes. -1 = the baker's
 ## default (LevelBaker.SCATTER_MULTIMESH_THRESHOLD).
 @export var bake_threshold_override := -1
+## Off = the baked MultiMeshes don't cast shadows (small vegetation — bushes, plants —
+## where the shadow-pass draw calls outweigh the barely visible shadow). Only applies
+## to the MultiMesh path: below-threshold instances merge into chunk meshes, which
+## always cast.
+@export var cast_shadow := true

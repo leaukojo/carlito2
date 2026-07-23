@@ -137,6 +137,25 @@ set **`is_water = true`** for boat spawns (gizmo turns blue). Spawn validation i
    drivable geometry into one level-wide body, and writes `<level>.baked.scn` +
    `<level>.bake.json`. Commit the `.tscn`, `.baked.scn`, and `.bake.json` together.
 
+## 9. Draw-call budget
+
+Check the **F3 overlay** in the worst view (usually flying, where nothing is frustum-culled)
+against the **< ~500 draw call** budget. The bake stats predict the base count: chunk
+surfaces + scatter multimeshes + terrain chunks (`terrain_size / chunk_cells`, squared).
+The multiplier on top is the **shadow pass** — every caster is re-drawn per shadow cascade,
+and the `Sun` defaults to 4-split PSSM, which is overkill for a 150 m
+`directional_shadow_max_distance`. Cheap levers, in order:
+
+1. **Sun `directional_shadow_mode`** — `ORTHOGONAL` (single cascade, level 3 uses this) or
+   `PARALLEL_2_SPLITS`. If near shadows get blocky, lower
+   `directional_shadow_max_distance` before adding cascades back.
+2. **`ScatterItem.cast_shadow = false`** on small vegetation (bushes, plants) whose shadow
+   is barely visible — the baked MultiMeshes then skip the shadow pass entirely. MultiMesh
+   path only: below-threshold items merge into chunk meshes, which always cast.
+
+If a level is heavy on the *base* count, suspect its bake (chunk count / material dedup)
+before touching renderer settings — see the perf-pass notes in `TODO.md`.
+
 ## Before you finish
 
 - **Re-bake + `check_bakes`** — stale bakes are the #1 repeat CI failure:
