@@ -18,6 +18,13 @@ const IMPACT_THRESHOLD := 25.0  ## m/s^2 acceleration spike that counts as an im
 const IMPACT_DECAY := 40.0      ## m/s^2 per s the held impact value bleeds off
 const MOVING_SPEED := 0.3       ## m/s standstill epsilon for the status 'moving' bit
 
+## Wheel-slip dust: one world-space GPUParticles3D emitter kicked up from the rear
+## contact patch when the rear tires break traction (drift/burnout/hard accel). All feel-
+## neutral cosmetics — built in code so it touches no scene and needs no re-bake.
+const DUST_SLIP_MIN := 0.2      ## rear slip ratio where dust starts
+const DUST_SLIP_FULL := 0.6     ## rear slip ratio for full emission
+const DUST_MOVING := 1.0        ## m/s below which dust is suppressed (idle burnout stays clean)
+
 @export var spec: VehicleSpec
 
 var drivetrain: Drivetrain
@@ -34,6 +41,7 @@ var _impact_hold := 0.0             ## decaying peak of the impact magnitude
 var _lamps := LampSet.new()         ## drives the scene-authored §6 lamps from input
 var _horn_player: AudioStreamPlayer ## procedural horn, played on the horn rising edge
 var _prev_horn := false
+var _dust: GPUParticles3D            ## rear-slip dust; null on wheel-less vehicles (boat, train)
 
 
 func _ready() -> void:
@@ -94,6 +102,10 @@ func _ready() -> void:
 	_horn_player = AudioStreamPlayer.new()
 	_horn_player.stream = Horn.make_stream()
 	add_child(_horn_player)
+	# Wheel-slip dust: only wheeled vehicles get an emitter (boat/train have no wheels).
+	if not spec.wheel_positions.is_empty():
+		_dust = _build_dust()
+		add_child(_dust)
 	InputRouter.register_vehicle(self)
 
 
@@ -150,6 +162,7 @@ func _physics_process(delta: float) -> void:
 	elif not input.horn and _prev_horn:
 		_horn_player.stop()
 	_prev_horn = input.horn
+	_update_dust()
 
 	# Subsystem hook, run last so the drivetrain rpm and telemetry motion fields a
 	# subclass reads are already current this tick (empty in the base — see below).
@@ -170,6 +183,104 @@ func _make_telemetry() -> VehicleTelemetry:
 ## never fork _physics_process / _update_telemetry.
 func _tick_extras(_input: InputRouter.VehicleInput, _delta: float) -> void:
 	pass
+
+
+## Drive the rear-slip dust emitter: emit from the rear contact patch, scaled by how hard
+## the rear tires are slipping, while moving and grounded. World-space particles so the
+## plume stays where it was kicked up. No-op on wheel-less vehicles (_dust is null).
+func _update_dust() -> void:
+	if _dust == null:
+		return
+	var midpoint := Vector3.ZERO
+	var rear_contacts := 0
+	for w in wheels:
+		if w.is_rear and w.in_contact:
+			midpoint += w.contact_point
+			rear_contacts += 1
+	var intensity := 0.0
+	if rear_contacts > 0 and absf(telemetry.speed) > DUST_MOVING:
+		_dust.global_position = midpoint / rear_contacts
+		intensity = clampf(
+				(telemetry.slip_rear - DUST_SLIP_MIN) / (DUST_SLIP_FULL - DUST_SLIP_MIN), 0.0, 1.0)
+	_dust.emitting = intensity > 0.01
+	_dust.amount_ratio = intensity
+
+
+## Build the dust emitter entirely in code (no scene asset, so nothing to re-bake): a
+## world-space GPUParticles3D drawing soft billboarded tan puffs that rise, grow and fade.
+func _build_dust() -> GPUParticles3D:
+	var pm := ParticleProcessMaterial.new()
+	# Spawn across the rear track width (not one central point) so the dust reads as coming
+	# from both wheels. The emitter's basis follows the car, so local X = the car's lateral
+	# axis; a little Z depth gives the wake some length instead of a razor line.
+	var half_track := 0.6
+	for pos in spec.wheel_positions:
+		if pos.z > 0.0:
+			half_track = maxf(half_track, absf(pos.x))
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(half_track, 0.1, 0.25)
+	pm.direction = Vector3(0.0, 1.0, 0.0)
+	pm.spread = 40.0
+	pm.initial_velocity_min = 0.8
+	pm.initial_velocity_max = 2.2
+	pm.gravity = Vector3(0.0, -1.0, 0.0)
+	pm.damping_min = 1.0
+	pm.damping_max = 2.5
+	pm.scale_min = 0.35
+	pm.scale_max = 0.7
+	pm.angle_min = -180.0
+	pm.angle_max = 180.0
+	# Grow over life.
+	var scale_curve := Curve.new()
+	scale_curve.add_point(Vector2(0.0, 0.5))
+	scale_curve.add_point(Vector2(1.0, 1.0))
+	var scale_tex := CurveTexture.new()
+	scale_tex.curve = scale_curve
+	pm.scale_curve = scale_tex
+	# Pale off-white dust, fading to transparent.
+	var grad := Gradient.new()
+	grad.set_color(0, Color(0.92, 0.90, 0.85, 0.5))
+	grad.set_color(1, Color(0.92, 0.90, 0.85, 0.0))
+	var grad_tex := GradientTexture1D.new()
+	grad_tex.gradient = grad
+	pm.color_ramp = grad_tex
+
+	var quad := QuadMesh.new()
+	quad.size = Vector2.ONE
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.vertex_color_use_as_albedo = true
+	mat.albedo_texture = _soft_dot_texture()
+	quad.material = mat
+
+	var p := GPUParticles3D.new()
+	p.name = "DustEmitter"
+	p.local_coords = false
+	p.amount = 24
+	p.lifetime = 0.9
+	p.process_material = pm
+	p.draw_pass_1 = quad
+	p.emitting = false
+	p.amount_ratio = 0.0
+	return p
+
+
+## Soft round alpha mask (radial white->transparent) so the dust quads read as puffs, not
+## squares. Generated in code, no image asset.
+func _soft_dot_texture() -> Texture2D:
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1.0, 1.0, 1.0, 1.0))
+	grad.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.width = 64
+	tex.height = 64
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(0.5, 0.0)
+	return tex
 
 
 ## Collect the painted terrains under the owning level for the wheels' surface-grip query.
@@ -276,6 +387,10 @@ func respawn() -> void:
 	telemetry.acc_lat = 0.0
 	for w in wheels:
 		w.reset()
+	# Clear any live dust so the teleport doesn't streak a plume across the map.
+	if _dust != null:
+		_dust.restart()
+		_dust.emitting = false
 	reset_physics_interpolation()
 	respawned.emit()
 

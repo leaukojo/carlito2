@@ -34,6 +34,7 @@ var compression := 0.0
 var in_contact := false
 var suspension_force := 0.0
 var slip := 0.0         ## |longitudinal slip ratio|, for telemetry
+var contact_point := Vector3.ZERO  ## world-space hit position while in_contact (read by the dust emitter)
 var surface_grip := 1.0  ## grip multiplier from the painted terrain under the contact (F3 readout)
 ## m the visual centre rides above the physics hub = visual radius - spec.wheel_radius. Keeps
 ## an over/undersized wheel VISUAL meeting the ground while physics stays single-radius. Lives
@@ -85,7 +86,7 @@ func tick(body: RigidBody3D, spec: VehicleSpec, space: PhysicsDirectSpaceState3D
 		_update_visual(spec, delta)
 		return
 
-	var contact_point: Vector3 = hit.position
+	contact_point = hit.position
 	var normal: Vector3 = hit.normal
 	var corner_mass := spec.mass / maxf(1.0, spec.wheel_positions.size())
 
