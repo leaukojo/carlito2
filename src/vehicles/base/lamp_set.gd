@@ -32,6 +32,12 @@ const TURN_OFF_ENERGY := 0.12
 const TURN_ON_ENERGY := 3.5
 const TURN_COLOR := Color(1.0, 0.5, 0.0)
 
+## Head LENS emissive energy per headlight level — the glow on the lamp face itself, which
+## the SpotLight3D (a beam, not a surface) cannot provide. OFF keeps a dim housing glow so
+## the lens is always visible, exactly like the rear tier.
+const HEAD_LENS_ENERGY := {HL_OFF: 0.15, HL_CLEARANCE: 0.8, HL_LOW: 3.0, HL_HIGH: 5.0}
+const HEAD_LENS_COLOR := Color(1.0, 0.96, 0.85)
+
 ## Headlight SpotLight3D energy + range per level (distinct per state).
 const HEAD_ENERGY := { HL_OFF: 0.0, HL_CLEARANCE: 1.2, HL_LOW: 7.5, HL_HIGH: 14.0 }
 const HEAD_RANGE := { HL_OFF: 0.0, HL_CLEARANCE: 8.0, HL_LOW: 32.0, HL_HIGH: 90.0 }
@@ -62,6 +68,7 @@ var _heads: Array[SpotLight3D] = []
 var _head_rest: Array[Basis] = []
 ## -1.0 left / +1.0 right / 0.0 centred lamp (from its authored local X).
 var _head_side: Array[float] = []
+var _head_mat: StandardMaterial3D
 var _rear_mat: StandardMaterial3D
 var _turn_l_mat: StandardMaterial3D
 var _turn_r_mat: StandardMaterial3D
@@ -92,6 +99,7 @@ func setup(vehicle: Node, spec: VehicleSpec) -> void:
 			# -1 left / +1 right / 0 centred (a lone centre lamp must not splay sideways).
 			var head_x := (n as SpotLight3D).position.x
 			_head_side.append(0.0 if absf(head_x) < 0.01 else signf(head_x))
+	_head_mat = _bind(vehicle, spec.head_lamp_paths, HEAD_LENS_COLOR, HEAD_LENS_ENERGY[HL_OFF])
 	_rear_mat = _bind(vehicle, spec.brake_lamp_paths, REAR_COLOR, REAR_ENERGY[Rear.OFF])
 	_turn_l_mat = _bind(vehicle, spec.turn_left_paths, TURN_COLOR, TURN_OFF_ENERGY)
 	_turn_r_mat = _bind(vehicle, spec.turn_right_paths, TURN_COLOR, TURN_OFF_ENERGY)
@@ -118,6 +126,9 @@ func _bind(vehicle: Node, paths: Array[NodePath], color: Color, energy: float) -
 ## Mirror the current lamp state to the scene. brake_on / turn bits come straight from
 ## VehicleInput (sloppyCAN authoritative when the bridge is live); no timers here.
 func apply(brake_on: bool, headlights: int, turn_left: bool, turn_right: bool) -> void:
+	if _head_mat != null:
+		_head_mat.emission_energy_multiplier = HEAD_LENS_ENERGY.get(
+				headlights, HEAD_LENS_ENERGY[HL_OFF])
 	if _rear_mat != null:
 		_rear_mat.emission_energy_multiplier = REAR_ENERGY[rear_tier(brake_on, headlights)]
 	if _turn_l_mat != null:

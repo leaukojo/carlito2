@@ -23,6 +23,18 @@ const BASE_SCRIPT := "res://src/vehicles/base/base_vehicle.gd"
 const TRACTOR_SCRIPT := "res://src/vehicles/tractor/tractor.gd"
 
 const KIT_SCALE := 1.2
+const COLORMAP := OUT_DIR + "/models/Textures/colormap.png"
+
+## --- lamp-lens detection (see _find_lenses) -------------------------------------------
+const LENS_WELD := 0.001       ## m, vertex weld tolerance for the triangle union-find
+const LENS_MERGE_GAP := 0.02   ## m two lens fragments may be apart and still be one lens
+## The lamp mesh does not sit ON the model's lens, it ENCLOSES it: every outward face is
+## held this far outside the corresponding lens face. Two problems, one fix — see _split.
+const LENS_CLEAR := 0.006
+const LENS_MIN_DEPTH := 0.04   ## m depth floor for a lens the model draws as a flat quad
+const LENS_MIN_H := 0.06       ## m floor on lens height (some are a single flat quad)
+const TURN_FRAC := 0.35        ## outboard share of a lens' width that becomes the indicator
+const DISC_MIN_TRIS := 12      ## a lens this dense with square extents is a disc, not a box
 const WHEEL_RADIUS := 0.36  ## physics radius, all four corners (RayWheel is single-radius)
 const GRAVITY := 9.8
 const MIN_CLEARANCE := 0.12  ## m the collision hull floor is held above the wheel-contact plane
@@ -44,11 +56,27 @@ var _grip_curve := PackedVector2Array([
 		Vector2(0, 0), Vector2(0.12, 1), Vector2(0.4, 0.9), Vector2(1, 0.8)])
 var _lamp_paths := {
 	"headlight_paths": [NodePath("Lamps/HeadlightL"), NodePath("Lamps/HeadlightR")],
+	"head_lamp_paths": [NodePath("Lamps/HeadLensL"), NodePath("Lamps/HeadLensR")],
 	"brake_lamp_paths": [NodePath("Lamps/BrakeLampL"), NodePath("Lamps/BrakeLampR")],
 	"turn_left_paths": [NodePath("Lamps/TurnLF"), NodePath("Lamps/TurnLR")],
 	"turn_right_paths": [NodePath("Lamps/TurnRF"), NodePath("Lamps/TurnRR")],
 }
+## Hand-measured lens boxes [centre, size] for the few models where the atlas swatch is too
+## close to the body colour for detection to find the edge — the taxi's amber lamp sits on
+## amber bodywork, so the cluster over-reaches downward and must be cropped to the real lens.
+## Replaces whatever _find_lenses returned for that end.
+var _lens_overrides := {
+	# Detection returns the whole 0.36-tall yellow region (y 0.60..0.96); the real lamp is
+	# the strip at the TOP of it, so the top edge stays pinned at 0.96 and the height was
+	# set by eye against the model.
+	"taxi": {"front": [Vector3(0.495, 0.90, -1.53), Vector3(0.33, 0.12, 0.0)]},
+	# The tail lamp is a thin VERTICAL red stripe on the back face, outboard (x=0.72) at door
+	# height (y~0.72). Detection kept picking the centred cross livery instead; measured off
+	# the model's back-face red band. Tall -> indicator splits off at the bottom.
+	"ambulance": {"rear": [Vector3(0.72, 0.72, 1.84), Vector3(0.12, 0.44, 0.10)]},
+}
 var _shape_report: Array = []  ## per-variant collision shape kind + hull vertex count
+var _lens_report: Array = []   ## per-variant lens detection, so a bad lamp is diagnosable
 
 # --- family baselines (spec fields; brake/handbrake are derived, not listed) -----------
 const CAR_BASE := {
@@ -148,6 +176,9 @@ func _ready() -> void:
 		ok += 1
 	print("gen_kenney_vehicles: wrote %d/%d variants" % [ok, VARIANTS.size()])
 	print("collision shapes: ", ", ".join(_shape_report))
+	print("lamp lenses (right side; 'fallback' = no lamp painted on that end):")
+	for line: String in _lens_report:
+		print("   ", line)
 	get_tree().quit(0 if ok == VARIANTS.size() else 1)
 
 
@@ -205,6 +236,7 @@ func _build_spec(family: String, ov: Dictionary, geo: Dictionary, wheels: Array)
 	_derive_brakes(spec)
 
 	spec.headlight_paths.assign(_lamp_paths["headlight_paths"])
+	spec.head_lamp_paths.assign(_lamp_paths["head_lamp_paths"])
 	spec.brake_lamp_paths.assign(_lamp_paths["brake_lamp_paths"])
 	spec.turn_left_paths.assign(_lamp_paths["turn_left_paths"])
 	spec.turn_right_paths.assign(_lamp_paths["turn_right_paths"])
@@ -270,16 +302,23 @@ func _build_scene(variant: String, scene_script: Variant, spec: VehicleSpec, geo
 	root.set_script(scene_script)
 	root.set("spec", spec)
 
-	# Collision: one convex hull hugging the wheel-less body (valid on a moving RigidBody3D,
-	# unlike trimesh; hugs sloped hoods/cabs far better than a box for ~free). Its verts are
-	# clamped to >= MIN_CLEARANCE so the hull can't hang below the chassis and fight the
-	# suspension rays. Falls back to a box if the hull comes out degenerate.
-	var col := _body_shape(variant, geo)
-	var cs := CollisionShape3D.new()
-	cs.name = "CollisionShape3D"
-	cs.shape = col["shape"]
-	cs.position = col["pos"]
-	_add(root, root, cs)
+	# Collision is HAND-AUTHORED and preserved across regens: the collision nodes live in the
+	# existing scene (tuned by hand — see the CollisionLower/CollisionUpper box pairs), so a
+	# regen transplants them verbatim rather than overwriting them. Only a brand-new variant
+	# with no scene yet gets the generated convex hull as a starting point. This is why a
+	# rerun no longer clobbers hand-placed collision boxes.
+	var kept := _existing_collision(variant)
+	if kept.is_empty():
+		var col := _body_shape(variant, geo)
+		var cs := CollisionShape3D.new()
+		cs.name = "CollisionShape3D"
+		cs.shape = col["shape"]
+		cs.position = col["pos"]
+		_add(root, root, cs)
+	else:
+		for cs in kept:
+			_add(root, root, cs)
+		_shape_report.append("%s=kept(%d)" % [variant, kept.size()])
 
 	# Body model: instance the GLB, then steal its non-wheel children into a Model node under
 	# the body transform (180deg Y flip so Kenney's +Z front faces this project's -Z, + kit
@@ -298,7 +337,7 @@ func _build_scene(variant: String, scene_script: Variant, spec: VehicleSpec, geo
 		_own(child, root)
 	glb.free()
 
-	_add_lamps(root, box_aabb)
+	_add_lamps(root, box_aabb, geo["lenses"])
 
 	var packed := PackedScene.new()
 	packed.pack(root)
@@ -311,6 +350,25 @@ func _own(node: Node, scene_owner: Node) -> void:
 	node.owner = scene_owner
 	for c in node.get_children():
 		_own(c, scene_owner)
+
+
+## Direct CollisionShape3D children of the existing scene, duplicated so they survive the
+## old instance being freed. Empty when the scene doesn't exist yet (a new variant). This is
+## the seam that keeps hand-tuned collision from being regenerated away.
+func _existing_collision(variant: String) -> Array:
+	var path := OUT_DIR.path_join(variant + ".tscn")
+	if not ResourceLoader.exists(path):
+		return []
+	var scene := load(path) as PackedScene
+	if scene == null:
+		return []
+	var inst := scene.instantiate()
+	var kept: Array = []
+	for child in inst.get_children():
+		if child is CollisionShape3D:
+			kept.append(child.duplicate())
+	inst.free()
+	return kept
 
 
 ## Convex hull of the wheel-less body (verts clamped up to MIN_CLEARANCE for a flat floor
@@ -348,32 +406,162 @@ func _box_shape(geo: Dictionary) -> Dictionary:
 	return {"shape": box, "pos": Vector3(ctr.x, box_min_y + box_h * 0.5, ctr.z)}
 
 
-## Lamps subtree matching car.tscn's names/paths (LampSet needs zero changes). Headlights
-## are SpotLight3D at the front face (-Z, they emit down local -Z = forward); brake/turn
-## lenses are small BoxMesh at the rear/corners. Placed off the wheel-less body box —
-## cosmetic later.
-func _add_lamps(root: RigidBody3D, box: AABB) -> void:
+## Lamps subtree matching car.tscn's names/paths (LampSet needs zero changes beyond the head
+## lens). Each end's lens rectangle comes from _find_lenses — i.e. from the model's own
+## painted lamp face, not from the body box. The lens is SPLIT along its width: the inboard
+## (1 - TURN_FRAC) carries the head/brake lamp, the outboard TURN_FRAC becomes the turn
+## indicator, so an indicator always sits on real lens geometry (the Kenney kit paints no
+## indicator of its own). Ends with no painted lamp (race, race-future, the tractors) fall
+## back to the body-box formula below.
+func _add_lamps(root: RigidBody3D, box: AABB, lenses: Dictionary) -> void:
 	var lamps := Node3D.new()
 	lamps.name = "Lamps"
 	_add(root, root, lamps)
 
 	var ctr := box.get_center()
 	var hw := box.size.x * 0.5
-	var front := ctr.z - box.size.z * 0.5 * 0.98
-	var rear := ctr.z + box.size.z * 0.5 * 0.98
-	var cy := ctr.y
-	var low := ctr.y - box.size.y * 0.15
-	var lens := BoxMesh.new()
-	lens.size = Vector3(0.2, 0.12, 0.06)
+	var fb_front := ctr.z - box.size.z * 0.5 * 0.98
+	var fb_rear := ctr.z + box.size.z * 0.5 * 0.98
+	var fb_mesh := _box_mesh(0.2, 0.12, 0.06)
 
-	_add(root, lamps, _spot("HeadlightL", Vector3(-hw * 0.6, cy, front)))
-	_add(root, lamps, _spot("HeadlightR", Vector3(hw * 0.6, cy, front)))
-	_add(root, lamps, _lens("BrakeLampL", Vector3(-hw * 0.62, cy, rear), lens))
-	_add(root, lamps, _lens("BrakeLampR", Vector3(hw * 0.62, cy, rear), lens))
-	_add(root, lamps, _lens("TurnLF", Vector3(-hw * 0.86, low, front), lens))
-	_add(root, lamps, _lens("TurnLR", Vector3(-hw * 0.86, low, rear), lens))
-	_add(root, lamps, _lens("TurnRF", Vector3(hw * 0.86, low, front), lens))
-	_add(root, lamps, _lens("TurnRR", Vector3(hw * 0.86, low, rear), lens))
+	# --- front: spot light + head lens on the main part, indicator on the split-off part ---
+	var f: Dictionary = lenses.get("front", {})
+	if f.is_empty():
+		_add(root, lamps, _spot("HeadlightL", Vector3(-hw * 0.6, ctr.y, fb_front)))
+		_add(root, lamps, _spot("HeadlightR", Vector3(hw * 0.6, ctr.y, fb_front)))
+		_pair(root, lamps, "HeadLens", Vector3(hw * 0.6, ctr.y, fb_front), fb_mesh)
+		_pair(root, lamps, "TurnLF", Vector3(hw * 0.86, ctr.y, fb_front), fb_mesh, "TurnRF")
+	else:
+		var fs := _split(f, -1.0)
+		var sp: Vector3 = fs["spot_pos"]
+		_add(root, lamps, _spot("HeadlightL", Vector3(-sp.x, sp.y, sp.z)))
+		_add(root, lamps, _spot("HeadlightR", sp))
+		_pair(root, lamps, "HeadLens", fs["main_pos"], fs["main_mesh"])
+		_pair(root, lamps, "TurnLF", fs["turn_pos"], fs["turn_mesh"], "TurnRF")
+
+	# --- rear: brake lamp on the main part, indicator on the split-off part ---
+	var r: Dictionary = lenses.get("rear", {})
+	if r.is_empty():
+		_pair(root, lamps, "BrakeLamp", Vector3(hw * 0.62, ctr.y, fb_rear), fb_mesh)
+		_pair(root, lamps, "TurnLR", Vector3(hw * 0.86, ctr.y, fb_rear), fb_mesh, "TurnRR")
+	else:
+		var rs := _split(r, 1.0)
+		_pair(root, lamps, "BrakeLamp", rs["main_pos"], rs["main_mesh"])
+		_pair(root, lamps, "TurnLR", rs["turn_pos"], rs["turn_mesh"], "TurnRR")
+
+
+## Split one end's RIGHT-side lens box into an inboard main lamp and an outboard indicator.
+## `facing` is -1 front / +1 rear: the outward normal along Z, which decides which way the
+## meshes grow and which way the beam looks.
+##
+## The lamp mesh ENCLOSES the model's lens rather than resting on it, which is what fixes
+## both of the artifacts a thin proud-of-the-face slab produced:
+##   * Kenney lenses often WRAP around the corner onto the flank, so a slab covering only
+##     the end face left the painted lens showing in profile. Depth therefore spans the
+##     lens' full z extent, not a fixed thickness.
+##   * A mesh whose side face landed exactly on the painted lens' side plane gave two
+##     coincident coplanar surfaces, and the depth buffer cannot order those — hence the
+##     shimmering seen from the side. Growing every outward face LENS_CLEAR beyond the
+##     model's makes our surface unambiguously nearer the camera from every angle, so the
+##     ordinary depth test resolves it. That is why this is geometry and not a
+##     render_priority / depth-bias hack: a bias would win the tie on the end face but not
+##     on the flank, and biasing risks punching through neighbouring bodywork instead.
+## Growth on the INBOARD side is free — it just buries the mesh deeper inside the chassis.
+##
+## The cut follows the lens' shape: a WIDE lens (the usual case) splits along its width —
+## main lamp inboard, indicator outboard — while a TALL lens (vertical clusters like the
+## ambulance's rear corner light) splits along its height, main on top and indicator below,
+## so the indicator still lands on real lens area instead of hanging off the side.
+##
+## A disc lens (the SUV's round headlamp) cannot be cut in half and still read as a disc, so
+## it keeps its full circle as the main lamp and the indicator becomes a small box just
+## outboard of it.
+##
+## Returns Vector3 positions (right/+X side) for the main lamp, the indicator, and the spot:
+## main_pos, turn_pos, spot_pos, plus main_mesh / turn_mesh.
+func _split(lens: Dictionary, facing: float) -> Dictionary:
+	var b: AABB = lens["box"]
+	var c := b.get_center()
+	var depth := maxf(b.size.z, LENS_MIN_DEPTH) + LENS_CLEAR
+	var z_face := c.z + facing * b.size.z * 0.5          # the model's outward lens plane
+	var z := z_face + facing * (LENS_CLEAR - depth * 0.5)
+	var spot_z := z_face + facing * 0.02
+
+	if bool(lens["disc"]):
+		var radius := minf(b.size.x, maxf(b.size.y, LENS_MIN_H)) * 0.5 + LENS_CLEAR
+		var disc_turn_w := radius * 0.9
+		var disc_h := maxf(b.size.y, LENS_MIN_H) * 0.7 + 2.0 * LENS_CLEAR
+		# Indicator sits just OUTBOARD of the disc's rim, with a clearance gap so its inner
+		# face never touches the cylinder's tangent line.
+		var disc_turn_in := c.x + radius + LENS_CLEAR
+		return {
+			"spot_pos": Vector3(c.x, c.y, spot_z),
+			"main_pos": Vector3(c.x, c.y, z), "main_mesh": _disc_mesh(radius, depth),
+			"turn_pos": Vector3(disc_turn_in + disc_turn_w * 0.5, c.y, z),
+			"turn_mesh": _box_mesh(disc_turn_w, disc_h, depth),
+		}
+
+	# Each half grows outward by LENS_CLEAR (buried in the chassis / proud of the body) but
+	# the seam edge stays EXACT, so the two halves abut without overlapping — an overlap there
+	# would put two coplanar faces in the same place and bring the z-fighting back.
+	if b.size.y > b.size.x:
+		# Tall lens -> split along HEIGHT: main lamp on top, indicator below, seam between.
+		var w := b.size.x + 2.0 * LENS_CLEAR
+		var turn_h := b.size.y * TURN_FRAC
+		var main_h := b.size.y - turn_h
+		var bottom := c.y - b.size.y * 0.5
+		var top := c.y + b.size.y * 0.5
+		var seam_y := bottom + turn_h
+		var main_cy := (seam_y + top + LENS_CLEAR) * 0.5
+		var turn_cy := (bottom - LENS_CLEAR + seam_y) * 0.5
+		return {
+			"spot_pos": Vector3(c.x, main_cy, spot_z),
+			"main_pos": Vector3(c.x, main_cy, z), "main_mesh": _box_mesh(w, main_h + LENS_CLEAR, depth),
+			"turn_pos": Vector3(c.x, turn_cy, z), "turn_mesh": _box_mesh(w, turn_h + LENS_CLEAR, depth),
+		}
+
+	# Wide lens -> split along WIDTH: main lamp inboard, indicator outboard, seam between.
+	var h := maxf(b.size.y, LENS_MIN_H) + 2.0 * LENS_CLEAR
+	var in_edge := c.x - b.size.x * 0.5
+	var out_edge := c.x + b.size.x * 0.5
+	var turn_w := b.size.x * TURN_FRAC
+	var main_w := b.size.x - turn_w
+	var seam_x := in_edge + main_w
+	var main_cx := (in_edge - LENS_CLEAR + seam_x) * 0.5
+	var turn_cx := (seam_x + out_edge + LENS_CLEAR) * 0.5
+	return {
+		"spot_pos": Vector3(main_cx, c.y, spot_z),
+		"main_pos": Vector3(main_cx, c.y, z), "main_mesh": _box_mesh(main_w + LENS_CLEAR, h, depth),
+		"turn_pos": Vector3(turn_cx, c.y, z), "turn_mesh": _box_mesh(turn_w + LENS_CLEAR, h, depth),
+	}
+
+
+func _box_mesh(w: float, h: float, depth: float) -> BoxMesh:
+	var m := BoxMesh.new()
+	m.size = Vector3(w, h, depth)
+	return m
+
+
+## Cylinder laid on its side so the circular face points down Z (CylinderMesh's axis is +Y).
+func _disc_mesh(radius: float, depth: float) -> CylinderMesh:
+	var m := CylinderMesh.new()
+	m.top_radius = radius
+	m.bottom_radius = radius
+	m.height = depth
+	m.radial_segments = 12
+	m.rings = 0
+	return m
+
+
+## Add a mirrored mesh pair. `pos` is the RIGHT-side position; the left one is its mirror.
+## Naming follows the existing paths: "HeadLens"/"BrakeLamp" take an L/R suffix, while the
+## turn lenses are already fully named (TurnLF + TurnRF), so pass both.
+func _pair(scene_owner: Node, parent: Node, right_name: String, pos: Vector3, mesh: Mesh,
+		left_name := "") -> void:
+	var l_name := right_name + "L" if left_name.is_empty() else right_name
+	var r_name := right_name + "R" if left_name.is_empty() else left_name
+	_add(scene_owner, parent, _lens(l_name, Vector3(-pos.x, pos.y, pos.z), mesh))
+	_add(scene_owner, parent, _lens(r_name, pos, mesh))
 
 
 func _spot(spot_name: String, pos: Vector3) -> SpotLight3D:
@@ -387,11 +575,14 @@ func _spot(spot_name: String, pos: Vector3) -> SpotLight3D:
 	return s
 
 
-func _lens(lens_name: String, pos: Vector3, mesh: BoxMesh) -> MeshInstance3D:
+func _lens(lens_name: String, pos: Vector3, mesh: Mesh) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.name = lens_name
 	mi.position = pos
 	mi.mesh = mesh
+	if mesh is CylinderMesh:
+		mi.basis = Basis(Vector3.RIGHT, PI * 0.5)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
 
 
@@ -460,8 +651,210 @@ func _analyze(path: String, wheel_models: Array) -> Dictionary:
 		var x := signf(tw.x) * maxf(flush, absf(tw.x))
 		wheel_xz.append(Vector2(x, tw.z))
 
-	return {"xform": xform, "wheel_xz": wheel_xz, "body_pairs": body_pairs,
-			"box": _xform_aabb(body_aabb, xform)}
+	var box := _xform_aabb(body_aabb, xform)
+	var variant := path.get_file().get_basename()
+	var lenses := _find_lenses(body_pairs, xform, box)
+	for end: String in _lens_overrides.get(variant, {}):
+		var o: Array = _lens_overrides[variant][end]
+		var size: Vector3 = o[1]
+		lenses[end] = {"box": AABB((o[0] as Vector3) - size * 0.5, size), "disc": false}
+	_lens_report.append("%-16s front %s  rear %s" %
+			[variant, _lens_line(lenses.get("front", {})),
+			_lens_line(lenses.get("rear", {}))])
+	return {"xform": xform, "wheel_xz": wheel_xz, "body_pairs": body_pairs, "box": box,
+			"lenses": lenses}
+
+
+func _lens_line(lens: Dictionary) -> String:
+	if lens.is_empty():
+		return "%-34s" % "fallback"
+	var b: AABB = lens["box"]
+	var c := b.get_center()
+	return "%s (%+.3f,%+.3f,%+.3f) %.2fx%.2f" % [
+			"disc" if lens["disc"] else "box ", c.x, c.y, c.z, b.size.x, b.size.y]
+
+
+## Locate each end's lamp lens by reading the model's own texturing.
+##
+## The Kenney kit is one merged mesh per vehicle drawn from a single colormap atlas, so a
+## lamp lens is not a named node — it is the run of triangles whose UV lands on the atlas'
+## lamp swatches (amber at the front, red at the rear). This samples the atlas at every
+## triangle's UV centroid, unions triangles that share a welded vertex AND an atlas shade,
+## keeps the clusters that are lens-SHAPED (small, off the centreline, at an end face), then
+## merges the survivors that touch — one lens spans several shades of its swatch.
+##
+## Filtering before merging is deliberate: it stops a lens fusing into a same-hue body panel
+## (the firetruck is red all over) while still re-joining a lens split by its own gradient.
+##
+## Returns {front: {box, disc}, rear: {box, disc}} — box is the RIGHT-side (+X) lens; a
+## missing key means that end has no painted lamp and the caller falls back to the body box.
+func _find_lenses(body_pairs: Array, xform: Transform3D, box: AABB) -> Dictionary:
+	var img := Image.new()
+	if img.load(ProjectSettings.globalize_path(COLORMAP)) != OK:
+		push_error("cannot load " + COLORMAP)
+		return {}
+
+	var tris: Array = []  # [a, b, c, Color]
+	for pair: Array in body_pairs:
+		var mesh: Mesh = pair[0]
+		var xf: Transform3D = xform * (pair[1] as Transform3D)
+		for s in mesh.get_surface_count():
+			var arr := mesh.surface_get_arrays(s)
+			var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var uvs: PackedVector2Array = arr[Mesh.ARRAY_TEX_UV]
+			var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+			if uvs.is_empty():
+				continue
+			if idx.is_empty():
+				idx = PackedInt32Array(range(verts.size()))
+			for i in range(0, idx.size(), 3):
+				var i0 := idx[i]
+				var i1 := idx[i + 1]
+				var i2 := idx[i + 2]
+				var uv := (uvs[i0] + uvs[i1] + uvs[i2]) / 3.0
+				var px := clampi(int(uv.x * img.get_width()), 0, img.get_width() - 1)
+				var py := clampi(int(uv.y * img.get_height()), 0, img.get_height() - 1)
+				tris.append([xf * verts[i0], xf * verts[i1], xf * verts[i2],
+						img.get_pixel(px, py)])
+
+	# Union triangles sharing a welded vertex at the same atlas shade.
+	var parent := PackedInt32Array()
+	parent.resize(tris.size())
+	for i in tris.size():
+		parent[i] = i
+	var seen := {}
+	for i in tris.size():
+		var col: Color = tris[i][3]
+		var shade := "%d_%d_%d" % [int(col.r * 12), int(col.g * 12), int(col.b * 12)]
+		for k in 3:
+			var v: Vector3 = tris[i][k]
+			var key := "%s|%d,%d,%d" % [shade, roundi(v.x / LENS_WELD),
+					roundi(v.y / LENS_WELD), roundi(v.z / LENS_WELD)]
+			if seen.has(key):
+				_union(parent, i, int(seen[key]))
+			else:
+				seen[key] = i
+
+	var clusters := {}
+	for i in tris.size():
+		var root := _find(parent, i)
+		if not clusters.has(root):
+			clusters[root] = [AABB(tris[i][0], Vector3.ZERO), 0, tris[i][3]]
+		var e: Array = clusters[root]
+		var b: AABB = e[0]
+		for k in 3:
+			b = b.expand(tris[i][k])
+		e[0] = b
+		e[1] = int(e[1]) + 1
+
+	# Lens-shaped survivors, then merge the ones that touch.
+	var cand: Array = []  # [AABB, tri count, family]
+	for root: int in clusters:
+		var e: Array = clusters[root]
+		var b: AABB = e[0]
+		var fam := _lens_family(e[2])
+		if fam == "":
+			continue
+		if b.size.x > 0.55 or b.size.y > 0.40 or b.size.z > 0.45:
+			continue
+		if absf(b.get_center().x) < 0.10:
+			continue
+		if absf(b.get_center().z) < box.size.z * 0.5 - 0.75:
+			continue
+		if fam == "white" and b.size.x * b.size.y > 0.10:
+			continue
+		cand.append([b, int(e[1]), fam])
+	_merge_touching(cand)
+
+	return {"front": _pick_lens(cand, -1.0), "rear": _pick_lens(cand, 1.0)}
+
+
+## Best mirrored lens pair on one end (-1 front / +1 rear), as {box, disc} for the +X side.
+## Front lamps are painted amber (the kit's clear-lens swatch), rear red; white is only ever
+## a front fallback. Ties go to the largest lens face.
+func _pick_lens(cand: Array, facing: float) -> Dictionary:
+	for fam: String in (["red"] if facing > 0.0 else ["amber", "white"]):
+		var best: Array = []
+		for a: Array in cand:
+			var ba: AABB = a[0]
+			if a[2] != fam or signf(ba.get_center().z) != facing or ba.get_center().x <= 0.0:
+				continue
+			# Require the mirror twin — a lamp is always a pair, stray livery rarely is.
+			var mirrored := false
+			for b: Array in cand:
+				var bb: AABB = b[0]
+				if b[2] != fam or bb.get_center().x >= 0.0:
+					continue
+				if absf(bb.get_center().x + ba.get_center().x) < 0.05 \
+						and absf(bb.get_center().y - ba.get_center().y) < 0.05 \
+						and absf(bb.get_center().z - ba.get_center().z) < 0.08:
+					mirrored = true
+					break
+			if not mirrored:
+				continue
+			if best.is_empty() or ba.size.x * ba.size.y > (best[0] as AABB).size.x * (best[0] as AABB).size.y:
+				best = a
+		if not best.is_empty():
+			var bb2: AABB = best[0]
+			var disc := int(best[1]) >= DISC_MIN_TRIS and absf(bb2.size.x - bb2.size.y) < 0.03
+			return {"box": bb2, "disc": disc}
+	return {}
+
+
+## Coarse hue family of an atlas sample; "" = not a lamp swatch.
+func _lens_family(c: Color) -> String:
+	var mx := maxf(c.r, maxf(c.g, c.b))
+	var mn := minf(c.r, minf(c.g, c.b))
+	if mx < 0.55:
+		return ""
+	# The kit's clear-lens swatch is a faintly blue white (#d4ecff on the tractors), so the
+	# neutral band has to be wide enough to catch it; the size/position filters upstream are
+	# what keep glass and pale body panels out.
+	if mx - mn < 0.22:
+		return "white" if mx > 0.88 else ""
+	if c.r > 0.6 and c.g < 0.45 and c.b < 0.45:
+		return "red"
+	if c.r > 0.85 and c.g > 0.40 and c.g < 0.92 and c.b < 0.50:
+		return "amber"
+	return ""
+
+
+## In-place merge of same-family candidates whose boxes touch within LENS_MERGE_GAP.
+func _merge_touching(cand: Array) -> void:
+	var merged := true
+	while merged:
+		merged = false
+		for i in cand.size():
+			for j in range(i + 1, cand.size()):
+				if cand[i][2] != cand[j][2]:
+					continue
+				if not (cand[i][0] as AABB).grow(LENS_MERGE_GAP).intersects(cand[j][0]):
+					continue
+				cand[i][0] = (cand[i][0] as AABB).merge(cand[j][0])
+				cand[i][1] = int(cand[i][1]) + int(cand[j][1])
+				cand.remove_at(j)
+				merged = true
+				break
+			if merged:
+				break
+
+
+func _find(parent: PackedInt32Array, i: int) -> int:
+	var r := i
+	while parent[r] != r:
+		r = parent[r]
+	while parent[i] != r:
+		var n := parent[i]
+		parent[i] = r
+		i = n
+	return r
+
+
+func _union(parent: PackedInt32Array, a: int, b: int) -> void:
+	var ra := _find(parent, a)
+	var rb := _find(parent, b)
+	if ra != rb:
+		parent[rb] = ra
 
 
 ## Collect body mesh pairs and wheel-node centres. The four driven wheels are the corner

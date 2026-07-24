@@ -96,6 +96,9 @@ extends Resource
 ## LampSet drives. Headlights are SpotLight3D nodes (energy/range per
 ## level); the rest are MeshInstance3D lenses given a private emissive material.
 @export var headlight_paths: Array[NodePath] = []
+## Head LENS meshes: the visible glow sitting on the model's own headlamp face. Separate
+## from headlight_paths because that one is the SpotLight3D that throws the beam.
+@export var head_lamp_paths: Array[NodePath] = []
 @export var brake_lamp_paths: Array[NodePath] = []
 @export var turn_left_paths: Array[NodePath] = []
 @export var turn_right_paths: Array[NodePath] = []

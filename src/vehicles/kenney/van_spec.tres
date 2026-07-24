@@ -7,7 +7,7 @@
 script = ExtResource("1_6ljny")
 mass = 1600.0
 center_of_mass = Vector3(0, 0.2, 0)
-wheel_positions = PackedVector3Array(-0.6900001, 0.4618182, -0.9419999, 0.6900001, 0.4618182, -0.94200003, -0.6900001, 0.4618182, 0.8820001, 0.6900001, 0.4618182, 0.88199997)
+wheel_positions = PackedVector3Array(-0.6900001, 0.4618182, -0.9419999, 0.6900001, 0.4618182, -0.94200003, -0.5700002, 0.4618182, 0.8820001, 0.5700002, 0.4618182, 0.88199997)
 wheel_radius = 0.36
 wheel_scene = ExtResource("2_noaln")
 driven_front = true
@@ -21,6 +21,7 @@ brake_torque = 1247.0
 handbrake_torque = 346.0
 steer_speed = 7.0
 headlight_paths = Array[NodePath]([NodePath("Lamps/HeadlightL"), NodePath("Lamps/HeadlightR")])
+head_lamp_paths = Array[NodePath]([NodePath("Lamps/HeadLensL"), NodePath("Lamps/HeadLensR")])
 brake_lamp_paths = Array[NodePath]([NodePath("Lamps/BrakeLampL"), NodePath("Lamps/BrakeLampR")])
 turn_left_paths = Array[NodePath]([NodePath("Lamps/TurnLF"), NodePath("Lamps/TurnLR")])
 turn_right_paths = Array[NodePath]([NodePath("Lamps/TurnRF"), NodePath("Lamps/TurnRR")])

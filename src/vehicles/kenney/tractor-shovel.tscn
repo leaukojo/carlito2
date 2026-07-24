@@ -1,8 +1,8 @@
-[gd_scene format=4 uid="uid://5yvaj8u6j4u6"]
+[gd_scene format=4]
 
-[ext_resource type="Script" uid="uid://cnlvhyp34xc6o" path="res://src/vehicles/tractor/tractor.gd" id="1_fvd71"]
+[ext_resource type="Script" path="res://src/vehicles/tractor/tractor.gd" id="1_fvd71"]
 [ext_resource type="Resource" path="res://src/vehicles/kenney/tractor-shovel_spec.tres" id="2_xhcxs"]
-[ext_resource type="Texture2D" uid="uid://bu4xumyjoi2da" path="res://src/vehicles/kenney/models/Textures/colormap.png" id="3_wdkly"]
+[ext_resource type="Texture2D" path="res://src/vehicles/kenney/models/Textures/colormap.png" id="3_wdkly"]
 
 [sub_resource type="BoxShape3D" id="BoxLower"]
 size = Vector3(1.7503, 0.7003107, 2.7701359)
@@ -83,22 +83,22 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_wqegv")
 
-[sub_resource type="BoxMesh" id="BoxMesh_4mtho"]
+[sub_resource type="BoxMesh" id="BoxMesh_fvd71"]
 size = Vector3(0.2, 0.12, 0.06)
 
-[node name="TractorShovel" type="RigidBody3D" unique_id=906650517]
+[node name="TractorShovel" type="RigidBody3D" unique_id=554084003]
 script = ExtResource("1_fvd71")
 spec = ExtResource("2_xhcxs")
 
-[node name="CollisionLower" type="CollisionShape3D" parent="." unique_id=1871792531]
+[node name="CollisionLower" type="CollisionShape3D" parent="." unique_id=1682813503]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5561968, 0.096982)
 shape = SubResource("BoxLower")
 
-[node name="CollisionUpper" type="CollisionShape3D" parent="." unique_id=1553318586]
+[node name="CollisionUpper" type="CollisionShape3D" parent="." unique_id=1311104182]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3608, 0.53292704)
 shape = SubResource("BoxUpper")
 
-[node name="Model" type="Node3D" parent="." unique_id=1700125623]
+[node name="Model" type="Node3D" parent="." unique_id=1320667642]
 transform = Transform3D(-1.2, 0, -1.04907336e-07, 0, 1.2, 0, 1.04907336e-07, 0, -1.2, 0, 0, -4.2915343e-07)
 
 [node name="body" type="MeshInstance3D" parent="Model" unique_id=488367678]
@@ -108,45 +108,58 @@ mesh = SubResource("ArrayMesh_dlrgh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.682725, 0.6308995)
 mesh = SubResource("ArrayMesh_j03lr")
 
-[node name="Lamps" type="Node3D" parent="." unique_id=361790780]
+[node name="Lamps" type="Node3D" parent="." unique_id=2126046347]
 
-[node name="HeadlightL" type="SpotLight3D" parent="Lamps" unique_id=1826616211]
+[node name="HeadlightL" type="SpotLight3D" parent="Lamps" unique_id=1333633770]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.52509606, 0.90721494, -1.4523598)
 visible = false
 light_energy = 0.0
 spot_range = 28.0
 spot_angle = 38.0
 
-[node name="HeadlightR" type="SpotLight3D" parent="Lamps" unique_id=1962122245]
+[node name="HeadlightR" type="SpotLight3D" parent="Lamps" unique_id=1612481410]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.52509606, 0.90721494, -1.4523598)
 visible = false
 light_energy = 0.0
 spot_range = 28.0
 spot_angle = 38.0
 
-[node name="BrakeLampL" type="MeshInstance3D" parent="Lamps" unique_id=1533945825]
+[node name="HeadLensL" type="MeshInstance3D" parent="Lamps" unique_id=1866133901]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.52509606, 0.90721494, -1.4523598)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_fvd71")
+
+[node name="HeadLensR" type="MeshInstance3D" parent="Lamps" unique_id=26510673]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.52509606, 0.90721494, -1.4523598)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_fvd71")
+
+[node name="TurnLF" type="MeshInstance3D" parent="Lamps" unique_id=355551896]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7526377, 0.90721494, -1.4523598)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_fvd71")
+
+[node name="TurnRF" type="MeshInstance3D" parent="Lamps" unique_id=1276324827]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7526377, 0.90721494, -1.4523598)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_fvd71")
+
+[node name="BrakeLampL" type="MeshInstance3D" parent="Lamps" unique_id=1913610222]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.54259926, 0.90721494, 1.4523598)
-mesh = SubResource("BoxMesh_4mtho")
+cast_shadow = 0
+mesh = SubResource("BoxMesh_fvd71")
 
-[node name="BrakeLampR" type="MeshInstance3D" parent="Lamps" unique_id=1777030564]
+[node name="BrakeLampR" type="MeshInstance3D" parent="Lamps" unique_id=1212636705]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.54259926, 0.90721494, 1.4523598)
-mesh = SubResource("BoxMesh_4mtho")
+cast_shadow = 0
+mesh = SubResource("BoxMesh_fvd71")
 
-[node name="TurnLF" type="MeshInstance3D" parent="Lamps" unique_id=172365225]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7526377, 0.6350595, -1.4523598)
-mesh = SubResource("BoxMesh_4mtho")
+[node name="TurnLR" type="MeshInstance3D" parent="Lamps" unique_id=258283417]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7526377, 0.90721494, 1.4523598)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_fvd71")
 
-[node name="TurnLR" type="MeshInstance3D" parent="Lamps" unique_id=238973215]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7526377, 0.6350595, 1.4523598)
-mesh = SubResource("BoxMesh_4mtho")
-
-[node name="TurnRF" type="MeshInstance3D" parent="Lamps" unique_id=1947020277]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7526377, 0.6350595, -1.4523598)
-mesh = SubResource("BoxMesh_4mtho")
-
-[node name="TurnRR" type="MeshInstance3D" parent="Lamps" unique_id=1211160746]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7526377, 0.6350595, 1.4523598)
-mesh = SubResource("BoxMesh_4mtho")
-
-[node name="HoodCam" type="Marker3D" parent="." unique_id=44153428]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9344, -0.3557)
+[node name="TurnRR" type="MeshInstance3D" parent="Lamps" unique_id=2059521668]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7526377, 0.90721494, 1.4523598)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_fvd71")

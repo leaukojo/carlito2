@@ -126,6 +126,22 @@ junctions, lane markings, traffic.
   visual meeting the ground). Wheel scenes are radius-NORMALIZED (model scaled to radius 1);
   BaseVehicle scales each instance. Per-instance tweaks (scale, the right-side flip) ride the
   visual's CHILDREN — RayWheel overwrites the root transform every tick.
+- Kenney lamp placement is **measured, never guessed**: a lens is not a named node (each
+  vehicle is one merged mesh on a shared colormap atlas), so `gen_kenney_vehicles.gd`
+  samples the atlas at every triangle's UV centroid and unions welded same-shade triangles
+  into lens clusters (amber = front, red = rear). Each end's lens is then SPLIT along its
+  width — inboard 65% = head/brake lamp, outboard 35% = turn indicator, since the kit paints
+  no indicator of its own. The run prints a per-variant lens report; `fallback` means that
+  end has no painted lamp (race, race-future, tractor-shovel, and every tractor rear) and
+  the old body-box formula placed it. Filter candidates BEFORE merging or a lens fuses into
+  a same-hue body panel (the firetruck is red all over).
+- Kenney vehicle **collision is hand-authored and preserved across regens**: each scene
+  carries a hand-tuned `CollisionLower`/`CollisionUpper` box pair, and `gen_kenney_vehicles.gd`
+  transplants the existing scene's `CollisionShape3D` children verbatim (`_existing_collision`)
+  instead of rebuilding a hull — only a brand-new variant with no scene yet gets a generated
+  convex hull. So a rerun regenerates lamps + feel but never clobbers the collision boxes.
+  If you ever need to reset a variant's collision to the auto hull, delete its collision
+  nodes from the .tscn first, then regen.
 - Turning a right-side wheel around is `Basis(Vector3.RIGHT, PI)`, **not** `Basis(UP, PI)`:
   in the wheel-root frame RayWheel builds, local Y is the AXLE, so a yaw just spins the wheel
   about its own axis and changes nothing visible. Verify rim direction by rendering both
