@@ -338,3 +338,52 @@ func test_bridge_mirrors_lamp_bits_verbatim() -> void:
 	assert_bool(out.brake_lamp).is_true()
 	assert_bool(out.check_engine).is_true()
 	assert_bool(out.battery_warn).is_false() # warning LED defaults off when not sent
+
+
+# --- train controls (pantograph + doors) --------------------------------------
+
+func test_local_train_toggles_pass_through() -> void:
+	# InputRouter owns the local _pantograph / _doors toggles and injects them as bools;
+	# the arbitration just passes them through (the pto pattern).
+	var raw := _raw()
+	raw["pantograph"] = true
+	raw["doors"] = true
+	var out: RouterScript.VehicleInput = RouterScript.arbitrate_local(raw, 0.0, GEAR_D1)
+	assert_bool(out.pantograph).is_true()
+	assert_bool(out.doors).is_true()
+	# Absent → lowered / shut.
+	var bare: RouterScript.VehicleInput = RouterScript.arbitrate_local(_raw(), 0.0, GEAR_D1)
+	assert_bool(bare.pantograph).is_false()
+	assert_bool(bare.doors).is_false()
+
+
+func test_bridge_mirrors_train_bits_verbatim() -> void:
+	var vals := _bridge(0.0, 0.0, 0.0, 0.0, GEAR_D1)
+	vals["pantograph"] = true
+	var out: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(vals)
+	assert_bool(out.pantograph).is_true()
+	assert_bool(out.doors).is_false()  # absent bit stays off
+	var bare: RouterScript.VehicleInput = RouterScript.arbitrate_bridge(
+			_bridge(0.0, 0.0, 0.0, 0.0, GEAR_D1))
+	assert_bool(bare.pantograph).is_false()
+	assert_bool(bare.doors).is_false()
+
+
+func test_merge_local_ors_train_toggle_edges() -> void:
+	var m := RouterScript.merge_local(
+			{"pantograph_toggle": true, "doors_toggle": false},
+			{"pantograph_toggle": false, "doors_toggle": true})
+	assert_bool(m["pantograph_toggle"]).is_true()
+	assert_bool(m["doors_toggle"]).is_true()
+	var none := RouterScript.merge_local({}, {})
+	assert_bool(none["pantograph_toggle"]).is_false()
+	assert_bool(none["doors_toggle"]).is_false()
+
+
+func test_vehicle_input_copy_carries_train_fields() -> void:
+	var vi := RouterScript.VehicleInput.new()
+	vi.pantograph = true
+	vi.doors = true
+	var c: RouterScript.VehicleInput = vi.copy()
+	assert_bool(c.pantograph).is_true()
+	assert_bool(c.doors).is_true()

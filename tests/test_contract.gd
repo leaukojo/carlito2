@@ -27,10 +27,10 @@ func _real_contract() -> ContractScript.ContractData:
 	return _parse_file(ContractScript.CONTRACT_PATH)
 
 
-func test_real_contract_is_valid_v8() -> void:
+func test_real_contract_is_valid_v9() -> void:
 	var data := _real_contract()
 	assert_array(data.errors).is_empty()
-	assert_int(data.version).is_equal(8)
+	assert_int(data.version).is_equal(9)
 
 
 func _assert_core_signals_present(names: PackedStringArray, dir: String) -> void:
@@ -202,3 +202,31 @@ func test_not_json_fails() -> void:
 	var data := ContractScript.ContractData.parse("this is not json {")
 	assert_bool(data.is_valid()).is_false()
 	assert_str("\n".join(data.errors)).contains("invalid JSON")
+
+
+# --- train family (flavor "train": rail practice, not a real train CAN standard) ---
+
+func test_train_wired_into_shared_signals_and_flavored_rail_signals() -> void:
+	var data := _real_contract()
+	assert_bool(data.is_valid()).is_true()
+	var train_in := data.signals_for_vehicle("train", "in").map(
+			func(s: ContractScript.SignalDef) -> String: return s.name)
+	assert_array(train_in).contains(["accel", "brake", "key", "gear", "handbrake",
+			"pantograph", "doors"])
+	# Rail-guided: no steering; no rear-lamp / turn-signal equivalent.
+	assert_array(train_in).not_contains(["steer", "turnL", "turnR", "brakeLamp"])
+
+	var train_out := data.signals_for_vehicle("train", "out").map(
+			func(s: ContractScript.SignalDef) -> String: return s.name)
+	assert_array(train_out).contains(["kmh", "speed", "gear", "odo", "status",
+			"pantograph_state", "doors_state", "catenary_volts", "motor_current",
+			"brake_pipe", "grade", "coupler_force"])
+	# Electric traction: no engine RPM, fuel or coolant; no wheel slip/ground.
+	assert_array(train_out).not_contains(["rpm", "fuel", "coolant", "slip", "ground", "steer"])
+
+	assert_str(data.get_signal_def("pantograph", "in").flavor).is_equal("train")
+	assert_str(data.get_signal_def("coupler_force", "out").flavor).is_equal("train")
+	# catenary_volts / brake_pipe warn on the LOW side; motor_current on the high side.
+	assert_bool(data.get_signal_def("catenary_volts", "out").warn_is_low()).is_true()
+	assert_bool(data.get_signal_def("brake_pipe", "out").warn_is_low()).is_true()
+	assert_bool(data.get_signal_def("motor_current", "out").warn_is_low()).is_false()

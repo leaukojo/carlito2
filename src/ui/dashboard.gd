@@ -21,6 +21,10 @@ const LAMP_TEXT := {
 	"handbrake": "BRAKE", "turnL": "<L", "turnR": "R>", "horn": "HORN",
 	"checkEngine": "CHECK", "battery": "BATT", "brakeLamp": "STOP",
 	"pto_state": "PTO", "arm": "ARM", "armed": "ARMED",
+	# train: the "in" request lamps sit right next to their "out" state lamps in the same
+	# row, so the requests are captioned REQ to stay readable at 13 px.
+	"pantograph": "PAN REQ", "pantograph_state": "PANTO",
+	"doors": "DOOR REQ", "doors_state": "DOORS",
 }
 const LAMP_COLOR := {
 	"handbrake": Color(0.95, 0.35, 0.30), "turnL": Color(0.35, 0.85, 0.45),
@@ -28,11 +32,15 @@ const LAMP_COLOR := {
 	"checkEngine": Color(1.0, 0.70, 0.15), "battery": Color(0.95, 0.35, 0.30),
 	"brakeLamp": Color(0.95, 0.35, 0.30), "pto_state": Color(0.35, 0.85, 0.45),
 	"arm": Color(0.35, 0.85, 0.45), "armed": Color(0.35, 0.85, 0.45),
+	"pantograph": Color(0.45, 0.72, 1.0), "pantograph_state": Color(0.45, 0.72, 1.0),
+	"doors": Color(1.0, 0.70, 0.15), "doors_state": Color(1.0, 0.70, 0.15),
 }
 ## Cosmetic short captions for the generated "out" bars (like LAMP_TEXT for lamps).
 const BAR_LABEL := {
 	"hitch_pos_actual": "HITCH", "pto_rpm": "PTO", "engine_load": "LOAD",
 	"altitude": "ALT", "vspeed": "V/S", "flaps_actual": "FLAPS", "rotor_rpm": "ROTOR",
+	"catenary_volts": "LINE", "motor_current": "AMPS", "brake_pipe": "PIPE",
+	"grade": "GRADE", "coupler_force": "COUPL",
 }
 const LAMP_OFF := Color(0.28, 0.30, 0.34)
 const CHIP_COLOR := Color(0.85, 0.88, 0.93)
@@ -154,8 +162,9 @@ func _build_telltale_row(vehicle_type: String) -> Control:
 			continue
 		_lamps[sig.name] = _make_lamp(sig.name, row)
 
-	# Flavored bool "out" signals become tell-tales too (isobus pto_state, dronecan
-	# armed), driven from telemetry rather than input — generated from contract metadata.
+	# Flavored bool "out" signals become tell-tales too (isobus pto_state, dronecan armed,
+	# train pantograph_state/doors_state), driven from telemetry rather than input —
+	# generated from contract metadata.
 	for sig in Contract.data.signals_for_vehicle(vehicle_type, "out"):
 		if sig.type != "bool" or sig.flavor == "":
 			continue
@@ -175,8 +184,8 @@ func _make_lamp(sig_name: String, into: Node) -> Label:
 
 ## Bars for every "out" signal (this vehicle) that has a range and is either warn'd
 ## (fuel/coolant, altitude/vspeed) or flavored (isobus implement panel, canaerospace
-## flaps, dronecan rotor — driven from the contract 'flavor' metadata, not hardcoded
-## names), except the two gauges.
+## flaps, dronecan rotor, train line/amps/pipe — driven from the contract 'flavor'
+## metadata, not hardcoded names), except the two gauges.
 func _build_bars(vehicle_type: String, into: Node) -> void:
 	for sig in Contract.data.signals_for_vehicle(vehicle_type, "out"):
 		if sig.name in GAUGE_SIGNALS or sig.range.size() != 2:
@@ -243,8 +252,8 @@ func _process(_dt: float) -> void:
 		if typeof(v) != TYPE_NIL:
 			_bars[sig_name].value = v
 
-	# ISOBUS bool "out" tell-tales (pto_state) are telemetry-driven, unlike the input
-	# lamps in _update_telltales. Only present on vehicles that declare them (tractor).
+	# Flavored bool "out" tell-tales (pto_state, armed, pantograph_state/doors_state) are
+	# telemetry-driven, unlike the input lamps in _update_telltales.
 	for sig_name in _out_lamps:
 		var on := bool(t.get(sig_name))
 		var col: Color = LAMP_COLOR.get(sig_name, Color(1.0, 0.70, 0.15)) if on else LAMP_OFF
@@ -270,6 +279,8 @@ func _update_telltales() -> void:
 		"checkEngine": vi.check_engine,
 		"battery": vi.battery_warn,
 		"arm": vi.arm,
+		"pantograph": vi.pantograph,
+		"doors": vi.doors,
 	}
 	for sig_name in _lamps:
 		var on: bool = active.get(sig_name, false)

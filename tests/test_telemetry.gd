@@ -11,6 +11,7 @@ const BoatT := preload("res://src/vehicles/boat/boat_telemetry.gd")
 const BikeT := preload("res://src/vehicles/bike/bike_telemetry.gd")
 const DroneT := preload("res://src/vehicles/drone/drone_telemetry.gd")
 const PlaneT := preload("res://src/vehicles/plane/plane_telemetry.gd")
+const TrainT := preload("res://src/vehicles/train/train_telemetry.gd")
 const ContractScript := preload("res://src/bridge/contract.gd")
 
 
@@ -142,8 +143,9 @@ func test_to_bridge_dict_covers_every_ground_out_signal() -> void:
 	var file := FileAccess.open(ContractScript.CONTRACT_PATH, FileAccess.READ)
 	assert_object(file).is_not_null()
 	var contract := ContractScript.ContractData.parse(file.get_as_text())
-	# The tractor/boat/bike publish via their telemetry subclasses (extra out fields), so
-	# their coverage must be checked against those subclasses, not the base struct.
+	# The tractor/boat/bike/drone/plane/train publish via their telemetry subclasses (extra
+	# out fields), so their coverage must be checked against those subclasses, not the base
+	# struct.
 	var keys_by_vehicle := {
 		"car": T.new().to_bridge_dict().keys(),
 		"truck": T.new().to_bridge_dict().keys(),
@@ -152,6 +154,7 @@ func test_to_bridge_dict_covers_every_ground_out_signal() -> void:
 		"bike": BikeT.new().to_bridge_dict().keys(),
 		"drone": DroneT.new().to_bridge_dict().keys(),
 		"plane": PlaneT.new().to_bridge_dict().keys(),
+		"train": TrainT.new().to_bridge_dict().keys(),
 	}
 	for vehicle in keys_by_vehicle:
 		var keys: Array = keys_by_vehicle[vehicle]
@@ -174,3 +177,15 @@ func test_engine_load_pct_throttle_and_pto_terms() -> void:
 	assert_float(TractorT.engine_load_pct(0.3, true, 0.35)).is_equal_approx(65.0, 1e-4)
 	# Clamped at 100 %.
 	assert_float(TractorT.engine_load_pct(0.9, true, 0.35)).is_equal(100.0)
+
+
+# --- train telemetry struct (Phase 2: struct only, values land in Phase 3) -----
+
+func test_train_telemetry_rests_at_charged_pipe_and_lowered_pantograph() -> void:
+	var t := TrainT.new()
+	assert_bool(t.pantograph_state).is_false()
+	assert_bool(t.doors_state).is_false()
+	assert_float(t.brake_pipe).is_equal(TrainT.BRAKE_PIPE_CHARGED)
+	assert_float(t.catenary_volts).is_equal(0.0)
+	assert_float(t.grade).is_equal(0.0)
+	assert_float(t.coupler_force).is_equal(0.0)

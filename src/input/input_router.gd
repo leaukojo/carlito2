@@ -59,6 +59,10 @@ class VehicleInput:
 	var climb := 0.0          ## -1..1, + = ascend (drone vertical rate)
 	var arm := false          ## drone motor arm (rotors spin only when armed)
 	var flaps := 0.0          ## 0..1 requested flap extension (plane only)
+	# Train controls (flavor "train"). Same struct-not-side-channel rule as the ISOBUS/
+	# flight fields; only TrainVehicle reads them. Default: pantograph down, doors shut.
+	var pantograph := false   ## pantograph raise request (traction is cut while lowered)
+	var doors := false        ## passenger door open request (honored at standstill only)
 
 	func copy() -> VehicleInput:
 		var c := VehicleInput.new()
@@ -82,6 +86,8 @@ class VehicleInput:
 		c.climb = climb
 		c.arm = arm
 		c.flaps = flaps
+		c.pantograph = pantograph
+		c.doors = doors
 		return c
 
 
@@ -97,6 +103,10 @@ var _hitch_up := true  ## true = raised (transport), toggled by the local hitch 
 var _pto := false      ## local PTO engage, toggled by the local PTO key
 var _armed := false    ## local drone motor arm, toggled by the local arm key (like _pto)
 var _flaps_down := false  ## local plane flaps extended, toggled by the local flaps key
+## Raised by default so a locally-driven train spawns able to move (the _hitch_up
+## "usable default" pattern); lowering it is what visibly cuts traction.
+var _pantograph := true   ## local train pantograph raised, toggled by the local pantograph key
+var _doors := false       ## local train door open request, toggled by the local doors key
 
 
 ## Vehicles register on _ready so arbitration can read speed/gear (local reverse
@@ -144,10 +154,16 @@ func _physics_process(delta: float) -> void:
 		_armed = not _armed
 	if bool(raw.get("flaps_toggle", false)):
 		_flaps_down = not _flaps_down
+	if bool(raw.get("pantograph_toggle", false)):
+		_pantograph = not _pantograph
+	if bool(raw.get("doors_toggle", false)):
+		_doors = not _doors
 	raw["hitch_request"] = 1.0 if _hitch_up else 0.0
 	raw["pto"] = _pto
 	raw["arm"] = _armed
 	raw["flaps"] = 1.0 if _flaps_down else 0.0
+	raw["pantograph"] = _pantograph
+	raw["doors"] = _doors
 	var speed := 0.0
 	var gear := GEAR_N
 	if _vehicle != null:
@@ -180,6 +196,9 @@ static func merge_local(a: Dictionary, b: Dictionary) -> Dictionary:
 		"climb": clampf(float(a.get("climb", 0.0)) + float(b.get("climb", 0.0)), -1.0, 1.0),
 		"arm_toggle": bool(a.get("arm_toggle", false)) or bool(b.get("arm_toggle", false)),
 		"flaps_toggle": bool(a.get("flaps_toggle", false)) or bool(b.get("flaps_toggle", false)),
+		# Train toggles edge like arm/flaps; InputRouter owns the latched state.
+		"pantograph_toggle": bool(a.get("pantograph_toggle", false)) or bool(b.get("pantograph_toggle", false)),
+		"doors_toggle": bool(a.get("doors_toggle", false)) or bool(b.get("doors_toggle", false)),
 	}
 
 
@@ -205,6 +224,9 @@ static func arbitrate_local(raw: Dictionary, speed: float, gear_byte: int,
 	out.climb = clampf(float(raw.get("climb", 0.0)), -1.0, 1.0)
 	out.arm = bool(raw.get("arm", false))
 	out.flaps = clampf(float(raw.get("flaps", 0.0)), 0.0, 1.0)
+	# Train controls from the InputRouter-owned local toggles (train only; ignored elsewhere).
+	out.pantograph = bool(raw.get("pantograph", false))
+	out.doors = bool(raw.get("doors", false))
 
 	var accel := clampf(float(raw.get("accel", 0.0)), 0.0, 1.0)
 	var brake_rev := clampf(float(raw.get("brake_reverse", 0.0)), 0.0, 1.0)
@@ -269,6 +291,9 @@ static func arbitrate_bridge(vals: Dictionary) -> VehicleInput:
 	out.climb = clampf(float(vals.get("climb", 0.0)), -1.0, 1.0)
 	out.arm = bool(vals.get("arm", false))
 	out.flaps = clampf(float(vals.get("flaps", 0.0)), 0.0, 1.0)
+	# Train controls mirrored from sloppyCAN (sole authority); absent → lowered/shut.
+	out.pantograph = bool(vals.get("pantograph", false))
+	out.doors = bool(vals.get("doors", false))
 	out.gear_auto = false  # bridge byte is exact and owns direction
 
 	var gear := int(vals.get("gear", GEAR_N))

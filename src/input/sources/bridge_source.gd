@@ -37,6 +37,9 @@ func poll() -> Dictionary:
 		"climb": clampf(float(v.get("climb", 0.0)) / 100.0, -1.0, 1.0),
 		"arm": bool(v.get("arm", false)),
 		"flaps": clampf(float(v.get("flaps", 0.0)) / 100.0, 0.0, 1.0),
+		# Train controls (train). Bools; absent → lowered/shut (arbitrate_bridge defaults them).
+		"pantograph": bool(v.get("pantograph", false)),
+		"doors": bool(v.get("doors", false)),
 	}
 	# Boat rudder: included ONLY when sloppyCAN sends it —
 	# presence is what makes it override 'steer' in arbitrate_bridge. Normalized %→unit
