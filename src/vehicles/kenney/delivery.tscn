@@ -148,4 +148,4 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.77400017, 0.80999994, 1.911
 mesh = SubResource("BoxMesh_tuh0n")
 
 [node name="HoodCam" type="Marker3D" parent="." unique_id=214017489]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, -0.468)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0406437, -1.4102607)
