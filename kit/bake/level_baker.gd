@@ -28,18 +28,27 @@ extends RefCounted
 ## v7: correctness pass — true epsilon welding (was grid snapping), nested KitPieces keep
 ## their own collision mode, mirrored transforms keep their winding, finer material keys,
 ## chunk keys from mesh AABB centres, bridge-base end caps, bounded end tangents.
-const BAKER_VERSION := 9
+## v10: rail roads additionally emit a RailTrack node (curve + gauge + closed flag) so the
+## curve survives into the baked scene — AuthoringRoot is freed at load and stripped on
+## export, and the train's consist sim rides that curve.
+const BAKER_VERSION := 10
+
+## The runtime node rail roads bake into. A plain Node3D subclass with no editor API and
+## no autoload dependency, so it loads in every mode the baker runs in.
+const RailTrackScript := preload("res://src/levels/base/rail_track.gd")
 
 ## Bake-adjacent CODE that no resource dependency edge can reach: GDScript files report
 ## NO dependencies (verified — `ResourceLoader.get_dependencies` on a .gd returns an empty
 ## list), so a script is only in the net when a .tscn/.tres names it as an ext_resource.
-## These three shape bake OUTPUT and are named by nothing, so they are hashed explicitly —
+## These shape bake OUTPUT and are named by nothing, so they are hashed explicitly —
 ## BAKER_VERSION stays the knob for semantic changes, but forgetting to bump it can no
-## longer ship a silently-stale bake.
+## longer ship a silently-stale bake. rail_track.gd is here for the same reason: only this
+## file preloads it, and its property names ARE part of every baked scene's node data.
 const BAKE_CODE_INPUTS: PackedStringArray = [
 	"res://kit/bake/level_baker.gd",
 	"res://kit/helpers/road_builder.gd",
 	"res://kit/helpers/scatter_base.gd",
+	"res://src/levels/base/rail_track.gd",
 ]
 
 ## Scatter: items with at least this many stored instances bake as one
@@ -718,6 +727,19 @@ static func _collect_road(road: Node, xform: Transform3D, ctx: BakeContext,
 			faces.append(pos[i])
 	ctx.add_weld_faces(faces, xform)
 	ctx.roads += 1
+	# Rails: the ribbon above is only what you SEE and drive over — the train rides the
+	# curve, which dies with AuthoringRoot unless it is copied into the baked scene. Duck
+	# API (get_rail_curve() != null), never a class_name check; rail_local_xform() rather
+	# than global_transform because this instance is untreed.
+	if road.has_method("get_rail_curve"):
+		var rail_curve: Curve3D = road.call("get_rail_curve")
+		if rail_curve != null:
+			ctx.rail_tracks.append({
+				"curve": rail_curve.duplicate(true),
+				"xform": xform * (road.call("rail_local_xform") as Transform3D),
+				"gauge": float(road.call("rail_gauge")),
+				"closed": bool(road.call("is_rail_closed")),
+			})
 
 
 ## Assemble the Baked scene: Chunks/ (merged render meshes), Bodies/ (one
@@ -808,6 +830,22 @@ static func _assemble(ctx: BakeContext) -> Node3D:
 		cs.name = "WeldedCollision"
 		cs.shape = shape
 		drivable.add_child(cs)
+
+	# Rails carry no geometry of their own (the ribbon is already in Chunks + Drivable) —
+	# just the curve the train needs. Collected in walk order, so the names are stable.
+	if not ctx.rail_tracks.is_empty():
+		var rails := Node3D.new()
+		rails.name = "Rails"
+		root.add_child(rails)
+		for i in ctx.rail_tracks.size():
+			var entry: Dictionary = ctx.rail_tracks[i]
+			var track: Node3D = RailTrackScript.new()
+			track.name = "rail_%d" % i
+			track.transform = entry["xform"]
+			track.set("curve", entry["curve"])
+			track.set("gauge", entry["gauge"])
+			track.set("closed", entry["closed"])
+			rails.add_child(track)
 
 	_own_recursive(root, root)
 	return root
@@ -929,6 +967,9 @@ class BakeContext:
 	var scatter_instances := 0
 	## Spline roads collected
 	var roads := 0
+	## Rail roads: {curve: Curve3D, xform: Transform3D, gauge: float, closed: bool} per
+	## entry -> one RailTrack each in the baked scene.
+	var rail_tracks := []
 
 	func add_render_mesh(key: Vector2i, mesh: Mesh, world_xform: Transform3D) -> void:
 		for si in mesh.get_surface_count():
@@ -1006,6 +1047,7 @@ class BakeContext:
 			"scatter_instances": scatter_instances,
 			"scatter_multimeshes": multimesh_count,
 			"roads": roads,
+			"rail_tracks": rail_tracks.size(),
 		}
 
 

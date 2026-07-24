@@ -95,6 +95,18 @@ silent in menus.
   plus their unit tests — same pattern as the boat/drone duplication above; fold into the
   same shared-statics extraction decision.
 
+## Rail follow-ups (from 2026-07-24 code review)
+
+- **`kit/` now preloads from `src/`:** `level_baker.gd` preloads
+  `src/levels/base/rail_track.gd` (the runtime node it emits into baked scenes), which
+  inverts the usual layering — kit is the reusable authoring kit, src is the game — and
+  puts a `src/` path in `BAKE_CODE_INPUTS`. It sits in `src/levels/base/` because that is
+  where the other runtime level nodes live (`heightmap_terrain.gd`, `vehicle_spawn.gd`)
+  and where Phase 3-4's consumers will be; moving it to `kit/` would restore the layering
+  but split it from its siblings. **Decide in Phase 4**, once `Level.find_closed_rail_loops`
+  and `TrainVehicle` exist and it is clear which side actually owns the type. No failure
+  mode either way.
+
 ## 6. Launch checklist
 
 - [ ] Levels 2-5 authored (they ship as blank generated islands today) — or trimmed from

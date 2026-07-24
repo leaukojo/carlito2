@@ -1,10 +1,16 @@
 @tool
 extends SceneTree
-## Generates the blank-canvas island levels (level_2 .. level_5): heightmap PNG,
+## Generates the blank-canvas island levels (level_2 .. level_4): heightmap PNG,
 ## auto-splat PNG, LevelInfo and the level scene, all deterministic from the seeds
 ## below. Re-running overwrites them — hand-authored content added afterwards
 ## (AuthoringRoot children) would be lost, so this is a one-shot scaffolding tool,
 ## not part of the bake pipeline.
+##
+## DO NOT RE-RUN AS IT STANDS. Levels 2 and 3 have since gained hand-added PlaneSpawn
+## nodes and allow-lists this template does not write, so a re-run silently deletes them.
+## Level 5 has left this tool entirely: tools/gen_rail_level.gd owns it now — it is the
+## rail level, and its terrain has to be conformed to the loop, which this template has
+## no notion of.
 ##
 ##   godot --headless --path . --script res://tools/gen_islands.gd
 ##   godot --headless --path . --import      # then re-import the fresh PNGs
@@ -32,12 +38,6 @@ const LEVELS := [
 		"seed": 40041, "feature_scale": 140.0, "octaves": 5,
 		"falloff_start": 0.60, "falloff_end": 0.92, "coast_roughness": 0.90,
 		"terrace_levels": 3,
-	},
-	{
-		"id": "level_5", "title": "Level 5 - Plateau",
-		"seed": 50053, "feature_scale": 220.0, "octaves": 4,
-		"falloff_start": 0.70, "falloff_end": 0.85, "coast_roughness": 0.45,
-		"terrace_levels": 2,
 	},
 ]
 

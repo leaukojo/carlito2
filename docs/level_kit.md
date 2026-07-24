@@ -257,9 +257,10 @@ everywhere is duck-typed marker methods (`is_carlito_authoring` / `is_carlito_ki
 - Demo: `src/levels/island/level_1/level_1.tscn`: a generated 512 m terraced island
   (seed 499399) with its auto-splat, a car spawn on the central plateau, a boat spawn in
   the surrounding `WaterSurface` sea (G swaps), drown-respawn included. Regenerating from
-  the recorded knobs reproduces the committed PNGs. Levels 2-5
-  (`src/levels/island/level_<n>/`) are the same shape with different seeds and an empty
-  `AuthoringRoot` — blank canvases scaffolded by `tools/gen_islands.gd`.
+  the recorded knobs reproduces the committed PNGs. Levels 2-4
+  (`src/levels/island/level_<n>/`) are the same shape with different seeds, scaffolded by
+  `tools/gen_islands.gd`; level 4 is still a blank canvas (empty `AuthoringRoot`). Level 5
+  is the railway, owned end to end by `tools/gen_rail_level.gd`.
 
 ## Terrain brushes
 

@@ -19,6 +19,9 @@ const RoadPanel := preload("res://addons/carlito_kit/road_panel.gd")
 const GridMapPaintTool := preload("res://addons/carlito_kit/gridmap_paint_tool.gd")
 const TileConform := preload("res://addons/carlito_kit/tile_conform.gd")
 
+## The Rail checkbox's "on" profile (its "off" is RoadPath.DEFAULT_PROFILE_PATH).
+const RAIL_PROFILE_PATH := "res://kit/roads/rail_profile.tres"
+
 var _strip: EditorExportPlugin
 var _dock: Control
 var _tool  # PlacementTool (RefCounted)
@@ -29,6 +32,8 @@ var _scatter_brush  # ScatterBrush (RefCounted)
 var _scatter_panel: Control
 var _road_tool  # RoadDrawTool (RefCounted)
 var _road_panel: Control
+var _selected_road: RoadPath  # the Rail checkbox's target (draw tool keeps its own copy)
+var _prev_profiles := {}  # road instance id -> the profile Rail-on replaced (session only)
 var _gridmap_tool  # GridMapPaintTool (RefCounted)
 var _autofloor := false
 var _root: TabContainer  # one bottom panel: Palette / Terrain / Scatter / Roads tabs
@@ -100,6 +105,7 @@ func _enter_tree() -> void:
 	_road_panel.reverse_requested.connect(func(): _road_tool.reverse_road())
 	_road_panel.draw_submode_changed.connect(func(m): _road_tool.set_submode(m))
 	_road_panel.angle_snap_changed.connect(func(deg): _road_tool.angle_snap_deg = deg)
+	_road_panel.rail_toggled.connect(_on_rail_toggled)
 	_road_tool.draw_status.connect(func(msg): _road_panel.show_warning(msg))
 	_road_tool.radius_display.connect(
 			func(txt, warn): _road_panel.set_radius_display(txt, warn))
@@ -157,6 +163,8 @@ func _exit_tree() -> void:
 		_road_tool.teardown()
 	_road_tool = null
 	_road_panel = null
+	_selected_road = null
+	_prev_profiles.clear()
 
 	if _gridmap_tool != null:
 		_gridmap_tool.teardown()
@@ -254,6 +262,39 @@ func _drop_road_draw() -> void:
 	_road_panel.show_off()
 
 
+## Rail checkbox: swap the selected road's profile in ONE undoable action. Nothing else
+## changes — a rail is a RoadPath with a different cross-section, so Draw/Drape/Smooth/
+## Conform and the bake carry over.
+##
+## Ticking ON remembers the profile it replaced, so unticking puts a gravel or bridge road
+## back rather than silently converting it to the city default — previewing a road as rail
+## used to be a one-way trip for anything that wasn't already a city road. The memory is
+## per editor session and per node (a road selected fresh after a reload falls back to the
+## city default, i.e. the old behaviour); it deliberately does NOT live on the node, where
+## it would serialize into the .tscn and land in the bake input hash.
+func _on_rail_toggled(on: bool) -> void:
+	if _selected_road == null:
+		return
+	var id := _selected_road.get_instance_id()
+	var previous: RoadProfile = _prev_profiles.get(id)
+	var next := load(RAIL_PROFILE_PATH) as RoadProfile if on else previous
+	if next == null:
+		next = load(RoadPath.DEFAULT_PROFILE_PATH) as RoadProfile
+	if next == null:
+		push_warning("Kit: cannot load the road profile presets from kit/roads/.")
+		return
+	if on:
+		_prev_profiles[id] = _selected_road.profile
+	else:
+		_prev_profiles.erase(id)
+	var undo := get_undo_redo()
+	undo.create_action("%s road profile" % ("Rail" if on else "Road"),
+			UndoRedo.MERGE_DISABLE, _selected_road)
+	undo.add_do_property(_selected_road, "profile", next)
+	undo.add_undo_property(_selected_road, "profile", _selected_road.profile)
+	undo.commit_action()
+
+
 func _on_selection_changed() -> void:
 	var terrain: HeightmapTerrain = null
 	var canvas: ScatterCanvas = null
@@ -280,7 +321,10 @@ func _on_selection_changed() -> void:
 	_scatter_panel.set_has_canvas(canvas != null)
 	_road_tool.set_target(road)
 	_road_tool.set_grid(road_grid)
+	_selected_road = road
 	_road_panel.set_has_road(road != null)
+	_road_panel.set_rail(road != null and road.profile != null
+			and road.profile.has_method("is_carlito_rail_profile"))
 	# Auto-floor paint follows its GridMap: selecting away from it drops the tool (mode
 	# exclusivity — the same way the brushes release on deselect).
 	if _gridmap_tool.is_active():

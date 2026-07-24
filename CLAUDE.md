@@ -208,10 +208,11 @@ junctions, lane markings, traffic.
   terrain are direct children of the level, never under `Authoring`.
 - Day/night is a Level concern (N key), not a bridge signal.
 - Under `--headless` the shell auto-loads the first registry level (CI smoke can't click).
-- Levels 2-5 are blank canvases: generated terrain + auto-splat + sea and an EMPTY
-  `AuthoringRoot`. An empty AuthoringRoot is skipped by the bake check (nothing to bake);
-  the first thing painted into it re-arms the stale-bake gate. Scaffolded by
-  `tools/gen_islands.gd` — re-running it OVERWRITES those levels, so it is one-shot.
+- Level 4 is still a blank canvas: generated terrain + auto-splat + sea and an EMPTY
+  `AuthoringRoot` (levels 2, 3 and 5 have since been authored and bake). An empty
+  AuthoringRoot is skipped by the bake check (nothing to bake); the first thing painted
+  into it re-arms the stale-bake gate. Scaffolded by `tools/gen_islands.gd` (levels 2-4)
+  — re-running it OVERWRITES those levels, so it is one-shot.
 
 **Kit, bake & editor tools** (detail: `docs/level_kit.md`)
 
@@ -260,6 +261,20 @@ junctions, lane markings, traffic.
   must absorb ε + height/255 (conform warns). Tight turns fold-clamp the inside edge
   (never self-overlaps); closed loops share one bisector end frame. Full detail incl. the
   draw panel's "Smooth corners" behavior: `docs/level_kit.md`.
+- Rails are a RoadPath carrying `RailProfile` (`kit/roads/rail_profile.tres`, gauge 1.44 m
+  = the Kenney train kit at scale 2.4) — Draw/Drape/Smooth/Conform/bake all apply
+  unchanged; the Roads panel's **Rail** checkbox swaps the profile. Its rib walls are
+  vertical, so its cross-section drops degenerate strips on **both** axes, never the
+  parent's lateral-only test. The train needs the CURVE at runtime, but a baked level
+  frees `AuthoringRoot` at load and export strips it — so the baker emits a `RailTrack`
+  (`src/levels/base/rail_track.gd`) per rail road into the baked scene. Rail discovery is
+  `has_method("get_rail_curve") and get_rail_curve() != null` (never a marker method —
+  `has_method` is static and a road with a city profile must be able to say "not a rail");
+  the baker composes `rail_local_xform()`, runtime consumers use `rail_to_world()`.
+  `RoadBuilder.is_closed_loop` stays the ONE closed-loop predicate.
+- `tools/gen_rail_level.gd` owns level 5 end to end (terrain, loop curve, conform, splat,
+  scene) and overwrites it on every run; `tools/gen_islands.gd` covers only levels 2-4 and
+  **must not be re-run** (levels 2/3 have hand-added PlaneSpawns its template would drop).
 - Authoring order: terrain → roads + conform → splat → scatter (conform trips the scatter
   stale guard by design).
 - Bake-adjacent CODE (`level_baker.gd`, `road_builder.gd`, `scatter_base.gd`) reaches no

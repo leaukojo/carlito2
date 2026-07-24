@@ -14,6 +14,7 @@ signal snap_ends_requested
 signal reverse_requested
 signal draw_submode_changed(mode: int)
 signal angle_snap_changed(step_deg: float)
+signal rail_toggled(on: bool)
 
 const MODE_LABELS := ["Off", "Draw"]
 const SUBMODE_LABELS := ["Free", "Straight", "Arc"]
@@ -38,6 +39,7 @@ var _angle_snap: OptionButton
 var _radius: Label
 var _smooth: CheckBox
 var _snap_ports: CheckBox
+var _rail: CheckBox
 var _close: Button
 var _snap_ends: Button
 var _reverse: Button
@@ -134,6 +136,16 @@ func _build() -> void:
 	_snap_ports.toggled.connect(func(on: bool): snap_ports_changed.emit(on))
 	add_child(_snap_ports)
 
+	_rail = CheckBox.new()
+	_rail.text = "Rail"
+	_rail.tooltip_text = "Swap this road's profile to the rail preset (ballast + two " \
+			+ "rails); unticking restores the profile it replaced (the city default if " \
+			+ "this session doesn't remember one). Everything else — Draw, Drape, " \
+			+ "Smooth, Conform, the bake — works the same either way; a rail is just a " \
+			+ "road with a different cross-section."
+	_rail.toggled.connect(func(on: bool): rail_toggled.emit(on))
+	add_child(_rail)
+
 	_close = Button.new()
 	_close.text = "Close loop"
 	_close.tooltip_text = "Append a point on the first point with a smooth seam, then exit Draw."
@@ -202,6 +214,13 @@ func show_off() -> void:
 		_mode_buttons[0].button_pressed = true
 
 
+## Reflect the selected road's profile. set_pressed_no_signal, NOT button_pressed:
+## unlike `pressed`, `toggled` DOES fire on a programmatic set, and that would swap the
+## profile of the road the user just selected.
+func set_rail(on: bool) -> void:
+	_rail.set_pressed_no_signal(on)
+
+
 func _update_smooth_enabled() -> void:
 	_smooth.disabled = not _has_road or _submode != 0
 
@@ -215,6 +234,7 @@ func set_has_road(has: bool) -> void:
 	_angle_snap.disabled = not has
 	_update_smooth_enabled()
 	_snap_ports.disabled = not has
+	_rail.disabled = not has
 	_close.disabled = not has
 	_snap_ends.disabled = not has
 	_reverse.disabled = not has

@@ -254,6 +254,49 @@ func _build_curve_surfaces() -> Dictionary:
 	return surfaces
 
 
+# ---------------------------------------------------------------- rail node API
+# Shared verbatim with RailTrack (src/levels/base/rail_track.gd), which is what the baker
+# emits so the curve survives into shipped levels — AuthoringRoot (and therefore this
+# node) is freed at load in a baked level and stripped on export. Unbaked dev play has no
+# RailTrack, so this answers instead; exactly one of the two is ever present.
+#
+# Discovery is `has_method("get_rail_curve") and get_rail_curve() != null`, NOT a marker
+# method: has_method() is static, so a RoadPath cannot advertise "I am a rail" only when
+# its profile happens to be one. Duck-called by the baker on an UNTREED instance, so
+# nothing here may touch global_transform.
+
+
+## The rail centreline, or null when this road is not a rail (any non-rail profile).
+func get_rail_curve() -> Curve3D:
+	if profile == null or not profile.has_method("is_carlito_rail_profile"):
+		return null
+	var path := get_node_or_null(^"Path") as Path3D
+	return path.curve if path != null else null
+
+
+## Curve space -> THIS node's local space: the Path child's transform, which
+## _build_curve_surfaces composes into the ribbon the same way.
+func rail_local_xform() -> Transform3D:
+	var path := get_node_or_null(^"Path") as Path3D
+	return path.transform if path != null else Transform3D.IDENTITY
+
+
+## Curve space -> world. What consumers sample through.
+func rail_to_world() -> Transform3D:
+	return global_transform * rail_local_xform()
+
+
+func rail_gauge() -> float:
+	return float(profile.get("gauge")) if get_rail_curve() != null else 0.0
+
+
+## RoadBuilder.is_closed_loop is the SINGLE owner of the closed question (extrude asks it
+## for the shared bisector seam frame, the config warning above asks it too) — never a
+## second predicate.
+func is_rail_closed() -> bool:
+	return RoadBuilder.is_closed_loop(get_rail_curve())
+
+
 func _get_configuration_warnings() -> PackedStringArray:
 	var warnings := PackedStringArray()
 	if _find_authoring_ancestor() == null:
