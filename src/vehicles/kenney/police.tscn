@@ -1,14 +1,14 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://c0a752jw52trx"]
 
-[ext_resource type="Script" path="res://src/vehicles/base/base_vehicle.gd" id="1_nxpib"]
-[ext_resource type="Resource" path="res://src/vehicles/kenney/police_spec.tres" id="2_2o6ju"]
-[ext_resource type="Texture2D" path="res://src/vehicles/kenney/models/Textures/colormap.png" id="3_ga7u7"]
+[ext_resource type="Script" uid="uid://56bqf0g2enmi" path="res://src/vehicles/base/base_vehicle.gd" id="1_nxpib"]
+[ext_resource type="Resource" uid="uid://oewnj34ffisn" path="res://src/vehicles/kenney/police_spec.tres" id="2_2o6ju"]
+[ext_resource type="Texture2D" uid="uid://bu4xumyjoi2da" path="res://src/vehicles/kenney/models/Textures/colormap.png" id="3_ga7u7"]
 
 [sub_resource type="BoxShape3D" id="BoxLower"]
-size = Vector3(1.8, 0.668, 3.72)
+size = Vector3(1.8, 0.5991289, 3.4278028)
 
 [sub_resource type="BoxShape3D" id="BoxUpper"]
-size = Vector3(1.8, 0.668, 3.72)
+size = Vector3(1.8, 0.48146093, 1.7661817)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_oe213"]
 resource_name = "colormap"
@@ -90,12 +90,12 @@ size = Vector3(0.2, 0.12, 0.06)
 script = ExtResource("1_nxpib")
 spec = ExtResource("2_2o6ju")
 
-[node name="CollisionLower" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5581, 0)
+[node name="CollisionLower" type="CollisionShape3D" parent="." unique_id=525001347]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6613754, 0.08736825)
 shape = SubResource("BoxLower")
 
-[node name="CollisionUpper" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.226, 0)
+[node name="CollisionUpper" type="CollisionShape3D" parent="." unique_id=755671935]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1327305, 0.18282723)
 shape = SubResource("BoxUpper")
 
 [node name="Model" type="Node3D" parent="." unique_id=1756923857]
@@ -149,5 +149,5 @@ mesh = SubResource("BoxMesh_x6vhl")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.77400017, 0.69164777, 1.8228002)
 mesh = SubResource("BoxMesh_x6vhl")
 
-[node name="HoodCam" type="Marker3D" parent="."]
+[node name="HoodCam" type="Marker3D" parent="." unique_id=1525659358]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.68, -0.4464)

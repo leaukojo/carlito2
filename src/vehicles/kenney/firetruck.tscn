@@ -1,14 +1,14 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://bkk7xwd7kbx4x"]
 
-[ext_resource type="Script" path="res://src/vehicles/base/base_vehicle.gd" id="1_lei3o"]
+[ext_resource type="Script" uid="uid://56bqf0g2enmi" path="res://src/vehicles/base/base_vehicle.gd" id="1_lei3o"]
 [ext_resource type="Resource" path="res://src/vehicles/kenney/firetruck_spec.tres" id="2_l7l2h"]
-[ext_resource type="Texture2D" path="res://src/vehicles/kenney/models/Textures/colormap.png" id="3_asolk"]
+[ext_resource type="Texture2D" uid="uid://bu4xumyjoi2da" path="res://src/vehicles/kenney/models/Textures/colormap.png" id="3_asolk"]
 
 [sub_resource type="BoxShape3D" id="BoxLower"]
-size = Vector3(1.8, 0.9, 4.08)
+size = Vector3(1.8, 0.778125, 3.8402514)
 
 [sub_resource type="BoxShape3D" id="BoxUpper"]
-size = Vector3(1.8, 0.9, 4.08)
+size = Vector3(1.8, 0.778125, 3.54417)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dbtlu"]
 resource_name = "colormap"
@@ -90,12 +90,12 @@ size = Vector3(0.2, 0.12, 0.06)
 script = ExtResource("1_lei3o")
 spec = ExtResource("2_l7l2h")
 
-[node name="CollisionLower" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.69, 0)
+[node name="CollisionLower" type="CollisionShape3D" parent="." unique_id=1710878802]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75093746, 0.06412721)
 shape = SubResource("BoxLower")
 
-[node name="CollisionUpper" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.59, 0)
+[node name="CollisionUpper" type="CollisionShape3D" parent="." unique_id=1748131431]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5290625, 0.20421386)
 shape = SubResource("BoxUpper")
 
 [node name="Model" type="Node3D" parent="." unique_id=1859731346]
@@ -149,5 +149,5 @@ mesh = SubResource("BoxMesh_60gv0")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.77400017, 0.87000006, 1.9992)
 mesh = SubResource("BoxMesh_60gv0")
 
-[node name="HoodCam" type="Marker3D" parent="."]
+[node name="HoodCam" type="Marker3D" parent="." unique_id=1774472017]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.16, -0.4896)
