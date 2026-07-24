@@ -18,6 +18,14 @@ uniform float wave_height = 0.10;
 uniform float wave_speed = 1.1;
 // Sky tint mixed in at grazing angles (Fresnel). Keep close to the level's sky/horizon.
 uniform vec4 sky_color : source_color = vec4(0.55, 0.70, 0.85, 1.0);
+// Shoreline foam: a light band where the water column is shallow (water_depth -> 0),
+// so surf hugs every coast and the vehicle waterline. Reuses the depth reconstruction
+// below; all ALU, no extra texture reads.
+uniform vec4 foam_color : source_color = vec4(0.9, 0.95, 1.0, 1.0);
+// Water-column depth (m) over which foam fades out (band sits between depth 0 and this).
+uniform float foam_depth_m = 0.6;
+// Overall foam strength; a level can dial it down.
+uniform float foam_intensity = 0.9;
 // How much the moving wave normals ripple the surface (0 = flat lighting).
 uniform float normal_strength = 0.6;
 // Distance (m) over which wave normals settle back to flat, so distant water reflects the
@@ -26,10 +34,15 @@ uniform float normal_fade_dist = 60.0;
 
 uniform sampler2D depth_tex : hint_depth_texture, repeat_disable, filter_nearest;
 
+// Model-space XZ passed to the fragment stage so the foam breakup is anchored to the water
+// body (VERTEX is view-space in fragment(), which would swim with the camera).
+varying vec2 v_wave_pos;
+
 // Same displacement the vertex uses, plus its analytic slope so lighting reacts to the
 // waves. A second, faster/finer octave rides on the normals only (no extra displacement)
 // to add sparkle without more vertex motion. All ALU — no texture reads.
 void vertex() {
+	v_wave_pos = VERTEX.xz;
 	float t = TIME * wave_speed;
 	float sx = sin(t + VERTEX.x * 0.55);
 	float sz = sin(t * 0.8 + VERTEX.z * 0.47);
@@ -70,6 +83,13 @@ void fragment() {
 	float fresnel = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
 	ALBEDO = mix(base, sky_color.rgb, fresnel * 0.6);
 	ALPHA = mix(mix(shallow_alpha, deep_alpha, t), 1.0, fresnel * 0.5);
+
+	// Shoreline foam: strong at the waterline (water_depth -> 0), gone in deep water. A
+	// cheap animated term breaks the band up so it reads as surf, not a flat contour.
+	float foam_break = 0.85 + 0.15 * sin(TIME * wave_speed * 2.0 + v_wave_pos.x * 1.3 + v_wave_pos.y * 1.1);
+	float foam = (1.0 - smoothstep(0.0, foam_depth_m, water_depth)) * foam_intensity * foam_break;
+	ALBEDO = mix(ALBEDO, foam_color.rgb, foam);
+	ALPHA = mix(ALPHA, 1.0, foam);
 
 	ROUGHNESS = 0.08;
 	SPECULAR = 0.7;
