@@ -5,10 +5,10 @@ Per-system detail for everything that runs in the game. Editor/authoring tooling
 
 ## Signal contract
 
-`contract/carlito_contract.json` (currently v8) defines every bridge signal: name, dir,
+`contract/carlito_contract.json` (currently v9) defines every bridge signal: name, dir,
 type, unit, range, optional `warn`, enum, vehicles, optional `flavor` (`"isobus"` —
-tractor, `"canaerospace"` — plane, `"dronecan"` — drone: protocol signal names/semantics
-borrowed, frame layout stays on the sloppyCAN side). The
+tractor, `"canaerospace"` — plane, `"dronecan"` — drone, `"train"` — train: protocol
+signal names/semantics borrowed, frame layout stays on the sloppyCAN side). The
 `Contract` autoload loads + validates it at startup; `tests/test_contract.gd` fails if a
 required signal goes missing. Signals are unique by **(name, dir)** — `battery` exists in
 both directions (in = warning LED, out = voltage). `warn` is the danger threshold the
@@ -49,14 +49,17 @@ via `InputRouter.set_touch_source()`.
 
 Toggle-state owners: the router owns the shared headlight level `_lights` (cycles
 OFF→CLEARANCE→LOW→HIGH), the hitch toggle `_hitch_up`, the PTO toggle `_pto`, the drone
-arm toggle `_armed`, and the plane flaps toggle `_flaps_down`; sources report per-frame
-edges (`lights_cycle`, `hitch_toggle`, `pto_toggle`, `arm_toggle`, `flaps_toggle`) that
-`merge_local` ORs, so keyboard and touch share one owner.
+arm toggle `_armed`, the plane flaps toggle `_flaps_down`, and the train pantograph/doors
+toggles `_pantograph`/`_doors` (pantograph defaults **raised** — the usable-default
+pattern, so a locally-driven train spawns able to move; lowering it visibly cuts traction);
+sources report per-frame edges (`lights_cycle`, `hitch_toggle`, `pto_toggle`, `arm_toggle`,
+`flaps_toggle`, `pantograph_toggle`, `doors_toggle`) that `merge_local` ORs, so keyboard
+and touch share one owner.
 
 Local keys: W/S (or arrows) accel + brake-then-reverse, A/D steer, Space handbrake,
 H horn, L lights, V next vehicle variant, I hitch, P PTO, R/F flight up/down (plane
-elevator / drone climb — one shared axis), T arm, B flaps, G garage, N day/night,
-Backspace respawn, F3 debug overlay, F4 force-show touch controls.
+elevator / drone climb — one shared axis), T arm, B flaps, U pantograph, O doors,
+G garage, N day/night, Backspace respawn, F3 debug overlay, F4 force-show touch controls.
 `tests/test_input_map.gd` asserts no two actions share a physical key.
 
 ## Vehicle framework
@@ -122,14 +125,17 @@ lock the rears — drift comes from the grip cut, not brake torque.
   it stops covering a non-todo ground "out" signal. Subclasses = `super()` + append.
 - **Dashboard** (`src/ui/`): `dashboard.gd` **generates** the tell-tale row (a lamp per
   bool "in" signal + `key`/`lights` enum chips, plus a telemetry-driven lamp for each
-  flavored bool "out" — the PTO and ARMED lamps) and the bars (each "out" signal that has
-  a `range` **and** a `warn` — fuel/coolant, altitude/vspeed, pitch/roll — or a `flavor`
-  — the HITCH/PTO/LOAD implement panel, FLAPS, ROTOR) by walking the
-  contract for the active vehicle type. The two radial gauges (`gauge.gd`, one bespoke
-  widget instanced twice: speedo + tacho) are **hand-built** and only read scale/redline
-  from the contract; each is built only when the vehicle declares its signal (`kmh`/`rpm`
-  in `signals_for_vehicle` — the boat gets a speedo, no tacho). Gauge text sits in the
-  arc's bottom 90° gap; gear shows in the tacho gap via the contract `gear` enum. Short
+  flavored bool "out" — the PTO and ARMED lamps, the train's PANTO/DOORS state lamps) and
+  the bars (each "out" signal that has a `range` **and** a `warn` — fuel/coolant,
+  altitude/vspeed, pitch/roll — or a `flavor` — the HITCH/PTO/LOAD implement panel, FLAPS,
+  ROTOR, the train's LINE/AMPS/PIPE) by walking the contract for the active vehicle type.
+  The two radial gauges (`gauge.gd`, one bespoke widget instanced twice: speedo + tacho) are
+  **hand-built** and only read scale/redline from the contract; each is built only when the
+  vehicle declares its signal (`kmh`/`rpm` in `signals_for_vehicle` — the boat gets a
+  speedo, no tacho). Gauge text sits in the arc's bottom 90° gap; gear shows in the tacho
+  gap via the contract `gear` enum. The **train** declares `gear` out but not `rpm`, so
+  there is no tacho gap to carry the label — it gets a bespoke `REVERSER N/D/R` centre
+  readout instead (hand-picked like the two gauges, built only for that case). Short
   captions (`BAR_LABEL`, `LAMP_TEXT`) are hand-picked. `bar` widget is `dash_bar.gd`.
   Plain text + color only.
 - **Debug overlay** (`debug_overlay.gd`): FPS / frame ms / draw calls / primitives / VRAM /
@@ -189,8 +195,10 @@ lock the rears — drift comes from the grip cut, not brake torque.
 - **Garage menu** (`src/ui/garage_menu.gd`) reads `LevelInfo.allowed_vehicles` (passed in
   by the shell, never touches the tree) and emits `vehicle_chosen(type)`; the shell calls
   `Level.set_vehicle(variant)`, which respawns at a `VehicleSpawn` matching the variant's
-  FAMILY and emits `Level.vehicle_changed(type)` so the shell rebinds the
-  dashboard/bridge. `Dashboard.bind` reads `GameState.current_vehicle` (the spawned
+  FAMILY and emits `Level.vehicle_changed(type)` so the shell rebinds the dashboard/bridge.
+  The shell **runtime-gates** the roster: "train" is dropped from the list it passes when
+  `Level.has_closed_rail()` is false, so a level that lists "train" without a loop never
+  offers it. `Dashboard.bind` reads `GameState.current_vehicle` (the spawned
   family), falling back to `LevelInfo.default_vehicle`. Open with **G** or the touch
   GARAGE button. Adding a vehicle = a `VehicleCatalog.VARIANTS` entry + its family in a
   level's `allowed_vehicles`.
@@ -208,7 +216,9 @@ lock the rears — drift comes from the grip cut, not brake torque.
   `Bridge.is_active()`. Flight widgets — UP/DOWN pads left of the pedals (the shared
   elevator/climb axis) plus ARM (drone) and FLAPS (plane) taps — appear only for the
   flying families, and also hide while the bridge drives (those signals are
-  bridge-authoritative).
+  bridge-authoritative). The **train** gets PANTO/DOORS toggle taps the same way (family-
+  gated, bridge-hidden, emitting `pantograph_toggle`/`doors_toggle` edges InputRouter
+  latches); and because the train is rail-guided the **steering joystick is hidden** for it.
 
 ## Tractor, implement & ISOBUS
 
@@ -294,11 +304,64 @@ lock the rears — drift comes from the grip cut, not brake torque.
   unit-tested in `tests/test_plane.gd` / `tests/test_drone.gd`. The 60 Hz tick and the
   existing clamps are untouched.
 
+## Train & rail
+
+- Protocol is a **flavor** like the tractor's ISOBUS: `"train"` (in `pantograph`/`doors`;
+  out `pantograph_state`/`doors_state`/`catenary_volts`/`motor_current`/`brake_pipe`/`grade`/
+  `coupler_force`, plus the generic speed/gear/nav set). No real rail CAN standard is
+  adopted — trains run IEC 61375, not CAN; the descs credit CiA 421 / rail practice as
+  inspiration only. No `steer` (rail-guided); no `rpm`/`fuel`/`coolant` (electric). The
+  reverser (N/D/R) rides the existing `gear` byte, so gear-owns-direction arbitration is
+  already correct for it.
+- **`TrainVehicle extends BaseVehicle`** (`src/vehicles/train/`) is a real subclass like the
+  boat: empty `wheel_positions`, the 6 `gear_ratios` kept, only the two seams — it never
+  forks `_physics_process`. The consist is the Kenney bullet loco + wagons at world scale
+  2.4 (measured, not guessed). It self-places on a closed rail loop in `_ready` and ignores
+  `VehicleSpawn` markers.
+- **Locomotion = a 1D consist sim** (`TrainSim`, pure, unit-tested in `tests/test_train.gd`):
+  each car is a mass at an arc position on the rail `Curve3D`; per-car grade/Davis
+  resistance/brake, traction on the loco only (constant force to base speed, constant power
+  above), spring-damper couplers with slack. The couplers/brakes carry the **one-tick 60 Hz
+  clamp discipline** (damper ≤ one-tick reversal, total coupler force hard-capped) — the
+  RayWheel rule, applied here; **don't weaken it**. `TrainPlacement.car_pose` (pure) poses
+  each car from two bogie samples `s ± bogie_half_spacing`; its basis is **right-handed
+  (det +1)**, guarded by a test (a left-handed basis renders meshes inside-out and, via the
+  hood-camera basis copy, flips the chase views).
+- The loco is driven **kinematically**: `gravity_scale = 0`, the sim writes
+  `global_transform` + linear/angular velocity each tick, so `BaseVehicle._update_telemetry`
+  still reads honest motion (speed, yaw, accel, impact). A collision perturbs the body for
+  one tick, then the sim reasserts the pose — the train plows small props, correct for its
+  mass. Wagons are `AnimatableBody3D` followers posed by the same helper.
+- Aux systems are **honest labelled models** in `TrainTelemetry` (not real circuits):
+  `brake_pipe` charges toward 5 bar and vents on application; `catenary_volts` = 25 kV
+  nominal minus sag ∝ current; `motor_current` from traction; `grade` (i8 %) from the
+  tangent; `coupler_force` (kN) straight off the sim's head coupler. Traction is live only
+  with the key in Ignition **and** the pantograph raised; doors open only at standstill.
+- **Rail runtime** (`RailTrack`, `src/levels/base/rail_track.gd`): rails are authored as a
+  `RoadPath` carrying `RailProfile` under `AuthoringRoot`, which a baked level frees at load
+  and export strips — but the train needs the `Curve3D` at runtime. So the baker emits a
+  runtime-safe `RailTrack` (duplicated curve, gauge, closed flag, world transform) per rail
+  road into the baked scene; in unbaked dev play the `RoadPath` itself answers the same
+  duck-typed API (`get_rail_curve()`/`is_rail_closed()`/`rail_to_world()`). Exactly one of
+  the two is ever present. `RailTrack.find_closed_rail(root)` is the ONE shared walk that
+  finds a **closed** loop — both `Level` (spawn gate + garage roster gate) and `TrainVehicle`
+  (self-placement) call it, so they can never disagree on what the train may run on; an open
+  rail is never accepted.
+- Dashboard: the train is the only family declaring `gear` out without `rpm`, so the gear
+  label the tacho gap would carry has nowhere to go — it gets a bespoke `REVERSER N/D/R`
+  centre readout (hand-picked like the two gauges, built only for that case). LINE/AMPS/PIPE
+  bars and the request/state lamp pairs (`PAN REQ`/`PANTO`, `DOOR REQ`/`DOORS`) are the
+  ordinary contract-metadata generation.
+
 ## Level framework
 
 - `src/levels/base/`: **`Level`** (base script — reads a `LevelInfo`, spawns the default
   vehicle at the first matching `VehicleSpawn`, wires the `ChaseCamera`, handles respawn;
-  variant → scene comes from `VehicleCatalog`), **`LevelInfo`** (Resource:
+  variant → scene comes from `VehicleCatalog`). The **train** family branches out of the
+  marker path: `_spawn_vehicle` gates on `has_closed_rail()` (the train ignores
+  `VehicleSpawn` and self-places on the loop), and the shell drops "train" from the garage
+  roster on a level with no closed loop — so a level scene can list "train" in its allow-list
+  and still play as an ordinary island when its loop is absent. **`LevelInfo`** (Resource:
   display name, allowed/default vehicles), **`VehicleSpawn`** (`Marker3D` with a
   vehicle-type filter + `is_water` for boat/drown-respawn spots), **`HeightmapTerrain`**
   (see `docs/level_kit.md` — the runtime side is a greyscale image → chunked welded grid
@@ -313,8 +376,11 @@ lock the rears — drift comes from the grip cut, not brake torque.
   start a level.
 - `src/levels/island/level_1/` .. `level_5/` are the five playable islands: generated
   terraced terrain + auto-splat + sea, roster car/truck/tractor/boat. `level_1` is
-  dressed (roads, props, scatter) and is the CI baked-level smoke target; 2-5 are blank
-  canvases with an empty `AuthoringRoot`, one per independent experiment.
+  dressed (roads, props, scatter) and is the CI baked-level smoke target; 2-4 are blank
+  canvases with an empty `AuthoringRoot`, one per independent experiment. `level_5` is the
+  **railway** — a 598 m closed rail loop with grades, owned end to end by
+  `tools/gen_rail_level.gd` (re-running overwrites it); its roster adds "train", chosen from
+  the garage (default spawn stays car).
 - `src/levels/dev/flat.tscn` is a bare test plane for isolated wheel checks.
 - Loading a stranger's level is arbitrary code execution (a `.tscn` can embed scripts) —
   third-party level sharing stays out of scope until there is a validation/sandboxing

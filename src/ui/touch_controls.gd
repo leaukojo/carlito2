@@ -30,7 +30,10 @@ var _lights_cycle_pending := false  ## latched on the LIGHTS tap, consumed by po
 var _vert := 0.0                    ## shared flight vertical axis (plane elevator / drone climb)
 var _arm_toggle_pending := false    ## latched on the ARM tap, consumed by poll()
 var _flaps_toggle_pending := false  ## latched on the FLAPS tap, consumed by poll()
+var _panto_toggle_pending := false  ## latched on the PANTO tap, consumed by poll()
+var _doors_toggle_pending := false  ## latched on the DOORS tap, consumed by poll()
 
+var _joy_base: Pad = null        ## steering joystick base — hidden for the rail-guided train
 var _joy_knob: Panel
 var _joy_center := Vector2.ZERO
 var _bridge_buttons: Array[Pad] = []  ## hidden while the bridge drives
@@ -39,6 +42,10 @@ var _bridge_buttons: Array[Pad] = []  ## hidden while the bridge drives
 var _flight_col: Control = null  ## UP/DOWN pads (plane + drone)
 var _arm_btn: Pad = null         ## drone only
 var _flaps_btn: Pad = null       ## plane only
+# Train widgets, shown only for the train family (and hidden while sloppyCAN drives —
+# it owns pantograph/doors then). The train has no steering surface (rail-guided).
+var _panto_btn: Pad = null       ## train pantograph raise/lower toggle
+var _doors_btn: Pad = null       ## train door open/shut toggle
 
 
 ## Touch-first press widget. It tracks WHICH pointer is holding it (a finger index, or
@@ -130,6 +137,10 @@ func poll() -> Dictionary:
 	_arm_toggle_pending = false
 	var flaps_edge := _flaps_toggle_pending
 	_flaps_toggle_pending = false
+	var panto_edge := _panto_toggle_pending
+	_panto_toggle_pending = false
+	var doors_edge := _doors_toggle_pending
+	_doors_toggle_pending = false
 	return {
 		"accel": _accel,
 		"brake_reverse": _brake,
@@ -143,6 +154,9 @@ func poll() -> Dictionary:
 		"climb": _vert,
 		"arm_toggle": arm_edge,
 		"flaps_toggle": flaps_edge,
+		# Train toggles (InputRouter owns the latched pantograph/doors state, like arm/flaps).
+		"pantograph_toggle": panto_edge,
+		"doors_toggle": doors_edge,
 	}
 
 
@@ -163,6 +177,11 @@ func _process(_dt: float) -> void:
 	_flight_col.visible = not driving and family in ["plane", "drone"]
 	_arm_btn.visible = not driving and family == "drone"
 	_flaps_btn.visible = not driving and family == "plane"
+	# Train: pantograph/doors toggles only for the train (bridge-hidden — sloppyCAN owns them),
+	# and the rail-guided train has no steering surface, so the joystick is hidden for it.
+	_panto_btn.visible = not driving and family == "train"
+	_doors_btn.visible = not driving and family == "train"
+	_joy_base.visible = family != "train"
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -192,6 +211,7 @@ func _build_joystick() -> void:
 			_reset_knob()
 	)
 	add_child(base)
+	_joy_base = base
 	_joy_center = Vector2(JOY_RADIUS, JOY_RADIUS)
 
 	_joy_knob = Panel.new()
@@ -278,6 +298,12 @@ func _build_button_stack() -> void:
 	col.add_child(_arm_btn)
 	_flaps_btn = _tap_button("FLAPS", func() -> void: _flaps_toggle_pending = true)
 	col.add_child(_flaps_btn)
+
+	# Train toggles (family-gated in _process, like the flight toggles).
+	_panto_btn = _tap_button("PANTO", func() -> void: _panto_toggle_pending = true)
+	col.add_child(_panto_btn)
+	_doors_btn = _tap_button("DOORS", func() -> void: _doors_toggle_pending = true)
+	col.add_child(_doors_btn)
 
 	col.add_child(_tap_button("VIEW", func() -> void: camera_pressed.emit()))
 	col.add_child(_tap_button("GARAGE",func() -> void: garage_pressed.emit()))

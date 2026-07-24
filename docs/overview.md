@@ -67,9 +67,11 @@ tuning — adding a vehicle is a new spec + scene, no code), `Drivetrain` (pure 
 Vehicles needing per-tick systems beyond driving subclass `BaseVehicle` through exactly two
 virtual seams: `_make_telemetry()` (return a telemetry subclass) and `_tick_extras(input, delta)`
 (run last each physics tick). The tractor (`TractorVehicle` + cosmetic `Implement` + ISOBUS
-signals), the boat (`BoatVehicle`, probe buoyancy), and the flying pair — the drone
+signals), the boat (`BoatVehicle`, probe buoyancy), the flying pair — the drone
 (`DroneVehicle`, DroneCAN flavor: arm/climb, rotor thrust) and the plane (`PlaneVehicle`,
-CANaerospace flavor: elevator/flaps, prop thrust + lift) — are the subclasses.
+CANaerospace flavor: elevator/flaps, prop thrust + lift) — and the train (`TrainVehicle`,
+`"train"` flavor: pantograph/doors, a 1D consist sim on a rail spline, kinematic loco) are
+the subclasses.
 
 On top of the contract *families*, `VehicleCatalog` maps cosmetic *variants* (the
 Kenney car-kit bodies: taxi, firetruck, ambulance, …) onto them — V cycles variants
@@ -92,7 +94,10 @@ then merges render meshes per chunk, harvests prop collision per chunk, and weld
 geometry into a single level-wide collision body, which kills chunk-seam ghost collisions.
 Bakes are input-hash-stamped; CI fails on stale bakes. At runtime `Level` loads
 `<level>.baked.scn` and drops the authoring subtree; an export plugin guarantees authoring
-content never ships.
+content never ships. **Rails** are a `RoadPath` carrying a `RailProfile` (a Rail checkbox in
+the Roads panel swaps it in) — the same draw/conform/bake path — but the train needs the
+spline at runtime, so the baker also emits a `RailTrack` node holding the curve; level 5 is
+the railway built on this (`tools/gen_rail_level.gd`).
 
 Levels are **signal playgrounds**: there are no missions — the sandbox is the CAN telemetry,
 and a level's job is to give contract signals a place to visibly perform (grades for

@@ -155,10 +155,25 @@ func _open_garage() -> void:
 	if _level == null or _garage != null:
 		return
 	_garage = GarageMenu.new()
-	_garage.setup(_level.info.allowed_vehicles)
+	_garage.setup(_roster_for(_level))
 	_garage.vehicle_chosen.connect(_on_garage_choice)
 	_garage.closed.connect(_close_garage)
 	_ui.add_child(_garage)
+
+
+## The garage roster for `level`: its allowed families, minus "train" when the level has no
+## closed rail loop (a rail-guided family the level would refuse to spawn). Runtime-gated here
+## rather than in LevelInfo so the same level scene can list "train" and still play as an
+## ordinary island when its loop is absent.
+func _roster_for(level: Node) -> PackedStringArray:
+	var allowed: PackedStringArray = level.info.allowed_vehicles
+	if not allowed.has("train") or level.has_closed_rail():
+		return allowed
+	var out := PackedStringArray()
+	for fam in allowed:
+		if fam != "train":
+			out.append(fam)
+	return out
 
 
 func _on_garage_choice(type: String) -> void:

@@ -308,7 +308,13 @@ junctions, lane markings, traffic.
   that finds it — both `Level._spawn_vehicle` (spawn gate) and `TrainVehicle._find_rail`
   (self-placement) call it, so the two can't disagree on what a rail is (an open-rail fallback
   in one and not the other is the exact split that let the train run on track the level refused
-  to spawn it on).
+  to spawn it on). The garage roster gate is the SAME walk: the shell drops "train" from the
+  menu when `Level.has_closed_rail()` is false, so a level scene may list "train" in
+  `allowed_vehicles` and still play as an ordinary island where its loop is absent — the gate
+  is runtime, not in `LevelInfo`. No random multi-loop pick: the train self-places on the one
+  closed loop; a level with two closed loops is out of scope (see TODO Rail follow-ups).
+  Touch: the train hides the steering joystick (rail-guided) and shows PANTO/DOORS toggle
+  taps (family-gated + bridge-hidden like ARM/FLAPS).
 - `tools/gen_rail_level.gd` owns level 5 end to end (terrain, loop curve, conform, splat,
   scene) and overwrites it on every run; `tools/gen_islands.gd` covers only levels 2-4 and
   **must not be re-run** (levels 2/3 have hand-added PlaneSpawns its template would drop).

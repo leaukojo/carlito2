@@ -27,8 +27,14 @@ $env:GODOT_BIN = $GODOT
 if ($LASTEXITCODE -ne 0) { Fail 'unit tests' }
 
 Announce 'Stale-bake check'
-& $GODOT --headless --path . res://tools/check_bakes.tscn
-if ($LASTEXITCODE -ne 0) { Fail 'stale-bake check (run: & $GODOT --headless --path . res://tools/bake_levels.tscn)' }
+# check_bakes.gd quit()s 0 when every bake is fresh, but Godot's leak-at-exit can still
+# hand back a nonzero PROCESS code on an otherwise clean run (the same unreliability the
+# import step above works around) — so judge by output: a stale/missing/error line is the
+# only real failure.
+$bakes = & $GODOT --headless --path . res://tools/check_bakes.tscn 2>&1 | Out-String
+Write-Host $bakes
+$staleBakes = ($bakes -split "`n") | Select-String -Pattern '\[check-bakes\].*: (stale|missing|error)'
+if ($staleBakes) { Fail 'stale-bake check (run: & $GODOT --headless --path . res://tools/bake_levels.tscn)' }
 
 Announce 'Headless smoke'
 $smoke = & $GODOT --headless --path . --quit-after 120 2>&1 | Out-String

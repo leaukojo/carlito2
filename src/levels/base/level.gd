@@ -203,6 +203,13 @@ func _pick_spawn(family: String) -> VehicleSpawn:
 
 ## First closed rail loop under this level (RailTrack.find_closed_rail is the one shared walk,
 ## used by TrainVehicle too so the spawn gate and the train agree on what a rail is); null if
-## none. Phase 4 generalizes this into random-loop spawn + roster gating.
+## none.
 func _find_closed_rail() -> Node:
 	return RailTrack.find_closed_rail(self)
+
+
+## Whether a closed rail loop exists here — the shell's roster gate: the "train" family is
+## dropped from the garage menu on a level with no loop (so a stray allow-list entry can't
+## offer a train that _spawn_vehicle would then refuse). Same one walk the spawn gate uses.
+func has_closed_rail() -> bool:
+	return _find_closed_rail() != null

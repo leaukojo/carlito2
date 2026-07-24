@@ -123,6 +123,11 @@ func _framing() -> Dictionary:
 		_framing_target = target
 		_framing_cache = target.get_camera_framing() if target != null \
 				and target.has_method("get_camera_framing") else {}
+		# ISO ortho `size` is only set in _apply_projection (not read per frame like the
+		# perspective distances), so a garage swap while in ISO would keep the previous
+		# vehicle's size until the next camera cycle — re-apply it now for the new target.
+		if mode == Mode.ISO:
+			_apply_projection()
 	return _framing_cache
 
 

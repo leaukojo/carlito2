@@ -85,6 +85,19 @@ object) and `_tick_extras()` (run once per tick, after everything else). They ne
 override the main physics loop — that keeps every vehicle's core behavior identical and
 testable.
 
+The **train** is the same idea taken furthest. It's an electric multiple-unit consist that
+runs on rails, not roads: rails are drawn with the ordinary road tool (there's a "Rail"
+checkbox that gives the road a track profile instead of asphalt), and the level's rail loop
+becomes the line the train rides. Instead of steering, its motion is a small 1D physics sim
+— each carriage is a weight sliding along the spline, connected by spring couplers, feeling
+the grade and the brakes — and the locomotive body is moved to match that sim each tick (so
+the speed/acceleration readouts stay honest). You raise the pantograph to draw power (drop
+it and traction cuts, like a real overhead line), open the doors only at a standstill, and
+the reverser (forward/neutral/reverse) rides the same gear byte every other vehicle uses.
+Its extra gauges — line voltage, motor current, brake-pipe pressure, coupler force — are
+honest simple models, labelled as such, borrowing rail terminology (the descriptions credit
+real rail practice) without pretending to be a real train's electronics.
+
 On top of the four *families* (car/truck/tractor/boat — these are what the contract and
 dashboard know about), a **VehicleCatalog** lists cosmetic *variants* (Kenney model
 bodies like taxi, firetruck, ambulance) that map onto a family. The garage lets you cycle

@@ -3,52 +3,15 @@
 Levels are **signal playgrounds** (see CLAUDE.md): no missions — every level must give
 specific contract signals a place to visibly perform, verified with sloppyCAN open.
 
-## 1. Rebuild farm + harbor (level design done by hand, not by Claude)
 
-Build both from scratch with the authoring tools (`docs/level_kit.md`):
-
-- **Farm:** generated rolling-hills terrain with splat fields, a `RoadPath` gravel lane,
-  crop rows and tree lines/orchard as ScatterRegions, clutter via the scatter brush,
-  buildings/fences placed from the dock. Signal spec: a field where lowering the hitch
-  and running the PTO along crop rows feels like plowing (the implement already animates
-  — the field layout is what sells it).
-- **Harbor:** quay + seabed + `WaterSurface`, boat launches and hulls from the watercraft
-  prefabs, shoreline rock/vegetation scatter. Signal spec: a course — wake ramp off the
-  boat launch, tight buoy turns — that makes `pitch`/`roll` perform.
-- Register both, bake, CI green, F3 under the ~500 draw-call budget in the worst view.
-- Add a second CI baked-smoke run with `CARLITO_LEVEL: farm` (`level_1` stays the
-  primary baked-smoke target).
-- Acceptance on both axes: if dressing feels like manual labor, that is a tool defect —
-  fix the tool, don't push through; if driving doesn't make the signals perform, the
-  content failed.
-
-## 2. `docs/making_a_level.md` — done (revisit with Farm)
-
-Rewritten around the current workflow (new-scene → terrain → Authoring → roads + conform →
-splat → scatter → dress → spawns → register/bake). When the Farm level lands, swap its
-worked example in as the followable-by-a-non-designer end-to-end reference.
-
-## 3. Island level
-
-The flagship level: city grid, racing circuit, suburbs, mainland skyline backdrop.
-Observe the previous game's deployed build for layout spirit (never its code/geometry).
-
-- Signal-playground routing: a long grade for `engine_load`, hairpins for slip, a crest
-  for the impact bit, a dark stretch for lights.
-- Racing-kit note: the corner-anchor lattice and bridge y-offsets were measured but
-  flagged "re-verify at island scale" — check corner tiles line up before painting the
-  whole circuit.
-- All vehicle types spawnable except boat, unless a coastline water region fits naturally.
-- Register, bake, `check_bakes` + `CARLITO_LEVEL=<id>` headless smoke green.
-
-## 3b. Visual polish (deferred plans)
+## 1. Visual polish (deferred plans)
 
 Baseline (shared tuned env + fog, warm sun, far-sea horizon plane, night atmosphere) and
 the procedural sky (gradient + sun disc + scrolling noise clouds,
 `src/levels/base/sky.gdshader`) are done. Remaining: the broader pro-eye sweep — foam
 line, particles, shadow tuning, color grade (`docs/plans/visual_polish_pass.md`).
 
-## 4. Perf pass
+## 2. Perf pass
 
 Profile the **deployed** web build first — F3 overlay (FPS / frame ms / draw calls /
 primitives / VRAM) in the worst view of each level; budget: 60 fps on a mid-range laptop,
@@ -67,7 +30,7 @@ renderer settings.
   `BAKER_VERSION`, re-bake all. Stretch (only if budget already met): custom export template with
 unused modules stripped to shrink the wasm.
 
-## 5. Procedural engine audio (deliberately last — nothing may depend on it)
+## 3. Procedural engine audio (deliberately last — nothing may depend on it)
 
 An RPM-driven procedural engine loop per vehicle: the horn already proves the pattern
 (synthesized AudioStreamWAV, zero assets) and the drivetrain RPM is real, so the seam is
@@ -95,19 +58,23 @@ silent in menus.
   plus their unit tests — same pattern as the boat/drone duplication above; fold into the
   same shared-statics extraction decision.
 
-## Rail follow-ups (from 2026-07-24 code review)
+## Rail follow-ups
 
-- **`kit/` now preloads from `src/`:** `level_baker.gd` preloads
-  `src/levels/base/rail_track.gd` (the runtime node it emits into baked scenes), which
-  inverts the usual layering — kit is the reusable authoring kit, src is the game — and
-  puts a `src/` path in `BAKE_CODE_INPUTS`. It sits in `src/levels/base/` because that is
-  where the other runtime level nodes live (`heightmap_terrain.gd`, `vehicle_spawn.gd`)
-  and where Phase 3-4's consumers will be; moving it to `kit/` would restore the layering
-  but split it from its siblings. **Decide in Phase 4**, once `Level.find_closed_rail_loops`
-  and `TrainVehicle` exist and it is clear which side actually owns the type. No failure
-  mode either way.
+- **`rail_track.gd` stays in `src/levels/base/`** (decided Phase 4): `level_baker.gd`
+  preloading `src/levels/base/rail_track.gd` inverts the usual kit→src layering and puts a
+  `src/` path in `BAKE_CODE_INPUTS`, but the node's runtime consumers (`TrainVehicle`,
+  `Level`'s spawn/roster gate) all live in `src/`, and it belongs beside its sibling runtime
+  level nodes (`heightmap_terrain.gd`, `vehicle_spawn.gd`). Moving it to `kit/` would restore
+  the layering only to split it from everything that uses it. No failure mode either way;
+  left as-is.
+- **Multi-loop random spawn is deferred:** the plan sketched `_spawn_vehicle` picking a
+  closed loop at random when a level has more than one. No level does (level 5 has one), and
+  the train self-places on the first/only closed loop via `RailTrack.find_closed_rail`.
+  Building random choice means the level passing the chosen loop into the train before its
+  `_ready` — a level↔train coupling with no content behind it. Revisit if a level ever ships
+  two closed loops; until then one-loop self-placement is the whole story.
 
-## 6. Launch checklist
+## 4. Launch checklist
 
 - [ ] Levels 2-5 authored (they ship as blank generated islands today) — or trimmed from
       the registry if the shipped set is smaller.
@@ -127,16 +94,3 @@ silent in menus.
 - Feeding real wave height into the boat's buoyancy probes (post-launch option; the
   height API is the seam).
 
-## Scene-file size (investigated 2026-07-12 — no action needed yet)
-
-The largest authored scene is `level_1.tscn` (~78 KB — the scatter `stored_transforms`
-arrays dominate). Nothing is near a size that hurts the editor, git, or
-tooling, and no tool in the repo emits a "scene too large" warning at these sizes — if
-that warning reappears, record which tool printed it. Converting authoring scenes to
-binary `.scn` was considered and **rejected for now**: binary scenes are unreadable to
-git diffs and to AI sessions (both load-bearing here — scatter/GridMap data is reviewed
-in diffs), and the CI stale-bake check hashes level files as CRLF-normalized *text*, so a
-binary conversion would need pipeline changes for zero present benefit. Revisit only if
-the island's stored scatter transforms push its `.tscn` into the multi-MB range; the
-cheaper first lever is MultiMesh-heavy ScatterRegions (density) over hand-painted
-canvases, since a region's data is just as compact but regenerable.

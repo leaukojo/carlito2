@@ -492,6 +492,23 @@ everywhere is duck-typed marker methods (`is_carlito_authoring` / `is_carlito_ki
   radii/handle-lock/ghost markers as tile ports), so a bridge span meets its approach
   roads with collinear tangents = seamless deck. Profile `.tres` + `road_profile.gd`
   are hash-tracked, so bridge edits self-detect stale bakes.
+- **Rails ride the same pieces too** (no rail class or tool): a **`RailProfile`**
+  (`kit/helpers/rail_profile.gd`, extends `RoadProfile`) whose `cross_section()` is a
+  ballast trapezoid + two raised rail ribs at ±gauge/2 (standard gauge 1.44 m = the Kenney
+  train kit at scale 2.4); preset `kit/roads/rail_profile.tres`. The Roads panel's **Rail
+  checkbox** swaps the selected RoadPath's profile between the rail preset and the city
+  default (one undoable action, checkbox state read back from the profile's
+  `is_carlito_rail_profile()` marker). Because a rail is just a RoadPath with a different
+  profile, **Draw / Drape / Smooth / Conform and the whole bake path work on it unchanged**
+  (`paved_half_width`/`full_half_width` stay meaningful so the fold guard and conform behave;
+  its vertical rib walls make it drop degenerate strips on both axes, not just laterally).
+  What differs is runtime: a baked level frees `AuthoringRoot`, so the baker also emits a
+  `RailTrack` node (`src/levels/base/rail_track.gd`) per rail road, carrying the duplicated
+  curve + gauge + closed flag — that is the spline the train rides. The train runs **only on
+  a closed loop** (`RailTrack.find_closed_rail`, the one shared closed-loop walk); an open
+  rail bakes and drives fine but no train spawns on it. `tools/gen_rail_level.gd` builds
+  level 5's loop end to end (survey-follow-contour routing, grade-budgeted profile, conform)
+  and overwrites the level on every run.
 - **Draw mode + Drape:** `addons/carlito_kit/road_draw_tool.gd` + `road_panel.gd`
   (the "Roads" tab of the Kit bottom panel, Off/Draw; RoadPath-selection-gated like the
   brushes). Each viewport click
