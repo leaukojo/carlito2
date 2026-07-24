@@ -55,7 +55,9 @@ func _ready() -> void:
 	_setup_baked()
 	_capture_day_night()
 	_build_vignette()
-	_spawn_vehicle(info.default_vehicle)
+	# default_vehicle names a FAMILY (see LevelInfo); resolve it to that family's first
+	# variant, the same body the garage spawns via boot.gd's first_in_family.
+	_spawn_vehicle(VehicleCatalog.first_in_family(info.default_vehicle))
 
 
 func _unhandled_input(event: InputEvent) -> void:

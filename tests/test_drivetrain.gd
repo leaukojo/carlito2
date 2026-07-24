@@ -186,7 +186,7 @@ func test_process_rpm_rests_at_idle() -> void:
 # --- §6 force hierarchy on the shipped car spec -----------------------------------
 
 func test_car_spec_brake_stronger_than_accel_stronger_than_handbrake() -> void:
-	var spec: VehicleSpecScript = load("res://src/vehicles/car/car_spec.tres")
+	var spec: VehicleSpecScript = load("res://src/vehicles/kenney/sedan_spec.tres")
 	var peak_engine := 0.0
 	for p in spec.torque_curve:
 		peak_engine = maxf(peak_engine, p.y)

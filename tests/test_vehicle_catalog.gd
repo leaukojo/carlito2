@@ -14,40 +14,42 @@ func test_family_of_and_scene_of() -> void:
 	assert_str(VehicleCatalog.family_of("sedan")).is_equal("car")
 	assert_str(VehicleCatalog.family_of("firetruck")).is_equal("truck")
 	assert_str(VehicleCatalog.family_of("tractor-shovel")).is_equal("tractor")
-	assert_str(VehicleCatalog.family_of("boat")).is_equal("boat")
+	assert_str(VehicleCatalog.family_of("boat-speed-a")).is_equal("boat")
 	assert_str(VehicleCatalog.family_of("bike")).is_equal("bike")
 	assert_str(VehicleCatalog.family_of("nope")).is_equal("")
 	assert_str(VehicleCatalog.scene_of("sedan")).is_equal("res://src/vehicles/kenney/sedan.tscn")
 	assert_str(VehicleCatalog.scene_of("nope")).is_equal("")
 
 
-func test_legacy_variant_is_first_in_its_family() -> void:
-	# The garage spawns first_in_family; it must be the hand-built legacy body.
-	assert_str(VehicleCatalog.first_in_family("car")).is_equal("car")
-	assert_str(VehicleCatalog.first_in_family("truck")).is_equal("truck")
+func test_first_in_family_is_the_default_body() -> void:
+	# The garage (and a level's default_vehicle) spawn first_in_family. car / truck / boat
+	# have no hand-built body, so they default to their first kit / watercraft variant;
+	# tractor and bike keep their hand-built body.
+	assert_str(VehicleCatalog.first_in_family("car")).is_equal("sedan-sports")
+	assert_str(VehicleCatalog.first_in_family("truck")).is_equal("delivery")
+	assert_str(VehicleCatalog.first_in_family("boat")).is_equal("boat-speed-a")
 	assert_str(VehicleCatalog.first_in_family("tractor")).is_equal("tractor")
-	assert_str(VehicleCatalog.first_in_family("boat")).is_equal("boat")
 	assert_str(VehicleCatalog.first_in_family("bike")).is_equal("bike")
 
 
 func test_variants_in_family_grouping() -> void:
 	var car := VehicleCatalog.variants_in_family("car")
-	assert_int(car.size()).is_equal(13)   # legacy car + 12 Kenney
+	assert_int(car.size()).is_equal(12)   # 12 Kenney
 	assert_bool(car.has("sedan")).is_true()
 	assert_bool(car.has("firetruck")).is_false()
-	assert_int(VehicleCatalog.variants_in_family("truck").size()).is_equal(6)
+	assert_int(VehicleCatalog.variants_in_family("truck").size()).is_equal(5)
 	assert_int(VehicleCatalog.variants_in_family("tractor").size()).is_equal(4)
-	assert_int(VehicleCatalog.variants_in_family("boat").size()).is_equal(4)  # legacy + 3 watercraft
+	assert_int(VehicleCatalog.variants_in_family("boat").size()).is_equal(3)  # 3 watercraft
 	assert_int(VehicleCatalog.variants_in_family("bike").size()).is_equal(3)  # speed + motocross + scooter
 
 
 func test_next_in_family_wraps() -> void:
 	var car := VehicleCatalog.variants_in_family("car")
-	# cycling from the last variant returns to the first (the legacy body).
+	# cycling from the last variant returns to the first.
 	assert_str(VehicleCatalog.next_in_family(car[car.size() - 1])).is_equal(car[0])
-	assert_str(VehicleCatalog.next_in_family("car")).is_equal(car[1])
+	assert_str(VehicleCatalog.next_in_family(car[0])).is_equal(car[1])
 	var boat := VehicleCatalog.variants_in_family("boat")
-	assert_str(VehicleCatalog.next_in_family("boat")).is_equal(boat[1])
+	assert_str(VehicleCatalog.next_in_family(boat[0])).is_equal(boat[1])
 	# the bike family cycles through its recolors and wraps back to the legacy body.
 	var bike := VehicleCatalog.variants_in_family("bike")
 	assert_str(VehicleCatalog.next_in_family("bike")).is_equal(bike[1])

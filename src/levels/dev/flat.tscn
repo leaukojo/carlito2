@@ -1,7 +1,7 @@
 [gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://src/levels/dev/flat.gd" id="1_flat"]
-[ext_resource type="PackedScene" path="res://src/vehicles/car/car.tscn" id="2_car"]
+[ext_resource type="PackedScene" path="res://src/vehicles/kenney/sedan.tscn" id="2_car"]
 [ext_resource type="Script" path="res://src/vehicles/base/chase_camera.gd" id="3_cam"]
 [ext_resource type="Environment" path="res://src/levels/base/default_env.tres" id="4_env"]
 

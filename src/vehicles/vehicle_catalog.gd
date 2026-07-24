@@ -16,11 +16,10 @@ const WATERCRAFT := "res://src/vehicles/watercraft/"
 
 ## variant id -> { scene: String, family: String }. Insertion order is the cycle order.
 const VARIANTS := {
-	# -- hand-built (variant == family; first in each family = the legacy body) --
-	"car": {"scene": "res://src/vehicles/car/car.tscn", "family": "car"},
-	"truck": {"scene": "res://src/vehicles/truck/truck.tscn", "family": "truck"},
+	# -- hand-built bodies, first in their family. The car / truck / boat families have no
+	# hand-built body: they default to their first kit / watercraft variant below (sedan-sports /
+	# delivery / boat-speed-a). --
 	"tractor": {"scene": "res://src/vehicles/tractor/tractor.tscn", "family": "tractor"},
-	"boat": {"scene": "res://src/vehicles/boat/boat.tscn", "family": "boat"},
 	"bike": {"scene": "res://src/vehicles/bike/bike.tscn", "family": "bike"},
 	"drone": {"scene": "res://src/vehicles/drone/drone.tscn", "family": "drone"},
 	"plane": {"scene": "res://src/vehicles/plane/plane.tscn", "family": "plane"},
@@ -32,9 +31,9 @@ const VARIANTS := {
 	"boat-speed-a": {"scene": WATERCRAFT + "boat-speed-a.tscn", "family": "boat"},
 	"boat-speed-j": {"scene": WATERCRAFT + "boat-speed-j.tscn", "family": "boat"},
 	"boat-sail-a": {"scene": WATERCRAFT + "boat-sail-a.tscn", "family": "boat"},
-	# -- Kenney car kit: car family --
-	"sedan": {"scene": KENNEY + "sedan.tscn", "family": "car"},
+	# -- Kenney car kit: car family (sedan-sports first = the default car) --
 	"sedan-sports": {"scene": KENNEY + "sedan-sports.tscn", "family": "car"},
+	"sedan": {"scene": KENNEY + "sedan.tscn", "family": "car"},
 	"hatchback-sports": {"scene": KENNEY + "hatchback-sports.tscn", "family": "car"},
 	"suv": {"scene": KENNEY + "suv.tscn", "family": "car"},
 	"suv-luxury": {"scene": KENNEY + "suv-luxury.tscn", "family": "car"},
