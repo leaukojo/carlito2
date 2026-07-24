@@ -1,8 +1,8 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://bxq6ahtbj8pwd"]
 
-[ext_resource type="Script" path="res://src/vehicles/base/base_vehicle.gd" id="1_y64no"]
+[ext_resource type="Script" uid="uid://56bqf0g2enmi" path="res://src/vehicles/base/base_vehicle.gd" id="1_y64no"]
 [ext_resource type="Resource" path="res://src/vehicles/kenney/race-future_spec.tres" id="2_2pweq"]
-[ext_resource type="Texture2D" path="res://src/vehicles/kenney/models/Textures/colormap.png" id="3_hm8eu"]
+[ext_resource type="Texture2D" uid="uid://bu4xumyjoi2da" path="res://src/vehicles/kenney/models/Textures/colormap.png" id="3_hm8eu"]
 
 [sub_resource type="BoxShape3D" id="BoxLower"]
 size = Vector3(1.44, 0.2888711, 3.0899906)

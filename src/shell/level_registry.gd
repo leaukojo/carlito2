@@ -16,8 +16,8 @@ extends Object
 const LEVELS: Array[Dictionary] = [
 	{ "id": "garage", "name": "Garage", "scene": "res://src/levels/garage/garage.tscn" },
 	{ "id": "level_1", "name": "Level 1 - Island", "scene": "res://src/levels/island/level_1/level_1.tscn" },
-	{ "id": "level_2", "name": "Level 2 - Bay Islands", "scene": "res://src/levels/island/level_2/level_2.tscn" },
-	{ "id": "level_3", "name": "Level 3 - Highlands", "scene": "res://src/levels/island/level_3/level_3.tscn" },
-	{ "id": "level_4", "name": "Level 4 - Archipelago", "scene": "res://src/levels/island/level_4/level_4.tscn" },
+	{ "id": "level_2", "name": "Level 2 - Mountain", "scene": "res://src/levels/island/level_2/level_2.tscn" },
+	{ "id": "level_3", "name": "Level 3 - City", "scene": "res://src/levels/island/level_3/level_3.tscn" },
+	{ "id": "level_4", "name": "Level 4 - Racing", "scene": "res://src/levels/island/level_4/level_4.tscn" },
 	{ "id": "level_5", "name": "Level 5 - Railway", "scene": "res://src/levels/island/level_5/level_5.tscn" },
 ]

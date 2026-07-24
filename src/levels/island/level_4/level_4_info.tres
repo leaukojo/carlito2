@@ -4,6 +4,6 @@
 
 [resource]
 script = ExtResource("1_info")
-display_name = "Level 4 - Archipelago"
+display_name = "Level 4 - Racing"
 allowed_vehicles = PackedStringArray("car", "truck", "tractor", "boat")
 default_vehicle = "car"
