@@ -23,6 +23,10 @@ const NIGHT_AMBIENT_ENERGY := 0.12
 const NIGHT_FOG_COLOR := Color(0.05, 0.07, 0.13)
 const NIGHT_SKY_ENERGY := 0.05
 
+## Fullscreen color-grade + vignette (see vignette.gdshader). Built in code so every level
+## gets it with no per-scene edit and no re-bake — same pattern BaseVehicle uses for dust.
+const VIGNETTE_SHADER := preload("res://src/levels/base/vignette.gdshader")
+
 var vehicle: BaseVehicle
 
 var _sun: DirectionalLight3D
@@ -50,6 +54,7 @@ func _ready() -> void:
 	_game_state().current_level = scene_file_path
 	_setup_baked()
 	_capture_day_night()
+	_build_vignette()
 	_spawn_vehicle(info.default_vehicle)
 
 
@@ -137,6 +142,24 @@ func _toggle_day_night() -> void:
 		_env.ambient_light_energy = NIGHT_AMBIENT_ENERGY if _is_night else _day_ambient_energy
 		_env.fog_light_color = NIGHT_FOG_COLOR if _is_night else _day_fog_color
 		_env.background_energy_multiplier = NIGHT_SKY_ENERGY if _is_night else _day_sky_energy
+
+
+## Add the fullscreen color-grade + vignette overlay. It lives on its own CanvasLayer at
+## layer 0 so it draws over the 3D world but UNDER the shell's HUD CanvasLayer (default
+## layer 1) — the dashboard gauges stay undimmed. A full-rect ColorRect carries the shader;
+## it ignores mouse input so it never eats touches meant for the touch controls.
+func _build_vignette() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "Vignette"
+	layer.layer = 0
+	var rect := ColorRect.new()
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = VIGNETTE_SHADER
+	rect.material = mat
+	layer.add_child(rect)
+	add_child(layer)
 
 
 ## Respawn the player as `variant` at a matching spawn marker (garage / V-cycle).
