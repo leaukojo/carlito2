@@ -55,6 +55,7 @@ var _lamps := {}     ## signal name -> Label (input bool tell-tales)
 var _out_lamps := {} ## signal name -> Label (bool "out" ISOBUS tell-tales, driven from telemetry)
 var _chips := {}     ## signal name -> [Label, SignalDef]
 var _readout: Label
+var _reverser: Label = null  ## reverser (N/D/R) readout for a gear-out vehicle with no tacho (train)
 
 
 ## Attach to a running Level and build the cluster for its active vehicle type.
@@ -65,7 +66,8 @@ func bind(level: Node) -> void:
 	# level's default before the first spawn.
 	var vtype := GameState.current_vehicle
 	if vtype == "" and level != null and level.get("info") != null:
-		vtype = level.info.default_vehicle
+		# default_vehicle is a VARIANT ("bullet"); the contract keys signals by FAMILY ("train").
+		vtype = VehicleCatalog.family_of(level.info.default_vehicle)
 	_build(vtype)
 
 
@@ -130,6 +132,16 @@ func _build(vehicle_type: String) -> void:
 	mid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	mid.add_theme_constant_override("separation", 8)
 	cluster.add_child(mid)
+	# Reverser readout: the train is the only family that declares 'gear' out without 'rpm',
+	# so the gear label the tacho gap would normally carry has nowhere to go. Give it a bespoke
+	# centre label (hand-picked like the two gauges), built only for that case.
+	_reverser = null
+	if out_names.has("gear") and not out_names.has("rpm"):
+		_reverser = Label.new()
+		_reverser.add_theme_font_size_override("font_size", 22)
+		_reverser.add_theme_color_override("font_color", CHIP_COLOR)
+		_reverser.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		mid.add_child(_reverser)
 	_build_bars(vehicle_type, mid)
 	_readout = Label.new()
 	_readout.add_theme_font_size_override("font_size", 12)
@@ -242,6 +254,8 @@ func _process(_dt: float) -> void:
 	if _tach != null:
 		_tach.value = t.rpm
 		_tach.center_text = _gear_def.enum_label(t.gear_byte) if _gear_def != null else ""
+	if _reverser != null:
+		_reverser.text = "REVERSER  %s" % (_gear_def.enum_label(t.gear_byte) if _gear_def != null else "")
 
 	for sig_name in _bars:
 		# Bars are keyed by contract signal name; telemetry fields share those names

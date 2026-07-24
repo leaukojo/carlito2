@@ -121,6 +121,22 @@ junctions, lane markings, traffic.
   last so drivetrain RPM + telemetry motion are current). Never fork `_physics_process`.
 - BaseVehicle is zero-wheel-safe (boat spec: empty `wheel_positions`; keep its 6
   `gear_ratios` — `auto_shift` indexes up to byte 6).
+- The train (`src/vehicles/train/`) is a real BaseVehicle subclass like the boat: empty
+  `wheel_positions`, the 6 `gear_ratios` kept (the reverser N/D/R rides the gear byte). It
+  never forks `_physics_process` — it uses only the two seams. Locomotion is a 1D consist
+  sim (`TrainSim`) on the level's rail curve; the loco is driven **kinematically**
+  (`gravity_scale = 0`, the sim writes `global_transform` + linear/angular velocity each
+  tick so `_update_telemetry` still reads honest motion — no derived fictions). Wagons are
+  `AnimatableBody3D` followers posed by `TrainPlacement`. Aux systems (motor current,
+  catenary sag, brake pipe) are honest labelled models in `TrainTelemetry`, not circuits.
+  `TrainSim`'s coupler/brake clamps are 60 Hz stability — **don't weaken them**. Respawn
+  re-lays the consist at `s = 0` via `_sim.setup(...)` (velocity-zeroing alone leaves it
+  halted where it drifted). It self-places on a closed rail in `_ready` and ignores
+  `VehicleSpawn` markers — see the rails note for the shared `find_closed_rail` walk.
+- Contract signals key on the vehicle **family** (`signals_for_vehicle` looks up `"train"`,
+  not the variant `"bullet"`): any pre-spawn fallback that has only a variant name must map
+  it through `VehicleCatalog.family_of(...)` first, or the dashboard/bridge get an empty
+  cluster. This bit `dashboard.bind()` and `level_baker.validate_spawns` — both now map.
 - RayWheel is single-radius: the tractor's big-rear/small-front wheels are visual only
   (`wheel_visual_radius`/`_rear` + `RayWheel.visual_lift`, which keeps an over/undersized
   visual meeting the ground). Wheel scenes are radius-NORMALIZED (model scaled to radius 1);
@@ -287,7 +303,12 @@ junctions, lane markings, traffic.
   `has_method("get_rail_curve") and get_rail_curve() != null` (never a marker method —
   `has_method` is static and a road with a city profile must be able to say "not a rail");
   the baker composes `rail_local_xform()`, runtime consumers use `rail_to_world()`.
-  `RoadBuilder.is_closed_loop` stays the ONE closed-loop predicate.
+  `RoadBuilder.is_closed_loop` stays the ONE closed-loop predicate. The train runs ONLY on a
+  **closed** loop, never an open rail, and `RailTrack.find_closed_rail(root)` is the ONE walk
+  that finds it — both `Level._spawn_vehicle` (spawn gate) and `TrainVehicle._find_rail`
+  (self-placement) call it, so the two can't disagree on what a rail is (an open-rail fallback
+  in one and not the other is the exact split that let the train run on track the level refused
+  to spawn it on).
 - `tools/gen_rail_level.gd` owns level 5 end to end (terrain, loop curve, conform, splat,
   scene) and overwrites it on every run; `tools/gen_islands.gd` covers only levels 2-4 and
   **must not be re-run** (levels 2/3 have hand-added PlaneSpawns its template would drop).

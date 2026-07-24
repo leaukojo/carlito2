@@ -157,19 +157,29 @@ func _spawn_vehicle(variant: String) -> void:
 		push_error("Level: no scene registered for vehicle variant '%s'" % variant)
 		return
 	var family := VehicleCatalog.family_of(variant)
-	var spawn := _pick_spawn(family)
-	if spawn == null:
-		push_error("Level: no spawn marker accepts vehicle family '%s'" % family)
-		return
+	# The train is rail-guided: it ignores VehicleSpawn markers and self-places on a closed
+	# rail loop in its own _ready (Phase 4 adds random-loop choice + garage gating on top).
+	var is_train := family == "train"
+	var spawn: VehicleSpawn = null
+	if is_train:
+		if _find_closed_rail() == null:
+			push_error("Level: vehicle family 'train' needs a closed rail loop here")
+			return
+	else:
+		spawn = _pick_spawn(family)
+		if spawn == null:
+			push_error("Level: no spawn marker accepts vehicle family '%s'" % family)
+			return
 
 	if vehicle != null:
 		vehicle.queue_free()
 
 	vehicle = (load(scene_path) as PackedScene).instantiate()
-	add_child(vehicle)
-	vehicle.global_transform = spawn.global_transform
-	vehicle.spawn_transform = spawn.global_transform
-	vehicle.reset_physics_interpolation()
+	add_child(vehicle)  # triggers the vehicle's _ready — the train places its consist here
+	if spawn != null:
+		vehicle.global_transform = spawn.global_transform
+		vehicle.spawn_transform = spawn.global_transform
+		vehicle.reset_physics_interpolation()
 	_game_state().current_vehicle = family
 	_game_state().current_variant = variant
 
@@ -189,3 +199,10 @@ func _pick_spawn(family: String) -> VehicleSpawn:
 		if spawn != null and spawn.accepts(family):
 			return spawn
 	return null
+
+
+## First closed rail loop under this level (RailTrack.find_closed_rail is the one shared walk,
+## used by TrainVehicle too so the spawn gate and the train agree on what a rail is); null if
+## none. Phase 4 generalizes this into random-loop spawn + roster gating.
+func _find_closed_rail() -> Node:
+	return RailTrack.find_closed_rail(self)

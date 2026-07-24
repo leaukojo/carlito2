@@ -449,8 +449,8 @@ func _info_text() -> String:
 [resource]
 script = ExtResource("1_info")
 display_name = "%s"
-allowed_vehicles = PackedStringArray("car", "truck", "tractor", "boat", "bike", "drone", "plane")
-default_vehicle = "car"
+allowed_vehicles = PackedStringArray("train", "car", "truck", "tractor", "boat", "bike", "drone", "plane")
+default_vehicle = "bullet"
 """ % TITLE
 
 

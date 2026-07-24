@@ -40,6 +40,10 @@ var _fov_perspective := 75.0
 ## into the next frame's lerp makes the camera oscillate in/out against a wall (shaking).
 var _free_position := Vector3.ZERO
 var _has_free := false
+## Cached get_camera_framing() — constant per vehicle, so recompute only when the target
+## changes instead of allocating a fresh Dictionary every frame on the follow path.
+var _framing_cache: Dictionary
+var _framing_target: Node3D = null
 
 
 func _ready() -> void:
@@ -81,8 +85,9 @@ func _follow(weight: float) -> void:
 		global_transform = Transform3D(tt.basis, tt * offset)
 		_has_free = false
 		return
-	var pivot := tt.origin + Vector3.UP * look_height
-	var desired := _desired_position(tt)
+	var f := _framing()
+	var pivot := tt.origin + Vector3.UP * float(f.get("look_height", look_height))
+	var desired := _desired_position(tt, f)
 	_free_position = desired if not _has_free else _free_position.lerp(desired, weight)
 	_has_free = true
 	global_position = _unblocked(_free_position, pivot)
@@ -94,7 +99,11 @@ func _follow(weight: float) -> void:
 ## Pull [param pos] in along the pivot→camera line if terrain/geometry blocks it.
 func _unblocked(pos: Vector3, pivot: Vector3) -> Vector3:
 	var query := PhysicsRayQueryParameters3D.create(pivot, pos, collision_mask)
-	if target is PhysicsBody3D:
+	# Exclude the whole vehicle (the train hands back its loco + every wagon), so the pull-in
+	# never treats the vehicle's own trailing bodies as occluders.
+	if target.has_method("get_camera_exclude_bodies"):
+		query.exclude = target.get_camera_exclude_bodies()
+	elif target is PhysicsBody3D:
 		query.exclude = [(target as PhysicsBody3D).get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if hit.is_empty():
@@ -107,16 +116,27 @@ func _unblocked(pos: Vector3, pivot: Vector3) -> Vector3:
 	return pivot + to_cam.normalized() * minf(dist, to_cam.length())
 
 
-func _desired_position(tt: Transform3D) -> Vector3:
+## Per-vehicle framing override (distance/height/look_height/top_height/iso_size); empty for
+## every wheeled vehicle, enlarged by the train so the views clear the whole consist.
+func _framing() -> Dictionary:
+	if target != _framing_target:
+		_framing_target = target
+		_framing_cache = target.get_camera_framing() if target != null \
+				and target.has_method("get_camera_framing") else {}
+	return _framing_cache
+
+
+func _desired_position(tt: Transform3D, f: Dictionary) -> Vector3:
 	match mode:
 		Mode.ISO:
 			# Fixed world angle — deliberately does NOT follow yaw, so the level's roads
 			# and grid stay readable while the vehicle turns under it.
 			return tt.origin + iso_offset
 		Mode.TOP:
-			return tt.origin + Vector3.UP * top_height + _back(tt) * top_back
+			return tt.origin + Vector3.UP * float(f.get("top_height", top_height)) + _back(tt) * top_back
 		_:
-			return tt.origin + _back(tt) * distance + Vector3.UP * height
+			return tt.origin + _back(tt) * float(f.get("distance", distance)) \
+					+ Vector3.UP * float(f.get("height", height))
 
 
 ## The target's flattened backwards direction (yaw only).
@@ -129,7 +149,7 @@ func _back(tt: Transform3D) -> Vector3:
 func _apply_projection() -> void:
 	if mode == Mode.ISO:
 		projection = Camera3D.PROJECTION_ORTHOGONAL
-		size = iso_size
+		size = float(_framing().get("iso_size", iso_size))
 	else:
 		projection = Camera3D.PROJECTION_PERSPECTIVE
 		fov = _fov_perspective

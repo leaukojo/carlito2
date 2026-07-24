@@ -61,3 +61,18 @@ func rail_gauge() -> float:
 
 func is_rail_closed() -> bool:
 	return closed
+
+
+## The first CLOSED rail loop under `root`, discovered duck-typed (a baked RailTrack or an
+## unbaked authoring RoadPath — same get_rail_curve()/is_rail_closed() API), or null. Shared
+## by Level (spawn gating) and TrainVehicle (self-placement) so the two never disagree on what
+## the train may run on: both require a closed loop, never an open rail.
+static func find_closed_rail(root: Node) -> Node:
+	if root.has_method("get_rail_curve") and root.call("get_rail_curve") != null \
+			and bool(root.call("is_rail_closed")):
+		return root
+	for child in root.get_children():
+		var found := find_closed_rail(child)
+		if found != null:
+			return found
+	return null

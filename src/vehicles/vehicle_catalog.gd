@@ -24,6 +24,7 @@ const VARIANTS := {
 	"bike": {"scene": "res://src/vehicles/bike/bike.tscn", "family": "bike"},
 	"drone": {"scene": "res://src/vehicles/drone/drone.tscn", "family": "drone"},
 	"plane": {"scene": "res://src/vehicles/plane/plane.tscn", "family": "plane"},
+	"bullet": {"scene": "res://src/vehicles/train/train.tscn", "family": "train"},
 	# -- bike family: recolors of the one hand-built body (variant == body colour) --
 	"bike-motocross": {"scene": "res://src/vehicles/bike/bike-motocross.tscn", "family": "bike"},
 	"bike-scooter": {"scene": "res://src/vehicles/bike/bike-scooter.tscn", "family": "bike"},

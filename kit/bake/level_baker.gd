@@ -187,12 +187,22 @@ static func validate_spawns(allowed: PackedStringArray, default_vehicle: String,
 	if spawns.is_empty():
 		errors.append("level has no VehicleSpawn markers")
 		return errors
-	if not allowed.is_empty() and not allowed.has(default_vehicle):
-		errors.append("default vehicle '%s' is not in allowed_vehicles" % default_vehicle)
+	# allowed_vehicles lists FAMILIES; default_vehicle is a VARIANT (legacy families spell them
+	# the same, e.g. "car", so this only bites once a variant id differs — "bullet"/"train").
+	var default_family := VehicleCatalog.family_of(default_vehicle)
+	if default_family == "":
+		default_family = default_vehicle
+	if not allowed.is_empty() and not allowed.has(default_family):
+		errors.append("default vehicle '%s' (family '%s') is not in allowed_vehicles" % [
+				default_vehicle, default_family])
 	var types := allowed.duplicate()
-	if default_vehicle != "" and not types.has(default_vehicle):
-		types.append(default_vehicle)
+	if default_family != "" and not types.has(default_family):
+		types.append(default_family)
 	for t in types:
+		# The train is rail-guided: it is placed on a closed rail loop, not at a VehicleSpawn
+		# marker, so it is exempt from the per-type marker-coverage gate.
+		if t == "train":
+			continue
 		var wants_water := t == "boat"
 		var found := false
 		for s in spawns:

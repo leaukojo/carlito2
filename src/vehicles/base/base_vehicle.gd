@@ -284,6 +284,21 @@ func get_camera_target() -> Node3D:
 	return self
 
 
+## Physics bodies the chase camera's occlusion ray must ignore — itself, plus any sub-bodies a
+## multi-body vehicle owns (the train's wagons trail right behind the loco, so without this the
+## occlusion pull-in slams the camera into the first wagon). Single-chassis vehicles are just self.
+func get_camera_exclude_bodies() -> Array[RID]:
+	return [get_rid()]
+
+
+## Optional chase-camera framing override {distance, height, look_height, top_height, iso_size}.
+## Empty = use the level camera's authored values (every wheeled vehicle). A long vehicle (the
+## consist) returns bigger values so CHASE/ISO/TOP clear the whole train instead of burying the
+## camera in a wagon. Read per frame by ChaseCamera, so a garage swap re-frames immediately.
+func get_camera_framing() -> Dictionary:
+	return {}
+
+
 ## Read by InputRouter for arbitration (local brake-vs-reverse); vehicles otherwise
 ## never talk to the router beyond register/consume.
 func get_speed() -> float:

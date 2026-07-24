@@ -187,5 +187,5 @@ func test_train_telemetry_rests_at_charged_pipe_and_lowered_pantograph() -> void
 	assert_bool(t.doors_state).is_false()
 	assert_float(t.brake_pipe).is_equal(TrainT.BRAKE_PIPE_CHARGED)
 	assert_float(t.catenary_volts).is_equal(0.0)
-	assert_float(t.grade).is_equal(0.0)
+	assert_int(t.grade).is_equal(0)  # contract 'grade' is i8 (integer percent)
 	assert_float(t.coupler_force).is_equal(0.0)
