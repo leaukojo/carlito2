@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://c317it2vnj17b"]
 
 [ext_resource type="Script" uid="uid://dfqaw0jscyvlx" path="res://src/levels/base/level.gd" id="1_level"]
-[ext_resource type="Resource" path="res://src/levels/island/level_3/level_3_info.tres" id="2_info"]
+[ext_resource type="Resource" uid="uid://gwqrdslfm124" path="res://src/levels/island/level_3/level_3_info.tres" id="2_info"]
 [ext_resource type="Script" uid="uid://ckxshtqj7odax" path="res://src/vehicles/base/chase_camera.gd" id="3_cam"]
 [ext_resource type="Script" uid="uid://5y8krjlda43v" path="res://src/levels/base/vehicle_spawn.gd" id="4_spawn"]
 [ext_resource type="Script" uid="uid://ctk4ghrrwqt7i" path="res://src/levels/base/heightmap_terrain.gd" id="5_terrain"]
@@ -747,7 +747,7 @@ transform = Transform3D(1, 0, 1.7484555e-07, 0, 1, 0, -1.7484555e-07, 0, 1, -13.
 transform = Transform3D(0.49999997, 0, 0.86602545, 0, 1, 0, -0.86602545, 0, 0.49999997, -117.10797, 11.25098, 81.08296)
 
 [node name="Suv" parent="AuthoringRoot/ParkedProps" unique_id=670502743 instance=ExtResource("68_mw337")]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -214.8435, 12.24, 74.46015)
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -214.8435, 11.849067, 74.46015)
 
 [node name="ScatterCanvas" type="Node3D" parent="AuthoringRoot" unique_id=139776612]
 script = ExtResource("45_nkjto")

@@ -74,6 +74,19 @@ var _lens_overrides := {
 	# height (y~0.72). Detection kept picking the centred cross livery instead; measured off
 	# the model's back-face red band. Tall -> indicator splits off at the bottom.
 	"ambulance": {"rear": [Vector3(0.72, 0.72, 1.84), Vector3(0.12, 0.44, 0.10)]},
+	# The open-wheelers paint NO lamp swatch, so detection returns nothing and the body-box
+	# fallback floated the lamps well above/outside the slim nose+tail (the box is dominated by
+	# the wide rear wing and tall roll hoop). These boxes are measured off the model's own nose
+	# cone and tail bodywork (see tools/measure_race.gd), so _split lands the lamps on real
+	# geometry. Wide -> head/brake inboard, indicator outboard.
+	"race": {
+		"front": [Vector3(0.20, 0.22, -1.38), Vector3(0.26, 0.13, 0.12)],
+		"rear": [Vector3(0.16, 0.40, 1.30), Vector3(0.22, 0.14, 0.12)],
+	},
+	"race-future": {
+		"front": [Vector3(0.28, 0.31, -1.42), Vector3(0.32, 0.14, 0.14)],
+		"rear": [Vector3(0.34, 0.50, 1.42), Vector3(0.34, 0.16, 0.14)],
+	},
 }
 var _shape_report: Array = []  ## per-variant collision shape kind + hull vertex count
 var _lens_report: Array = []   ## per-variant lens detection, so a bad lamp is diagnosable
