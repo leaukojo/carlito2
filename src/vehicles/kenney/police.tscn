@@ -10,6 +10,15 @@ size = Vector3(1.8, 0.5991289, 3.4278028)
 [sub_resource type="BoxShape3D" id="BoxUpper"]
 size = Vector3(1.8, 0.48146093, 1.7661817)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_nxpib"]
+resource_name = "body_finish"
+cull_mode = 2
+albedo_texture = ExtResource("3_ga7u7")
+metallic_specular = 0.6
+roughness = 0.6
+rim_enabled = true
+rim = 0.25
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_oe213"]
 resource_name = "colormap"
 cull_mode = 2
@@ -83,93 +92,95 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_l3qf6")
 
-[sub_resource type="BoxMesh" id="BoxMesh_nxpib"]
+[sub_resource type="BoxMesh" id="BoxMesh_2o6ju"]
 size = Vector3(0.16200003, 0.132, 0.12599988)
 
-[sub_resource type="BoxMesh" id="BoxMesh_2o6ju"]
+[sub_resource type="BoxMesh" id="BoxMesh_ga7u7"]
 size = Vector3(0.09000001, 0.132, 0.12599988)
 
-[sub_resource type="BoxMesh" id="BoxMesh_ga7u7"]
+[sub_resource type="BoxMesh" id="BoxMesh_px5f0"]
 size = Vector3(0.16200003, 0.132, 0.046)
 
-[sub_resource type="BoxMesh" id="BoxMesh_px5f0"]
+[sub_resource type="BoxMesh" id="BoxMesh_x6vhl"]
 size = Vector3(0.09000001, 0.132, 0.046)
 
-[node name="Police" type="RigidBody3D" unique_id=534498825]
+[node name="Police" type="RigidBody3D" unique_id=1231087931]
 script = ExtResource("1_nxpib")
 spec = ExtResource("2_2o6ju")
 
-[node name="CollisionLower" type="CollisionShape3D" parent="." unique_id=1766489965]
+[node name="CollisionLower" type="CollisionShape3D" parent="." unique_id=1080830929]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6613754, 0.08736825)
 shape = SubResource("BoxLower")
 
-[node name="CollisionUpper" type="CollisionShape3D" parent="." unique_id=958749846]
+[node name="CollisionUpper" type="CollisionShape3D" parent="." unique_id=1329006942]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1327305, 0.18282723)
 shape = SubResource("BoxUpper")
 
-[node name="Model" type="Node3D" parent="." unique_id=199180499]
+[node name="Model" type="Node3D" parent="." unique_id=787298192]
 transform = Transform3D(-1.2, 0, -1.04907336e-07, 0, 1.2, 0, 1.04907336e-07, 0, -1.2, 0, 0, 0)
 
 [node name="body" type="MeshInstance3D" parent="Model" unique_id=123577999]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, -0.025)
+material_override = SubResource("StandardMaterial3D_nxpib")
 mesh = SubResource("ArrayMesh_atmnw")
 
 [node name="grill" type="MeshInstance3D" parent="Model/body" unique_id=147307321]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.07422793, 1.4749999)
+material_override = SubResource("StandardMaterial3D_nxpib")
 mesh = SubResource("ArrayMesh_654nd")
 
-[node name="Lamps" type="Node3D" parent="." unique_id=2013580290]
+[node name="Lamps" type="Node3D" parent="." unique_id=2136659887]
 
-[node name="HeadlightL" type="SpotLight3D" parent="Lamps" unique_id=2090180617]
+[node name="HeadlightL" type="SpotLight3D" parent="Lamps" unique_id=199306768]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4949999, 0.66, -1.5800002)
 visible = false
 light_energy = 0.0
 spot_range = 28.0
 spot_angle = 38.0
 
-[node name="HeadlightR" type="SpotLight3D" parent="Lamps" unique_id=1687051676]
+[node name="HeadlightR" type="SpotLight3D" parent="Lamps" unique_id=1943041127]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4949999, 0.66, -1.5800002)
 visible = false
 light_energy = 0.0
 spot_range = 28.0
 spot_angle = 38.0
 
-[node name="HeadLensL" type="MeshInstance3D" parent="Lamps" unique_id=1941229618]
+[node name="HeadLensL" type="MeshInstance3D" parent="Lamps" unique_id=1138705325]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4949999, 0.66, -1.5030003)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_nxpib")
+mesh = SubResource("BoxMesh_2o6ju")
 
-[node name="HeadLensR" type="MeshInstance3D" parent="Lamps" unique_id=742379406]
+[node name="HeadLensR" type="MeshInstance3D" parent="Lamps" unique_id=1859115512]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4949999, 0.66, -1.5030003)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_nxpib")
+mesh = SubResource("BoxMesh_2o6ju")
 
-[node name="TurnLF" type="MeshInstance3D" parent="Lamps" unique_id=1326016000]
+[node name="TurnLF" type="MeshInstance3D" parent="Lamps" unique_id=2103881885]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.62099993, 0.66, -1.5030003)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_2o6ju")
+mesh = SubResource("BoxMesh_ga7u7")
 
-[node name="TurnRF" type="MeshInstance3D" parent="Lamps" unique_id=428114489]
+[node name="TurnRF" type="MeshInstance3D" parent="Lamps" unique_id=426745414]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.62099993, 0.66, -1.5030003)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_2o6ju")
+mesh = SubResource("BoxMesh_ga7u7")
 
-[node name="BrakeLampL" type="MeshInstance3D" parent="Lamps" unique_id=52980022]
+[node name="BrakeLampL" type="MeshInstance3D" parent="Lamps" unique_id=237560000]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.49500018, 0.84000003, 1.783)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_ga7u7")
+mesh = SubResource("BoxMesh_px5f0")
 
-[node name="BrakeLampR" type="MeshInstance3D" parent="Lamps" unique_id=1182950240]
+[node name="BrakeLampR" type="MeshInstance3D" parent="Lamps" unique_id=2004186040]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.49500018, 0.84000003, 1.783)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_ga7u7")
+mesh = SubResource("BoxMesh_px5f0")
 
-[node name="TurnLR" type="MeshInstance3D" parent="Lamps" unique_id=722407936]
+[node name="TurnLR" type="MeshInstance3D" parent="Lamps" unique_id=2038048385]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.62100023, 0.84000003, 1.783)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_px5f0")
+mesh = SubResource("BoxMesh_x6vhl")
 
-[node name="TurnRR" type="MeshInstance3D" parent="Lamps" unique_id=1696920449]
+[node name="TurnRR" type="MeshInstance3D" parent="Lamps" unique_id=735676046]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.62100023, 0.84000003, 1.783)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_px5f0")
+mesh = SubResource("BoxMesh_x6vhl")

@@ -10,6 +10,15 @@ size = Vector3(1.8, 0.71961915, 3.3576562)
 [sub_resource type="BoxShape3D" id="BoxUpper"]
 size = Vector3(1.8, 0.5910938, 0.74706054)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_udc3f"]
+resource_name = "body_finish"
+cull_mode = 2
+albedo_texture = ExtResource("3_c7t8u")
+metallic_specular = 0.6
+roughness = 0.6
+rim_enabled = true
+rim = 0.25
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_20j06"]
 resource_name = "colormap"
 cull_mode = 2
@@ -49,89 +58,90 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_couu1")
 
-[sub_resource type="BoxMesh" id="BoxMesh_udc3f"]
+[sub_resource type="BoxMesh" id="BoxMesh_rkbnr"]
 size = Vector3(0.17701712, 0.16849616, 0.066012815)
 
-[sub_resource type="BoxMesh" id="BoxMesh_rkbnr"]
+[sub_resource type="BoxMesh" id="BoxMesh_c7t8u"]
 size = Vector3(0.17701712, 0.09349793, 0.066012815)
 
-[sub_resource type="BoxMesh" id="BoxMesh_c7t8u"]
+[sub_resource type="BoxMesh" id="BoxMesh_oqg5m"]
 size = Vector3(0.22050442, 0.13198528, 0.12602563)
 
-[sub_resource type="BoxMesh" id="BoxMesh_oqg5m"]
+[sub_resource type="BoxMesh" id="BoxMesh_5ovuq"]
 size = Vector3(0.121502385, 0.13198528, 0.12602563)
 
-[node name="Pickup" type="RigidBody3D" unique_id=745369597]
+[node name="Pickup" type="RigidBody3D" unique_id=1626411218]
 script = ExtResource("1_udc3f")
 spec = ExtResource("2_rkbnr")
 
-[node name="CollisionLower" type="CollisionShape3D" parent="." unique_id=1075976948]
+[node name="CollisionLower" type="CollisionShape3D" parent="." unique_id=941568522]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.60111815, 0.029179692)
 shape = SubResource("BoxLower")
 
-[node name="CollisionUpper" type="CollisionShape3D" parent="." unique_id=1604648261]
+[node name="CollisionUpper" type="CollisionShape3D" parent="." unique_id=787595593]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2644532, -0.26464355)
 shape = SubResource("BoxUpper")
 
-[node name="Model" type="Node3D" parent="." unique_id=2006926844]
+[node name="Model" type="Node3D" parent="." unique_id=2040983556]
 transform = Transform3D(-1.2, 0, -1.04907336e-07, 0, 1.2, 0, 1.04907336e-07, 0, -1.2, 0, 0, -0.029999971)
 
 [node name="body" type="MeshInstance3D" parent="Model" unique_id=1114644152]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -0.025)
+material_override = SubResource("StandardMaterial3D_udc3f")
 mesh = SubResource("ArrayMesh_wt65h")
 
-[node name="Lamps" type="Node3D" parent="." unique_id=1592393178]
+[node name="Lamps" type="Node3D" parent="." unique_id=255209875]
 
-[node name="HeadlightL" type="SpotLight3D" parent="Lamps" unique_id=658621124]
+[node name="HeadlightL" type="SpotLight3D" parent="Lamps" unique_id=63517579]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.57751876, 0.77173686, -1.6699742)
 visible = false
 light_energy = 0.0
 spot_range = 28.0
 spot_angle = 38.0
 
-[node name="HeadlightR" type="SpotLight3D" parent="Lamps" unique_id=1208330074]
+[node name="HeadlightR" type="SpotLight3D" parent="Lamps" unique_id=201462909]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.57751876, 0.77173686, -1.6699742)
 visible = false
 light_energy = 0.0
 spot_range = 28.0
 spot_angle = 38.0
 
-[node name="HeadLensL" type="MeshInstance3D" parent="Lamps" unique_id=1186506228]
+[node name="HeadLensL" type="MeshInstance3D" parent="Lamps" unique_id=254835509]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.57751876, 0.77173686, -1.6229678)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_udc3f")
+mesh = SubResource("BoxMesh_rkbnr")
 
-[node name="HeadLensR" type="MeshInstance3D" parent="Lamps" unique_id=63508117]
+[node name="HeadLensR" type="MeshInstance3D" parent="Lamps" unique_id=1294240251]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.57751876, 0.77173686, -1.6229678)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_udc3f")
+mesh = SubResource("BoxMesh_rkbnr")
 
-[node name="TurnLF" type="MeshInstance3D" parent="Lamps" unique_id=2133875462]
+[node name="TurnLF" type="MeshInstance3D" parent="Lamps" unique_id=587631069]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.57751876, 0.6407398, -1.6229678)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_rkbnr")
+mesh = SubResource("BoxMesh_c7t8u")
 
-[node name="TurnRF" type="MeshInstance3D" parent="Lamps" unique_id=1792055992]
+[node name="TurnRF" type="MeshInstance3D" parent="Lamps" unique_id=1503747277]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.57751876, 0.6407398, -1.6229678)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_rkbnr")
+mesh = SubResource("BoxMesh_c7t8u")
 
-[node name="BrakeLampL" type="MeshInstance3D" parent="Lamps" unique_id=979255734]
+[node name="BrakeLampL" type="MeshInstance3D" parent="Lamps" unique_id=1054540950]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.43427294, 0.77998996, 1.6530282)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_c7t8u")
+mesh = SubResource("BoxMesh_oqg5m")
 
-[node name="BrakeLampR" type="MeshInstance3D" parent="Lamps" unique_id=523525190]
+[node name="BrakeLampR" type="MeshInstance3D" parent="Lamps" unique_id=2036224627]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.43427294, 0.77998996, 1.6530282)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_c7t8u")
+mesh = SubResource("BoxMesh_oqg5m")
 
-[node name="TurnLR" type="MeshInstance3D" parent="Lamps" unique_id=1181697913]
+[node name="TurnLR" type="MeshInstance3D" parent="Lamps" unique_id=1364590429]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.60527635, 0.77998996, 1.6530282)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_oqg5m")
+mesh = SubResource("BoxMesh_5ovuq")
 
-[node name="TurnRR" type="MeshInstance3D" parent="Lamps" unique_id=1473551129]
+[node name="TurnRR" type="MeshInstance3D" parent="Lamps" unique_id=1445212269]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.60527635, 0.77998996, 1.6530282)
 cast_shadow = 0
-mesh = SubResource("BoxMesh_oqg5m")
+mesh = SubResource("BoxMesh_5ovuq")

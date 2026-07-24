@@ -94,6 +94,11 @@ func setup(vehicle: Node, spec: VehicleSpec) -> void:
 	for p in spec.headlight_paths:
 		var n := vehicle.get_node_or_null(p)
 		if n is SpotLight3D:
+			# Keep the light visible from spawn (energy still drives brightness — a
+			# zero-energy spot lights nothing). This forces the renderer to compile the
+			# "lit" shader variant during the spawn hitch instead of freezing the frame
+			# the player first switches the headlamp on.
+			(n as SpotLight3D).visible = true
 			_heads.append(n)
 			_head_rest.append((n as SpotLight3D).transform.basis)
 			# -1 left / +1 right / 0 centred (a lone centre lamp must not splay sideways).
@@ -150,7 +155,9 @@ func apply(brake_on: bool, headlights: int, turn_left: bool, turn_right: bool) -
 		# wide lane-width spread. Yaw is about local Y (+ = left, hence the -side).
 		var p := pitch - (LOW_LEFT_EXTRA_PITCH if low and side < 0.0 else 0.0)
 		var yaw := deg_to_rad(-side * LOW_OUTWARD_YAW) if low else 0.0
-		h.visible = energy > 0.0
+		# Stays visible always (energy 0 = lights nothing, costs nothing) so the "lit"
+		# shader variant compiled at spawn is never freed — otherwise re-hiding and
+		# re-showing would re-trigger the compile hitch.
 		h.light_energy = energy
 		h.spot_range = HEAD_RANGE.get(headlights, 0.0)
 		h.spot_angle = angle

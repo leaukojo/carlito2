@@ -337,12 +337,40 @@ func _build_scene(variant: String, scene_script: Variant, spec: VehicleSpec, geo
 		_own(child, root)
 	glb.free()
 
+	_apply_body_material(model)
+
 	_add_lamps(root, box_aabb, geo["lenses"])
 
 	var packed := PackedScene.new()
 	packed.pack(root)
 	root.free()
 	return packed
+
+
+## Subtle painted-body finish, regen-owned via material_override (survives pack(), a hand-edit
+## to the GLB-baked material would be clobbered on regen). One shared material for every
+## MeshInstance3D under Model: keeps the colormap atlas + double-sided look but adds a
+## semi-gloss sheen (specular, not metal) and a soft rim edge-catch so bodies lift off the
+## matte terrain. NO clearcoat — it is a silent no-op under gl_compatibility.
+func _apply_body_material(model: Node3D) -> void:
+	var mat := StandardMaterial3D.new()
+	mat.resource_name = "body_finish"
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.albedo_texture = load(COLORMAP)
+	mat.roughness = 0.6
+	mat.metallic = 0.0
+	mat.metallic_specular = 0.6
+	mat.rim_enabled = true
+	mat.rim = 0.25
+	mat.rim_tint = 0.5
+	_set_material_override(model, mat)
+
+
+func _set_material_override(node: Node, mat: StandardMaterial3D) -> void:
+	if node is MeshInstance3D:
+		(node as MeshInstance3D).material_override = mat
+	for c in node.get_children():
+		_set_material_override(c, mat)
 
 
 ## Set owner recursively so pack() serialises the stolen GLB subtree into the vehicle scene.
